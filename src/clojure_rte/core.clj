@@ -79,3 +79,66 @@
           :epsilon #{}
           #{expr})))
 
+(defn derivative [expr wrt]
+  (letfn [(make-cat [expr]
+            (case (count expr)
+              0 :empty-word
+              1 (first expr)
+              `(:cat ~@expr)))
+          (make-or [expr]
+            (case (count expr)
+              0 :empty-set
+              1 (first expr)
+              `(:or ~@expr)))
+          (make-and [expr]
+            (case (count expr)
+              0 :sigma
+              1 (first expr)
+              `(:and ~@expr)))
+          (disjoint [t1 t2]
+            (and (not (isa? t1 t2))
+                 (not (isa? t2 t1))))
+          (derivative-atom [expr]
+            (case expr
+              :empty-set :empty-set
+              :epsilon   :empty-set
+              (cond
+                (= wrt expr) :empty-word
+                (disjoint wrt expr) :empty-set
+                :else  (throw (Exception.
+                               (format "cannot compute derivative of non-disjoint types %s and %s"
+                                       wrt expr))))))]
+    
+    (cond (= :epsilon wrt)
+          expr
+
+          (sequential? expr)
+          (let [[token & args] expr]
+            
+            (if (nil? args)
+              (case token
+                :or   (derivative :empty-set wrt)
+                :and  (derivative :sigma wrt)
+                :cat  (derivative :empty-word wrt)
+                (derivative-atom token))
+              (case token
+                :or  (make-or (map (fn [sub-expr] (derivative sub-expr wrt))
+                                   args))
+                :and (make-and (map (fn [sub-expr] (derivative sub-expr wrt))
+                :cat (let [root (make-cat `(~(derivative (first args) wrt)
+                                            ~@(rest args)))]
+                       (cond
+                         (nullable (first args)) ;; nu = :epsilon
+                         `(:or ~root ~(derivative (make-cat ~@(rest args)) wrt))
+                         :else ;; nu = :empty-set
+                         root))
+                :* `(:cat (derivative (first args) wrt)
+                          (:* ~(first args)))
+                :? (derivative `(:or :epsilon ~(first args)))
+                :+ (derivative `(:cat ~(first args) (:* ~(first args))))
+                :not `(:not (derivative (first args) wrt))
+
+                #{ `(~token ~@args)})))))
+          
+          :else
+          (derivative-atom expr))))
