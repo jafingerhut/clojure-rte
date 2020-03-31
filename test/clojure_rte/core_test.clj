@@ -23,6 +23,35 @@
   (:require [clojure.test :refer :all]
             [clojure-rte.core :refer :all]))
 
-(deftest a-test
-  (testing "FIXME, I fail."
-    (is (= 0 1))))
+
+(deftest t-nullable
+  (testing "nullable"
+    (is (nullable :epsilon))
+    (is (not (nullable :empty-set)))
+    (is (nullable '(:and :epsilon :epsilon)))
+    (is (nullable '(:or :epsilon :empty-set)))
+    (is (nullable '(:cat :epsilon :epsilon)))
+    (is (not (nullable '(:cat :epsilon :empty-set))))
+    (is (not (nullable '(:cat :empty-set :epsilon))))
+    (is (nullable '(:+ :epsilon :emptyset)))
+    (is (nullable '(:? :epsilon)))))
+
+
+(deftest t-first-types
+  (testing "first-types"
+    (is (= #{'a} (first-types 'a)))
+    (is (= #{'a 'b} (first-types '(:or a b))))
+    (is (= #{'a 'b} (first-types '(:and a b))))
+    (is (= #{'b} (first-types '(:cat :epsilon b))))
+    (is (= #{'a} (first-types '(:cat a b))))
+    (is (= #{'a} (first-types '(:* a))))
+    (is (= #{'a} (first-types '(:+ a))))
+    (is (= #{'a} (first-types '(:? a))))
+    (is (= #{'a} (first-types '(:not a))))
+    (is (= #{'a 'b 'c 'e 'f 'g} (first-types '(:and (:or a b)
+                                     (:cat c d)
+                                     (:* e)
+                                     (:+ f)
+                                     (:? g)))))
+    (is (= #{} (first-types :empty-set)))
+    (is (= #{} (first-types :epsilon)))))
