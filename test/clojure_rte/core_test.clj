@@ -33,7 +33,8 @@
     (is (nullable '(:cat :epsilon :epsilon)))
     (is (not (nullable '(:cat :epsilon :empty-set))))
     (is (not (nullable '(:cat :empty-set :epsilon))))
-    (is (nullable '(:+ :epsilon :emptyset)))
+    (is (not (nullable '(:+ :epsilon))))
+    (is (nullable '(:+ :emptyset)))
     (is (nullable '(:? :epsilon)))))
 
 
@@ -55,3 +56,17 @@
                                      (:? g)))))
     (is (= #{} (first-types :empty-set)))
     (is (= #{} (first-types :epsilon)))))
+
+(deftest t-disjoint?
+  (testing "disjoint"
+   (derive ::Feline ::Animal)
+   (derive ::Cat ::Feline)
+   (derive ::Lion ::Feline)
+   (is (isa? ::Lion ::Animal))
+   (is (isa? ::Lion ::Cat))))
+
+
+(deftest t-canonicalize-pattern-once
+  (testing "canonicalize-pattern-once"
+    (is (= (canonicalize-pattern-once '(:* (:* x)))
+           (:* x)))))
