@@ -19,6 +19,12 @@
 ;; OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
 ;; WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
+;; TODO
+;;   need a way to match a single object which itself is an rte type
+;;    thus matching hierarchical structure
+
+
+
 (ns clojure-rte.core
   (:require [clojure.set :refer [union intersection]])
   (:gen-class))
@@ -58,7 +64,6 @@
 
 
 (defn traverse-pattern [pattern functions]
-  (println (format "traverse-pattern pattern=%s" pattern))
   (letfn [(if-atom []
             (case pattern
               (:epsilon :empty-set :sigma)
@@ -66,10 +71,8 @@
 
               ((:type functions) pattern functions)))
           (if-nil []
-            (println "nil list")
             ((:type functions) () functions))
           (if-singleton-list []
-            (println "here singleton list")
             (let [[keyword] pattern]
               (case keyword
                 (:or)  (traverse-pattern :empty-set functions)
@@ -83,10 +86,8 @@
                                (format "invalid pattern %s" pattern)))
                 ;; case-else
                 ((:type functions) pattern functions))))
-          (if-long-list []
-            (println "long list")
+          (if-at-least-one-operand []
             (let [[token & operands] pattern]
-              (println (format "  cond-else token=%s operands=%s" token operands))
               (case token
                 (:rte) (do (assert (= 1 (count operands))
                                    (format "invalid pattern %s" pattern))
@@ -135,7 +136,7 @@
           (if-singleton-list)
           
           ;; cond-else (:keyword args) or list-expr
-          :else (if-long-list))))
+          :else (if-at-least-one-operand))))
 
 (defn rte-constantly [x]
   (fn [_ _]
@@ -167,7 +168,6 @@
                            :and (fn [operands functions]
                                   (every? nullable operands))
                            :or (fn [operands functions]
-                                 (println "some nullable operands?")
                                  (some nullable operands))
                            :not (fn [operand functions]
                                   (not (nullable operand))))))
@@ -197,25 +197,74 @@
                            :* (fn [operand functions]
                                 (first-types operand))))))
 
+(defn seq-matcher [target]
+  (fn [obj]
+    (and (seq? obj)
+         (= target (first obj)))))
+(def cat? (seq-matcher :cat))
+(def *? (seq-matcher :*))
+(def not? (seq-matcher :not))
+(def and? (seq-matcher :and))
+(def or? (seq-matcher :or))
+
 (defn canonicalize-pattern-once [re]
   (traverse-pattern re
                     (assoc *traversal-functions*
                            :type rte-identity
                            :empty-set rte-identity
                            :epsilon rte-identity
+                           :sigma rte-identity
                            :* (fn [operand functions]
-                                (case (canonicalize-pattern operand)
-                                  :empty-word :epsilon
-                                  :empty-set  :epsilon
-                                  :sigma      re
-                                  (if (seq? operand)
-                                    (let [[head & tail] operand]
-                                      (if (= head :*)
-                                        operand
-                                        re))
-                                    re))))))
+                                (let [operand (canonicalize-pattern operand)]
+                                  (case operand
+                                    :epsilon    :epsilon ;; (:* :epsilon) --> :epsilon
+                                    :empty-set  :epsilon ;; (:* :empty-set) --> :epsilon
+                                    (if (*? operand)
+                                      operand ;; (:* (:* something)) --> (:* something)
+                                      (list :* (canonicalize-pattern operand))))))
+                           :cat (fn [operands functions]
+                                  (let [operands (map canonicalize-pattern operands)]
+                                    (assert (< 1 (count operands))
+                                            (format "traverse-pattern should have already eliminated this case: re=%s count=%s operands=%s" re (count operands) operands))
+                                    (cond
+                                      (some cat? operands)
+                                      (cons :cat (mapcat (fn [obj]
+                                                           (if (cat? obj)
+                                                             (rest obj)
+                                                             (list obj))) operands))
+
+                                      :else
+                                      (cons :cat operands))))
+                           :not (fn [operand functions]
+                                  (let [operand (canonicalize-pattern operand)]
+                                    (case operand
+                                      (:sigma) :epsilon
+                                      ((:* :sigma)) :empty-set
+                                      (:epsilon) '(:+ :sigma)
+                                      (:empty-set) '(:* :sigma)
+                                      (cond
+                                        (not? operand) ;; (:not (:not A)) --> A
+                                        (first operand)
+
+                                        (and? operand) ;;  (:not (:and A B)) --> (:or (:not A) (:not B))
+                                        (cons :or (map (fn [obj]
+                                                         (list :not obj)) (rest operand)))
+
+                                        (or? operand) ;;   (:not (:or A B)) --> (:and (:not A) (:not B))
+                                        (cons :and (map (fn [obj]
+                                                          (list :not obj)) (rest operand)))
+
+                                        :else
+                                        ;; TODO in CL this expands to
+                                        ;; (:or :empty-word
+                                        ;;      (not pattern) ;; not type does not exist in clojure
+                                        ;;      (:cat t (:+ t)))
+                                        ;; so we need to take care of this when when build the automaton
+                                        (list :not operand))
+                                      ))))))
 
 (defn canonicalize-pattern [pattern]
+  ;; find the fixed point of canonicalize-pattern-once
   (loop [old-pattern []
          new-pattern pattern]
     (if (= old-pattern new-pattern)

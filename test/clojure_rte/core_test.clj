@@ -26,16 +26,20 @@
 
 (deftest t-nullable
   (testing "nullable"
-    (is (nullable :epsilon))
-    (is (not (nullable :empty-set)))
-    (is (nullable '(:and :epsilon :epsilon)))
-    (is (nullable '(:or :epsilon :empty-set)))
-    (is (nullable '(:cat :epsilon :epsilon)))
-    (is (not (nullable '(:cat :epsilon :empty-set))))
-    (is (not (nullable '(:cat :empty-set :epsilon))))
-    (is (not (nullable '(:+ :epsilon))))
-    (is (nullable '(:+ :emptyset)))
-    (is (nullable '(:? :epsilon)))))
+    (is (nullable :epsilon) 14)
+    (is (not (nullable :empty-set)) 13)
+    (is (nullable '(:and :epsilon :epsilon)) 12)
+    (is (nullable '(:or :epsilon :empty-set)) 11)
+    (is (nullable '(:cat :epsilon :epsilon)) 10)
+    (is (not (nullable '(:cat :epsilon :empty-set))) 9)
+    (is (not (nullable '(:cat :empty-set :epsilon))) 8)
+    (is (nullable '(:cat :epsilon (:* :epsilon))) 7)
+    (is (nullable '(:+ :epsilon)) 6)
+    (is (not (nullable '(:cat :empty-set (:* :empty-set)))) 5)
+    (is (not (nullable '(:cat :empty-set :epsilon))) 4)
+    (is (not (nullable :empty-set)) 3)
+    (is (not (nullable '(:+ :empty-set))) 2)
+    (is (nullable '(:? :epsilon)) 1)))
 
 
 (deftest t-first-types
@@ -63,10 +67,35 @@
    (derive ::Cat ::Feline)
    (derive ::Lion ::Feline)
    (is (isa? ::Lion ::Animal))
-   (is (isa? ::Lion ::Cat))))
+   (is (not (isa? ::Lion ::Cat)))))
 
 
 (deftest t-canonicalize-pattern-once
+  (derive ::Feline ::Animal)
+  (derive ::Cat ::Feline)
+  (derive ::Lion ::Feline)
+
   (testing "canonicalize-pattern-once"
+    ;; type
+    (is (= ::Lion (canonicalize-pattern-once ::Lion)) "canonicalize :type")
+
+    ;; :*
     (is (= (canonicalize-pattern-once '(:* (:* x)))
-           (:* x)))))
+           '(:* x)) "a** -> a*")
+    (is (= '(:* ::Lion) (canonicalize-pattern-once '(:* ::Lion))) "canonicalize :type *")
+    (is (= :epsilon (canonicalize-pattern-once '(:* :epsilon))) ":epsilon* -> :epsilon")
+    (is (= :epsilon (canonicalize-pattern-once '(:* :empty-set))) ":empty-set* -> :epsilon")
+    (is (= '(:* :sigma) (canonicalize-pattern-once '(:* :sigma))) ":sigma* -> :sigma*")
+    (is (= '(:* :sigma) (canonicalize-pattern-once '(:* (:* :sigma)))) ":sigma** -> :sigma*")
+    (is (= '(:* :sigma) (canonicalize-pattern-once '(:* (:* (:* :sigma))))) ":sigma*** -> :sigma*")
+
+    ;; :cat
+    (is (= ::Lion (canonicalize-pattern-once '(:cat ::Lion))) "unary :cat")
+    (is (= '(:cat ::Lion ::Lion) (canonicalize-pattern-once '(:cat ::Lion ::Lion))) "binary :cat")
+    (is (= '(:cat ::Lion ::Lion ::Lion) (canonicalize-pattern-once '(:cat ::Lion ::Lion ::Lion))) "3-ary :cat")
+    (is (= ::Lion (canonicalize-pattern-once '(:cat (:cat ::Lion)))) "recursive cat")
+    (is (= '(:cat ::Lion ::Lion) (canonicalize-pattern-once '(:cat (:cat ::Lion) (:cat ::Lion)))) "recursive cat")
+    (is (= '(:cat ::Lion ::Lion) (canonicalize-pattern-once '(:cat ::Lion (:cat ::Lion)))) "recursive cat 2")
+    (is (= '(:cat ::Lion ::Lion) (canonicalize-pattern-once '(:cat (:cat ::Lion) ::Lion))) "recursive cat 3")
+    (is (= '(:cat ::Lion ::Lion ::Lion) (canonicalize-pattern-once '(:cat (:cat ::Lion) (:cat ::Lion) (:cat ::Lion)))) "recursive cat")
+    ))
