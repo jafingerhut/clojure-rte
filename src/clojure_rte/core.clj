@@ -176,6 +176,9 @@
                                   (not (nullable operand))))))
 
 (defn first-types [expr]
+  (letfn [(mr [operands functions]
+            (reduce (fn [acc next]
+                      (union acc (first-types next))) #{} operands))]
   (traverse-pattern expr
                     (assoc *traversal-functions*
                            :epsilon (rte-constantly #{})
@@ -183,10 +186,10 @@
                            :sigma (rte-constantly #{:sigma})
                            :type (fn [operand functions]
                                    #{operand})
-                           :or (fn [operands functions]
-                                 (mapcat first-types operands))
-                           :and (fn [operands functions]
-                                  (mapcat first-types operands))
+                           :or mr
+                           :and mr
+                           :not (fn [operand functions]
+                                  (first-types operand))
                            :cat (fn [[head & tail] functions]
                                   (cond (nullable head)
                                         (union (first-types head)
@@ -195,7 +198,7 @@
                                         :else
                                         (first-types head)))
                            :* (fn [operand functions]
-                                (first-types operand)))))
+                                (first-types operand))))))
 
 (defn canonicalize-pattern-once [re]
   (traverse-pattern re
