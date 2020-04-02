@@ -69,8 +69,24 @@
    (is (isa? ::Lion ::Animal))
    (is (not (isa? ::Lion ::Cat)))))
 
+(deftest t-sort-operands
+  (testing "sort-operands"
+    (is (= (sort-operands '(::Cat ::Lion))
+           '(::Cat ::Lion)))
+    (is (= (sort-operands '(::Lion ::Cat))
+           '(::Cat ::Lion)))
+    (is (= (sort-operands '((:not ::Cat) (:not ::Lion)))
+           '((:not ::Cat) (:not ::Lion))))
+    (is (= (sort-operands '((:not ::Lion) (:not ::Cat)))
+           '((:not ::Cat) (:not ::Lion))))))
+    
+    
 
 (deftest t-canonicalize-pattern-once
+  (derive ::Canine ::Animal)
+  (derive ::Wolf ::Canine)
+  (derive ::Fox ::Canine)
+  (derive ::Dog ::Canine)
   (derive ::Feline ::Animal)
   (derive ::Cat ::Feline)
   (derive ::Lion ::Feline)
@@ -123,13 +139,41 @@
            (canonicalize-pattern-once '(:not (:and ::Cat ::Lion)))) "not and 3")
 
     ;; :not :or
-    (is (= (canonicalize-pattern-once '(:not (:or ::Cat ::Lion)))
-           (canonicalize-pattern-once '(:not (:or ::Lion ::Cat)))) "not or 1")
-    (is (= '(:and (:not ::Cat) (:not ::Lion))
-           (canonicalize-pattern-once '(:not (:or ::Lion ::Cat)))) "not or 2") ;;  (:not (:and A B)) --> (:or (:not A) (:not B))
-    (is (= '(:and (:not ::Cat) (:not ::Lion))
+    (is (= (canonicalize-pattern '(:not (:or ::Cat ::Lion)))
+           (canonicalize-pattern '(:not (:or ::Lion ::Cat)))) "not or 1")
+    (is (= '(:and (:not ::Cat)
+                  (:not ::Lion))
+           (canonicalize-pattern '(:not (:or ::Lion ::Cat)))) "not or 2") ;;  (:not (:and A B)) --> (:or (:not A) (:not B))
+    (is (= '(:and (:not ::Cat)
+                  (:not ::Lion))
            (canonicalize-pattern-once '(:not (:or ::Cat ::Lion)))) "not or 3")
 
+    (is (= '(:not ::Cat)
+           (canonicalize-pattern '(:not (:or ::Cat ::Cat)))) "not or 4")
 
+    ;; and
     
+    (is (= ::Cat
+           (canonicalize-pattern '(:and ::Cat ::Cat))) "and remove duplicate 1")
+    (is (= '(:and ::Cat ::Lion)
+           (canonicalize-pattern-once '(:and ::Cat ::Lion ::Cat ::Lion))) "and remove duplicate 2")
+
+    (is (= '(:or (:and ::Cat ::Fox ::Lion)
+                 (:and ::Cat ::Lion ::Wolf))
+           (canonicalize-pattern '(:and (:or ::Fox ::Wolf) ::Cat ::Lion))) "and-distribute")
+
+    (is (= :empty-set
+           (canonicalize-pattern '(:and  ::Cat :empty-set ::Lion))) "and empty-set")
+    (is (= '(:and ::Cat ::Lion)
+           (canonicalize-pattern '(:and  ::Cat (:* :sigma) ::Lion))) "and sigma*")
+
+    ;; or
+    (is (= ::Cat
+           (canonicalize-pattern '(:or ::Cat ::Cat))) "or remove duplicate 1")
+    (is (= '(:or ::Cat ::Lion)
+           (canonicalize-pattern '(:or ::Lion ::Cat ::Lion ::Cat ::Lion))) "or remove duplicate 2")
+    (is (= '(:or  ::Cat ::Lion)
+           (canonicalize-pattern '(:or  ::Cat :empty-set ::Lion))) "or empty-set")
+    (is (= '(:* :sigma)
+           (canonicalize-pattern '(:or  ::Cat (:* :sigma) ::Lion))) "or sigma*")
     ))

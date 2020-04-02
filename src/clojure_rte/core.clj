@@ -233,6 +233,21 @@
               (compare a b)))]
     (sort cmp  operands)))
 
+(defn member [obj items]
+  (some (fn [x]
+          (= x obj)) items))
+
+(defn with-first-match [pred items continuation]
+  (loop [items items]
+    (cond (empty? items)
+          nil
+
+          (pred (first items))
+          (continuation (first items))
+
+          :else
+          (recur (rest items)))))
+
 (defn canonicalize-pattern-once [re]
   (traverse-pattern re
                     (assoc *traversal-functions*
@@ -291,17 +306,55 @@
                            :and (fn [operands functions]
                                   (assert (< 1 (count operands))
                                           (format "traverse-pattern should have already eliminated this case: re=%s count=%s operands=%s" re (count operands) operands))
-                                  (let [operands (dedupe (sort-operands (canonicalize-pattern operands)))]
+                                  (let [operands (dedupe (sort-operands (map canonicalize-pattern operands)))]
                                     (cond
                                       (some and? operands)
                                       (cons :and (mapcat (fn [obj]
                                                            (if (and? obj)
                                                              (rest obj)
                                                              (list obj))) operands))
+                                      
+                                      (member :empty-set operands)
+                                      :empty-set
+                                      
+                                      (member '(:* :sigma) operands)
+                                      (cons :and (remove (fn [obj]
+                                                           (= '(:* :sigma) obj)) operands))
+
+                                      (some or? operands)
+                                      ;; (:and (:or A B) C D) --> (:or (:and A C D) (:and B C D))
+                                      (with-first-match or? operands
+                                        (fn [or-item]
+                                          (let [others (remove (fn [x] (= or-item x)) operands)]
+                                            (cons :or (map (fn [x] (list* :and x others)) (rest or-item))))))
+                                      
                                       :else
                                       (cons :and operands)
                                       
-                                    ))))))
+                                      )))
+                           :or (fn [operands functions]
+                                 (assert (< 1 (count operands))
+                                         (format "traverse-pattern should have already eliminated this case: re=%s count=%s operands=%s" re (count operands) operands))
+                                 (let [operands (dedupe (sort-operands (map canonicalize-pattern operands)))]
+                                   (cond
+                                     (some or? operands)
+                                     (cons :or (mapcat (fn [obj]
+                                                         (if (or? obj)
+                                                           (rest obj)
+                                                           (list obj))) operands))
+                                     
+                                     (member '(:* :sigma) operands)
+                                     '(:* :sigma)
+                                     
+                                     (member :empty-set operands)
+                                     (cons :or (remove (fn [obj]
+                                                         (= :empty-set obj)) operands))
+                                     
+                                     :else
+                                     (cons :or operands)
+                                     
+                                 )
+                           )))))
 
 (defn canonicalize-pattern [pattern]
   ;; find the fixed point of canonicalize-pattern-once
