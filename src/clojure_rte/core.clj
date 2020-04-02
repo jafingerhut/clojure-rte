@@ -56,9 +56,6 @@
               ((:client functions) pattern functions))
    })
 
-(defn rte-list? [obj]
-  (or (list? obj)
-      (= clojure.lang.Cons (type obj))))
 
 (defn traverse-pattern [pattern functions]
   (println (format "traverse-pattern pattern=%s" pattern))
@@ -128,7 +125,7 @@
                                             ~(first operands)) functions))
                 ;;case-else
                 ((:type functions) pattern functions))))]
-    (cond (not (rte-list? pattern))
+    (cond (not (seq? pattern))
           (if-atom)
           
           (= pattern ())
@@ -211,7 +208,7 @@
                                   :empty-word :epsilon
                                   :empty-set  :epsilon
                                   :sigma      re
-                                  (if (rte-list? operand)
+                                  (if (seq? operand)
                                     (let [[head & tail] operand]
                                       (if (= head :*)
                                         operand
