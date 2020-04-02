@@ -207,6 +207,31 @@
 (def and? (seq-matcher :and))
 (def or? (seq-matcher :or))
 
+(defn sort-operands [operands]
+  (letfn [(cmp [a b]
+            (cond
+              (= a b)       0
+              (= a ())      1
+              (= b ())     -1
+              
+              (and (seq? a)
+                   (seq? b))
+              (loop [a a
+                     b b]
+                (cond
+                  (= a b)   (recur (rest a) (rest b))
+                  (= a ())   1
+                  (= b ())  -1
+
+                  :else     (cmp (first a) (first b))))
+              
+              (seq? a)        1
+              (seq? b)       -1
+
+              :else
+              (compare a b)))]
+    (sort cmp  operands)))
+
 (defn canonicalize-pattern-once [re]
   (traverse-pattern re
                     (assoc *traversal-functions*
@@ -240,11 +265,11 @@
                                     (case operand
                                       (:sigma) :epsilon
                                       ((:* :sigma)) :empty-set
-                                      (:epsilon) '(:+ :sigma)
+                                      (:epsilon) (canonicalize-pattern '(:+ :sigma))
                                       (:empty-set) '(:* :sigma)
                                       (cond
                                         (not? operand) ;; (:not (:not A)) --> A
-                                        (first operand)
+                                        (second operand)
 
                                         (and? operand) ;;  (:not (:and A B)) --> (:or (:not A) (:not B))
                                         (cons :or (map (fn [obj]
@@ -261,7 +286,22 @@
                                         ;;      (:cat t (:+ t)))
                                         ;; so we need to take care of this when when build the automaton
                                         (list :not operand))
-                                      ))))))
+                                      )))
+                           :and (fn [operands functions]
+                                  (assert (< 1 (count operands))
+                                          (format "traverse-pattern should have already eliminated this case: re=%s count=%s operands=%s" re (count operands) operands))
+                                  (let [operands (sort-operands (canonicalize-pattern operands))]
+                                    (cond
+                                      (some and? operands)
+                                      (cons :and (mapcat (fn [obj]
+                                                           (if (and? obj)
+                                                             (rest obj)
+                                                             (list obj))) operands))
+                                      ;; TODO remove duplicates
+                                      :else
+                                      (cons :and operands)
+                                      
+                                    ))))))
 
 (defn canonicalize-pattern [pattern]
   ;; find the fixed point of canonicalize-pattern-once

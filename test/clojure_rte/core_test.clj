@@ -74,6 +74,8 @@
   (derive ::Feline ::Animal)
   (derive ::Cat ::Feline)
   (derive ::Lion ::Feline)
+  (derive ::x ::Cat)
+  (derive ::x ::Lion)
 
   (testing "canonicalize-pattern-once"
     ;; type
@@ -98,4 +100,36 @@
     (is (= '(:cat ::Lion ::Lion) (canonicalize-pattern-once '(:cat ::Lion (:cat ::Lion)))) "recursive cat 2")
     (is (= '(:cat ::Lion ::Lion) (canonicalize-pattern-once '(:cat (:cat ::Lion) ::Lion))) "recursive cat 3")
     (is (= '(:cat ::Lion ::Lion ::Lion) (canonicalize-pattern-once '(:cat (:cat ::Lion) (:cat ::Lion) (:cat ::Lion)))) "recursive cat")
+
+    ;; :not
+    (is (= :epsilon (canonicalize-pattern-once '(:not :sigma))) "not sigma")
+    (is (= :empty-set (canonicalize-pattern-once '(:not (:* :sigma)))) "not sigma*")
+    (is (= (canonicalize-pattern-once '(:+ :sigma))
+           (canonicalize-pattern-once '(:not :epsilon))) "not epsilon")
+    (is (= '(:* :sigma)
+           (canonicalize-pattern-once '(:not :empty-set))) "not empty-set")
+    (is (= '(:not ::Lion)
+           (canonicalize-pattern-once '(:not ::Lion))) "not type")
+    (is (= ::Lion
+           (canonicalize-pattern-once '(:not (:not ::Lion)))) "not no type")
+    (is (= '(:not ::Lion)
+           (canonicalize-pattern-once '(:not (:not (:not ::Lion))))) "not not not type")
+    ;; :not :and
+    (is (= (canonicalize-pattern-once '(:not (:and ::Cat ::Lion)))
+           (canonicalize-pattern-once '(:not (:and ::Lion ::Cat)))) "not and 1")
+    (is (= '(:or (:not ::Cat) (:not ::Lion))
+           (canonicalize-pattern-once '(:not (:and ::Lion ::Cat)))) "not and 2") ;;  (:not (:and A B)) --> (:or (:not A) (:not B))
+    (is (= '(:or (:not ::Cat) (:not ::Lion))
+           (canonicalize-pattern-once '(:not (:and ::Cat ::Lion)))) "not and 3")
+
+    ;; :not :or
+    (is (= (canonicalize-pattern-once '(:not (:or ::Cat ::Lion)))
+           (canonicalize-pattern-once '(:not (:or ::Lion ::Cat)))) "not or 1")
+    (is (= '(:and (:not ::Cat) (:not ::Lion))
+           (canonicalize-pattern-once '(:not (:or ::Lion ::Cat)))) "not or 2") ;;  (:not (:and A B)) --> (:or (:not A) (:not B))
+    (is (= '(:and (:not ::Cat) (:not ::Lion))
+           (canonicalize-pattern-once '(:not (:or ::Cat ::Lion)))) "not or 3")
+
+
+    
     ))
