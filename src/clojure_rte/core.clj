@@ -219,9 +219,10 @@
               (loop [a a
                      b b]
                 (cond
-                  (= a b)   (recur (rest a) (rest b))
+                  (= a b)   0
                   (= a ())   1
                   (= b ())  -1
+                  (= (first a) (first b))   (recur (rest a) (rest b))
 
                   :else     (cmp (first a) (first b))))
               
@@ -290,14 +291,13 @@
                            :and (fn [operands functions]
                                   (assert (< 1 (count operands))
                                           (format "traverse-pattern should have already eliminated this case: re=%s count=%s operands=%s" re (count operands) operands))
-                                  (let [operands (sort-operands (canonicalize-pattern operands))]
+                                  (let [operands (dedupe (sort-operands (canonicalize-pattern operands)))]
                                     (cond
                                       (some and? operands)
                                       (cons :and (mapcat (fn [obj]
                                                            (if (and? obj)
                                                              (rest obj)
                                                              (list obj))) operands))
-                                      ;; TODO remove duplicates
                                       :else
                                       (cons :and operands)
                                       
