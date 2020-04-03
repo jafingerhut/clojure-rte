@@ -209,9 +209,10 @@
                            :epsilon (rte-constantly true)
                            :sigma   (rte-constantly false)
                            :type (fn [operand functions]
-                                   (some (fn [x]
-                                           (typep x operand))
-                                         [() []]))
+                                   ;; not not converts nil to false
+                                   (not (not (some (fn [x]
+                                                     (typep x operand))
+                                                   [() []]))))
                            :* (rte-constantly true)
                            :cat (fn [operands functions]
                                   (every? nullable operands))
@@ -484,3 +485,45 @@
                                          (term1))))
                               :* (fn [operand functions]
                                    `(:cat ,(derivative operand wrt) (:* ,operand))))))))
+
+
+(defn find-all-derivatives [pattern]
+  (loop [to-do-patterns (list pattern)
+         done #{}
+         triples [] 
+         ]
+    (if (empty? to-do-patterns)
+      [ triples (seq done)]
+      (let [pattern (first to-do-patterns)
+            to-do-patterns (rest to-do-patterns)]
+        (if (done pattern)
+          (recur to-do-patterns done triples)
+          (let [[new-triples new-derivatives]
+                (reduce (fn [[acc-triples acc-derivs] wrt-type]
+                          (let [deriv (derivative pattern wrt-type)]
+                            [(conj acc-triples [pattern wrt-type deriv])
+                             (if (done deriv)
+                               acc-derivs
+                               (cons deriv acc-derivs))]
+                            ))
+                        [[] ()] (first-types pattern))]
+            (recur (concat new-derivatives to-do-patterns)
+                   (conj done pattern)
+                   (concat triples new-triples))))))))
+
+(defn rte-to-dfa [pattern]
+  (let [[triples derivatives] (find-all-derivatives pattern)
+        derivatives (cons pattern (remove #{pattern} derivatives))
+        index-map (zipmap derivatives (range (count derivatives)))
+        triples (map (fn [[primative wrt deriv]]
+                       [(index-map primative) wrt (index-map deriv)]
+                       ) triples)
+        grouped (group-by (fn [trip]
+                            (trip 0)) triples)]
+    (map (fn [deriv index]
+           {:index index
+            :accepting (not (nullable deriv))
+            :pattern deriv
+            :transistions (map (fn [[src wrt dst]]
+                                 [wrt dst]) (grouped index))})
+         derivatives (range (count derivatives)))))
