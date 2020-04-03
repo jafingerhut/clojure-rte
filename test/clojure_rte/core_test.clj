@@ -79,7 +79,7 @@
     (is (= (sort-operands '((:not ::Lion) (:not ::Cat)))
            '((:not ::Cat) (:not ::Lion))))))
     
-(deftest t-canonicalize-pattern-once
+(deftest t-canonicalize-pattern
   (derive ::Canine ::Animal)
   (derive ::Wolf ::Canine)
   (derive ::Fox ::Canine)
@@ -90,7 +90,15 @@
   (derive ::x ::Cat)
   (derive ::x ::Lion)
 
-  (testing "canonicalize-pattern-once"
+  (testing "canonicalize-pattern"
+    ;; syntax errors
+    (is (thrown? clojure.lang.ExceptionInfo (canonicalize-pattern '(:*))))
+    (is (thrown? clojure.lang.ExceptionInfo (canonicalize-pattern '(:not))))
+    (is (thrown? clojure.lang.ExceptionInfo (canonicalize-pattern '(:?))))
+    (is (thrown? clojure.lang.ExceptionInfo (canonicalize-pattern '(:+))))
+    (is (thrown? clojure.lang.ExceptionInfo (canonicalize-pattern '(:rte))))
+
+
     ;; type
     (is (= ::Lion (canonicalize-pattern-once ::Lion)) "canonicalize :type")
 
@@ -105,6 +113,7 @@
     (is (= '(:* :sigma) (canonicalize-pattern-once '(:* (:* (:* :sigma))))) ":sigma*** -> :sigma*")
 
     ;; :cat
+    (is (= (canonicalize-pattern '(:cat)) :epsilon))
     (is (= ::Lion (canonicalize-pattern-once '(:cat ::Lion))) "unary :cat")
     (is (= '(:cat ::Lion ::Lion) (canonicalize-pattern-once '(:cat ::Lion ::Lion))) "binary :cat")
     (is (= '(:cat ::Lion ::Lion ::Lion) (canonicalize-pattern-once '(:cat ::Lion ::Lion ::Lion))) "3-ary :cat")
@@ -162,7 +171,7 @@
            (canonicalize-pattern '(:not (:or ::Cat ::Cat)))) "not or 4")
 
     ;; and
-    
+    (is (= (canonicalize-pattern '(:and)) :sigma))    
     (is (= ::Cat
            (canonicalize-pattern '(:and ::Cat ::Cat))) "and remove duplicate 1")
     (is (= '(:and ::Cat ::Lion)
@@ -178,6 +187,7 @@
            (canonicalize-pattern '(:and  ::Cat (:* :sigma) ::Lion))) "and sigma*")
 
     ;; or
+    (is (= (canonicalize-pattern '(:or)) :empty-set))
     (is (= ::Cat
            (canonicalize-pattern '(:or ::Cat ::Cat))) "or remove duplicate 1")
     (is (= '(:or ::Cat ::Lion)
@@ -186,6 +196,10 @@
            (canonicalize-pattern '(:or  ::Cat :empty-set ::Lion))) "or empty-set")
     (is (= '(:* :sigma)
            (canonicalize-pattern '(:or  ::Cat (:* :sigma) ::Lion))) "or sigma*")
+
+    ;; permute
+    (is (= (canonicalize-pattern '(:permute)) :epsilon))
+
     ))
 
 (deftest t-derivative
@@ -207,7 +221,7 @@
            :epsilon) "derivative sigma wrt sigma")
     (is (= (derivative :sigma :epsilon)
            :empty-set) "derivative sigma wrt epsilon")
-    (is (thrown? Exception
+    (is (thrown? clojure.lang.ExceptionInfo
                  (derivative :sigma ::Lion)) "derivative sigma wrt A")
 
     ;; :epsilon
@@ -236,7 +250,7 @@
     (is (= (derivative ::Fox ::Wolf)
            :empty-set) "derivative disjoint types")
 
-    (is (thrown? Exception (derivative ::Cat ::Lion))
+    (is (thrown? clojure.lang.ExceptionInfo (derivative ::Cat ::Lion))
         "derivative intersecting types")
 
     (is (= (:type (try
@@ -281,6 +295,15 @@
     ;; cat
     (is (= (derivative '(:cat (:or ::Fox ::Lion) ::x) ::Fox)
            ::x) "derivative cat with reduction")
+
+    (is (= (derivative '(:cat ::Fox ::Fox ::Fox) ::Fox)
+           '(:cat ::Fox ::Fox)))
+
+    (is (= (derivative '(:cat (:or ::Lion ::Fox) ::Fox ::Fox) ::Fox)
+           '(:cat ::Fox ::Fox)))
+    (is (= (derivative '(:cat (:or ::Lion ::Fox) ::Fox ::Fox) ::Lion)
+           '(:cat ::Fox ::Fox)))
+
 
     ))
     

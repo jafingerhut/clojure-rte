@@ -85,12 +85,18 @@
                 (:or)  (traverse-pattern :empty-set functions)
                 (:and) (traverse-pattern :sigma functions)
                 (:cat) (traverse-pattern :epsilon functions)
+                (:permute) (traverse-pattern :epsilon functions)
                 (:not
+                 :*
                  :?
                  :+
-                 :permute
-                 :rte) (throw (Exception.
-                               (format "invalid pattern %s" pattern)))
+                 :rte) (throw (ex-info (format "invalid pattern %s, expecting exactly one operand" pattern)
+                                       {:type :rte-syntax-error
+                                        :keyword keyword
+                                        :pattern pattern
+                                        :functions functions
+                                        :cause :unary-keyword
+                                        }))
                 ;; case-else
                 ((:type functions) pattern functions))))
           (if-at-least-one-operand []
@@ -136,10 +142,10 @@
     (cond (not (seq? pattern))
           (if-atom)
 
-          (= pattern ())
+          (empty? pattern)
           (if-nil)
 
-          (not (rest pattern)) ;; singleton list
+          (empty? (rest pattern)) ;; singleton list
           (if-singleton-list)
 
           ;; cond-else (:keyword args) or list-expr
