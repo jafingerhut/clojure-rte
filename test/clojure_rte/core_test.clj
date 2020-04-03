@@ -198,8 +198,21 @@
            (canonicalize-pattern '(:or  ::Cat (:* :sigma) ::Lion))) "or sigma*")
 
     ;; permute
-    (is (= (canonicalize-pattern '(:permute)) :epsilon))
+    (is (= (canonicalize-pattern '(:permute)) :epsilon) "permute 0 arg")
 
+    (is (= (canonicalize-pattern '(:permute ::Lion))
+           ::Lion) "permute 1 arg")
+    (is (= (canonicalize-pattern '(:permute ::Lion ::Cat))
+           (canonicalize-pattern '(:or (:cat ::Lion ::Cat)
+                                       (:cat ::Cat ::Lion)))) "permute 2 args")
+    (is (= (canonicalize-pattern '(:permute ::Lion ::Cat ::Fox))
+           (canonicalize-pattern '(:or (:cat ::Lion ::Cat ::Fox)
+                                       (:cat ::Lion ::Fox ::Cat)
+                                       (:cat ::Cat ::Lion ::Fox)
+                                       (:cat ::Cat ::Fox ::Lion)
+                                       (:cat ::Fox ::Cat ::Lion)
+                                       (:cat ::Fox ::Lion ::Cat)))) "permute 3 args")
+    
     ))
 
 (deftest t-derivative
@@ -353,6 +366,7 @@
     (is (= (call-with-collector (fn [collect]
                                   ))
            ()))))
+
 (deftest t-visit-permuations
   (testing "visit-permutations"
     (is (= (set (call-with-collector

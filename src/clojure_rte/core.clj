@@ -141,8 +141,10 @@
                              (traverse-pattern (*rte-hash* name) functions)))
 
                 (:permute)
-                (throw (Exception.
-                        (format "not yet implemented %s" pattern)))
+                (cons :or (call-with-collector (fn [collect]
+                                                 (visit-permutations
+                                                  (fn [perm]
+                                                    (collect (cons :cat perm))) operands))))
 
                 (:or
                  :and
