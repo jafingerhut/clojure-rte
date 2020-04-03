@@ -69,6 +69,36 @@
               ((:client functions) pattern functions))
    })
 
+(defn remove-once [target items]
+  (loop [items items
+         acc ()]
+    (cond
+      (empty? items)
+      (reverse acc)
+
+      (= (first items) target)
+      (concat (reverse acc) (rest items))
+
+      :else
+      (recur (rest items) (cons (first items) acc)))))
+
+(defn call-with-collector [unary-client]
+  "This function calls your given function which an argument which can be
+   called to collect values.  The return value of call-with-collector is
+   the list of items collected, in reverse order."
+  (with-local-vars [data '()]
+    (unary-client (fn [obj]
+                    (var-set data (cons obj @data))))
+    @data))
+
+(defn visit-permutations [unary-client items]
+  (letfn [(visit-with-tail [remaining tail]
+            (if (empty? remaining)
+              (unary-client tail)
+              (doseq [item remaining]
+                (visit-with-tail (remove-once item remaining)
+                                 (cons item tail)))))]
+    (visit-with-tail items '())))
 
 (defn traverse-pattern [pattern functions]
   (letfn [(if-atom []

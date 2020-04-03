@@ -322,3 +322,61 @@
     (is (disjoint? ::Wolf ::Fox))
     (is (= (set (type-intersection ::Cat ::Lion))
            #{::x}))))
+
+(deftest t-remove-once
+  (testing "remove-once"
+    (is (= (remove-once 4 '(1 2 3))
+           '(1 2 3)))
+    (is (= (remove-once 1 '())
+           ()))
+
+    (is (= (remove-once 1 '(1 2 3))
+           '(2 3)))
+
+    (is (= (remove-once 1 '(1 1 2 3))
+           '(1 2 3)))
+
+    (is (= (remove-once 1 '(1 2 1 3))
+           '(2 1 3)))
+
+    (is (= (remove-once 2 '(1 2 1 2 3 2))
+           '(1 1 2 3 2)))
+    ))
+
+(deftest t-call-with-collector
+  (testing "call-with-collector"
+    (is (= (call-with-collector (fn [collect]
+                                  (collect 1)
+                                  (collect 3)
+                                  (collect 2)))
+           '(2 3 1)))
+    (is (= (call-with-collector (fn [collect]
+                                  ))
+           ()))))
+(deftest t-visit-permuations
+  (testing "visit-permutations"
+    (is (= (set (call-with-collector
+                 (fn [collect]
+                   (visit-permutations collect '()))))
+           #{()}))
+    (is (= (set (call-with-collector
+                 (fn [collect]
+                   (visit-permutations collect '(1)))))
+           #{'(1)}))
+    (is (= (set (call-with-collector
+                 (fn [collect]
+                   (visit-permutations collect '(1 2)))))
+           (set '((1 2)
+                  (2 1)))))
+    (is (= (set (call-with-collector
+                 (fn [collect]
+                   (visit-permutations collect '(1 2 3)))))
+           (set '((1 2 3)
+                  (1 3 2)
+                  (2 1 3)
+                  (2 3 1)
+                  (3 1 2)
+                  (3 2 1)))))
+    ))
+    
+    
