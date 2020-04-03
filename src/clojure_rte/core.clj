@@ -147,11 +147,14 @@
 (defn typep [a-value a-type]
   (isa? (type a-value) a-type))
 
+(defn type-intersection [t1 t2]
+  (intersection (descendants t1) (descendants t2)))
+
 (defn disjoint? [t1 t2]
-  (let [ancestors-1 (ancestors t1)
-        ancestors-2 (ancestors t2)]
-    (and (not-any? (fn [a2] (contains? ancestors-1 a2)) ancestors-2)
-         (not-any? (fn [a1] (contains? ancestors-2 a1)) ancestors-1))))
+  (let [descendants-1 (descendants t1)
+        descendants-2 (descendants t2)]
+    (and (not-any? (fn [a2] (contains? descendants-1 a2)) descendants-2)
+         (not-any? (fn [a1] (contains? descendants-2 a1)) descendants-1))))
 
 (defn nullable [expr]
   (traverse-pattern expr

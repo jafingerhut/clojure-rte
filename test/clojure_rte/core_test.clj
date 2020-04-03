@@ -177,3 +177,19 @@
     (is (= '(:* :sigma)
            (canonicalize-pattern '(:or  ::Cat (:* :sigma) ::Lion))) "or sigma*")
     ))
+    
+(deftest t-disjoint?
+  (derive ::Canine ::Animal)
+  (derive ::Wolf ::Canine)
+  (derive ::Fox ::Canine)
+  (derive ::Dog ::Canine)
+  (derive ::Feline ::Animal)
+  (derive ::Cat ::Feline)
+  (derive ::Lion ::Feline)
+  (derive ::x ::Cat)
+  (derive ::x ::Lion)
+  (testing "disjoint?"
+    (is (not (disjoint? ::Cat ::Lion)))
+    (is (disjoint? ::Wolf ::Fox))
+    (is (= (set (type-intersection ::Cat ::Lion))
+           #{::x}))))
