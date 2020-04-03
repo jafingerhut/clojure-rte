@@ -20,9 +20,16 @@
 ;; WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 ;; TODO
-;;   need a way to match a single object which itself is an rte type
+;; *  need a way to match a single object which itself is an rte type
 ;;    thus matching hierarchical structure
-
+;;
+;; *  since there is no (not ...) type in clojure, the (:not ) rte must
+;;    be especially handled in the automaton construction.
+;;
+;; *  need a way to declare rte "variables".   and a way to distinguish
+;;    a hierarchical rte, i.e., an element of a sequence which itself
+;;    is a sequence matching an rte, vs simply a variable whose value
+;;    is substituted into an rte expression.
 
 
 (ns clojure-rte.core
@@ -100,25 +107,25 @@
                 (:permute)
                 (throw (Exception.
                         (format "not yet implemented %s" pattern)))
-                
+
                 (:or
                  :and
                  :cat)
                 (if (= 1 (count operands))
                   (traverse-pattern (first operands) functions)
                   ((functions token) operands functions))
-                
+
                 (:not
                  :*)
                 (do (assert (= 1 (count operands))
                             (format "invalid pattern %s" pattern))
                     ((functions token) (first operands) functions))
-                
+
                 (:+)
                 (do (assert (= 1 (count operands))
                             (format "invalid pattern %s" pattern))
                     (traverse-pattern `(:cat ~(first operands) (:* ~(first operands))) functions))
-                
+
                 (:?)
                 (do (assert (= 1 (count operands))
                             (format "invalid pattern %s" pattern))
@@ -128,22 +135,23 @@
                 ((:type functions) pattern functions))))]
     (cond (not (seq? pattern))
           (if-atom)
-          
+
           (= pattern ())
           (if-nil)
-          
+
           (not (rest pattern)) ;; singleton list
           (if-singleton-list)
-          
+
           ;; cond-else (:keyword args) or list-expr
           :else (if-at-least-one-operand))))
 
 (defn rte-constantly [x]
   (fn [_ _]
     x))
+
 (defn rte-identity [x y]
   x)
-  
+
 (defn typep [a-value a-type]
   (isa? (type a-value) a-type))
 
@@ -216,7 +224,7 @@
               (= a b)       0
               (= a ())      1
               (= b ())     -1
-              
+
               (and (seq? a)
                    (seq? b))
               (loop [a a
@@ -228,7 +236,7 @@
                   (= (first a) (first b))   (recur (rest a) (rest b))
 
                   :else     (cmp (first a) (first b))))
-              
+
               (seq? a)        1
               (seq? b)       -1
 
@@ -316,10 +324,10 @@
                                                            (if (and? obj)
                                                              (rest obj)
                                                              (list obj))) operands))
-                                      
+
                                       (member :empty-set operands)
                                       :empty-set
-                                      
+
                                       (member '(:* :sigma) operands)
                                       (cons :and (remove (fn [obj]
                                                            (= '(:* :sigma) obj)) operands))
@@ -330,10 +338,10 @@
                                         (fn [or-item]
                                           (let [others (remove (fn [x] (= or-item x)) operands)]
                                             (cons :or (map (fn [x] (list* :and x others)) (rest or-item))))))
-                                      
+
                                       :else
                                       (cons :and operands)
-                                      
+
                                       )))
                            :or (fn [operands functions]
                                  (assert (< 1 (count operands))
@@ -345,17 +353,17 @@
                                                          (if (or? obj)
                                                            (rest obj)
                                                            (list obj))) operands))
-                                     
+
                                      (member '(:* :sigma) operands)
                                      '(:* :sigma)
-                                     
+
                                      (member :empty-set operands)
                                      (cons :or (remove (fn [obj]
                                                          (= :empty-set obj)) operands))
-                                     
+
                                      :else
                                      (cons :or operands)
-                                     
+
                                  )
                            )))))
 
@@ -406,5 +414,3 @@
                                          (term1))))
                               :* (fn [operand functions]
                                    `(:cat ,(derivative operand wrt) (:* ,operand))))))))
-                                   
-
