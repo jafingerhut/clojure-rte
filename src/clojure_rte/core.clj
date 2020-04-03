@@ -520,10 +520,34 @@
                        ) triples)
         grouped (group-by (fn [trip]
                             (trip 0)) triples)]
-    (map (fn [deriv index]
-           {:index index
-            :accepting (not (nullable deriv))
-            :pattern deriv
-            :transistions (map (fn [[src wrt dst]]
-                                 [wrt dst]) (grouped index))})
-         derivatives (range (count derivatives)))))
+    (into [] (map (fn [deriv index]
+                    {:index index
+                     :accepting (not (nullable deriv))
+                     :pattern deriv
+                     :transitions (map (fn [[src wrt dst]]
+                                         [wrt dst]) (grouped index))})
+                  derivatives (range (count derivatives))))))
+
+(defn rte-compile [pattern]
+  (rte-to-dfa pattern))
+
+(defn rte-execute [dfa items]
+  (loop [items (seq items)
+         state 0]
+    (if (empty? items)
+      (:accepting (dfa state))
+      (let [[head & tail] items]
+        (println (format "state=%s" state))
+        (println (format "  %s" (dfa state)))
+        (println (format "  --> %s"  (:transitions (dfa state))))
+        (if-let [next-state (some (fn [[type next-state]]
+                                    (println (format "   type? %s" type))
+                                    (if (typep head type)
+                                      next-state
+                                      false))
+                                  (:transitions (dfa state)))]
+          (recur tail next-state)
+          false)))))
+
+(defn rte-match [pattern items]
+  (rte-execute (rte-compile pattern) items))
