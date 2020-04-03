@@ -23,7 +23,6 @@
   (:require [clojure.test :refer :all]
             [clojure-rte.core :refer :all]))
 
-
 (deftest t-nullable
   (testing "nullable"
     (is (nullable :epsilon) 14)
@@ -80,8 +79,6 @@
     (is (= (sort-operands '((:not ::Lion) (:not ::Cat)))
            '((:not ::Cat) (:not ::Lion))))))
     
-    
-
 (deftest t-canonicalize-pattern-once
   (derive ::Canine ::Animal)
   (derive ::Wolf ::Canine)
@@ -116,6 +113,19 @@
     (is (= '(:cat ::Lion ::Lion) (canonicalize-pattern-once '(:cat ::Lion (:cat ::Lion)))) "recursive cat 2")
     (is (= '(:cat ::Lion ::Lion) (canonicalize-pattern-once '(:cat (:cat ::Lion) ::Lion))) "recursive cat 3")
     (is (= '(:cat ::Lion ::Lion ::Lion) (canonicalize-pattern-once '(:cat (:cat ::Lion) (:cat ::Lion) (:cat ::Lion)))) "recursive cat")
+    (is (= ::x
+           (canonicalize-pattern '(:cat :epsilon ::x)))
+        "cat epsilon x")
+    (is (= ::x
+           (canonicalize-pattern '(:cat ::x :epsilon)))
+        "cat x epsilon")
+    (is (= :empty-set
+           (canonicalize-pattern '(:cat :empty-set ::x)))
+        "cat epsilon x")
+    (is (= :empty-set
+           (canonicalize-pattern '(:cat ::x :empty-set)))
+        "cat x epsilon")
+    
 
     ;; :not
     (is (= :epsilon (canonicalize-pattern-once '(:not :sigma))) "not sigma")

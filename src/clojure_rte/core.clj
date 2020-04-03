@@ -279,11 +279,21 @@
                                     (assert (< 1 (count operands))
                                             (format "traverse-pattern should have already eliminated this case: re=%s count=%s operands=%s" re (count operands) operands))
                                     (cond
+                                      ;; (:cat x (:cat a b) y) --> (:cat x a b y)
                                       (some cat? operands)
                                       (cons :cat (mapcat (fn [obj]
                                                            (if (cat? obj)
                                                              (rest obj)
                                                              (list obj))) operands))
+
+                                      ;; (:cat x "empty-set" y) --> :emptyset
+                                      (member :empty-set operands)
+                                      :empty-set
+
+                                      ;; (:cat x :epeilon y) --> (:cat x y)
+                                      (member :epsilon operands)
+                                      (cons :cat (remove (fn [x]
+                                                           (= x :epsilon)) operands))
 
                                       :else
                                       (cons :cat operands))))
