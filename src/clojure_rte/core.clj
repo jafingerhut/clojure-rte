@@ -207,6 +207,7 @@
                     (assoc *traversal-functions*
                            :empty-set (rte-constantly false)
                            :epsilon (rte-constantly true)
+                           :sigma   (rte-constantly false)
                            :type (fn [operand functions]
                                    (some (fn [x]
                                            (typep x operand))

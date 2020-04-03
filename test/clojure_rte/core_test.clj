@@ -25,6 +25,7 @@
 
 (deftest t-nullable
   (testing "nullable"
+    (is (not (nullable :sigma)) "nullable sigma")
     (is (nullable :epsilon) 14)
     (is (not (nullable :empty-set)) 13)
     (is (nullable '(:and :epsilon :epsilon)) 12)
@@ -42,6 +43,16 @@
 
 
 (deftest t-first-types
+  (derive ::Canine ::Animal)
+  (derive ::Wolf ::Canine)
+  (derive ::Fox ::Canine)
+  (derive ::Dog ::Canine)
+  (derive ::Feline ::Animal)
+  (derive ::Cat ::Feline)
+  (derive ::Lion ::Feline)
+  (derive ::x ::Cat)
+  (derive ::x ::Lion)
+
   (testing "first-types"
     (is (= #{'a} (first-types 'a)))
     (is (= #{'a 'b} (first-types '(:or a b))))
@@ -58,7 +69,12 @@
                                      (:+ f)
                                      (:? g)))))
     (is (= #{} (first-types :empty-set)))
-    (is (= #{} (first-types :epsilon)))))
+    (is (= #{} (first-types :epsilon)))
+
+    (is (= (first-types '(:cat :sigma :clojure-rte.core/Lion :clojure-rte.core/Wolf))
+           #{:sigma}) "first types cat sigma")
+
+    ))
 
 (deftest t-disjoint?
   (testing "disjoint"
