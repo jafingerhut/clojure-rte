@@ -245,8 +245,7 @@
     (sort cmp  operands)))
 
 (defn member [obj items]
-  (some (fn [x]
-          (= x obj)) items))
+  (some #{obj} items))
 
 (defn with-first-match [pred items continuation]
   (loop [items items]
@@ -292,8 +291,7 @@
 
                                       ;; (:cat x :epeilon y) --> (:cat x y)
                                       (member :epsilon operands)
-                                      (cons :cat (remove (fn [x]
-                                                           (= x :epsilon)) operands))
+                                      (cons :cat (remove #{:epsilon} operands))
 
                                       :else
                                       (cons :cat operands))))
@@ -368,8 +366,7 @@
                                      '(:* :sigma)
 
                                      (member :empty-set operands)
-                                     (cons :or (remove (fn [obj]
-                                                         (= :empty-set obj)) operands))
+                                     (cons :or (remove #{:empty-set} operands))
 
                                      :else
                                      (cons :or operands)
