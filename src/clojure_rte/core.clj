@@ -394,7 +394,23 @@
      (traverse-pattern expr
                        (assoc *traversal-functions*
                               :epsilon (rte-constantly :empty-set)
-                              :empty-set (rte-constantly :empty-set)
+                              :empty-set (rte-constantly :empty-set)     
+                              :sigma (fn [type functions]
+                                       (cond (= wrt :sigma)
+                                             :epsilon         
+
+                                             (= wrt :epsilon)    
+                                             :empty-set
+                                             
+                                             :else
+                                             (throw (ex-info (format "cannot compute derivative of :sigma wrt %s because they intersecting" wrt)
+                                                            {:type :derivative-error
+                                                             :derivative {:expr expr
+                                                                          :type type
+                                                                          :wrt wrt
+                                                                          :functions functions}
+                                                             :cause :intersecting-types
+                                                             }))))
                               :type (fn [type functions]
                                       (cond (= wrt type)
                                             :epsilon
@@ -403,8 +419,16 @@
                                             :empty-set
 
                                             :else
-                                            (throw (Exception.
-                                                    (format "cannot compute derivative of %s wrt %s because the types are partially intersecting" type wrt)))))
+                                            (throw (ex-info (format "cannot compute derivative of %s wrt %s because the types are intersecting at %s" type wrt (type-intersection type wrt))
+                                                            {:type :derivative-error
+                                                             :derivative {:expr expr
+                                                                          :type type
+                                                                          :wrt wrt
+                                                                          :functions functions
+                                                                          :intersection (type-intersection type wrt)}
+                                                             :cause :intersecting-types
+                                                             
+                                                             }))))
                               :or (fn [operands functions]
                                     (cons :or (walk operands)))
                               :and (fn [operands functions]

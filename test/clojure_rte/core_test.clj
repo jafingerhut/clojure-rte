@@ -187,6 +187,102 @@
     (is (= '(:* :sigma)
            (canonicalize-pattern '(:or  ::Cat (:* :sigma) ::Lion))) "or sigma*")
     ))
+
+(deftest t-derivative
+  (derive ::Canine ::Animal)
+  (derive ::Wolf ::Canine)
+  (derive ::Fox ::Canine)
+  (derive ::Dog ::Canine)
+  (derive ::Feline ::Animal)
+  (derive ::Cat ::Feline)
+  (derive ::Lion ::Feline)
+  (derive ::x ::Cat)
+  (derive ::x ::Lion)
+  (testing "derivative"
+    (is (= (derivative :empty-set ::Lion)
+           :empty-set) "derivative empty-set w.r.t A")
+
+    ;; :sigma
+    (is (= (derivative :sigma :sigma)
+           :epsilon) "derivative sigma wrt sigma")
+    (is (= (derivative :sigma :epsilon)
+           :empty-set) "derivative sigma wrt epsilon")
+    (is (thrown? Exception
+                 (derivative :sigma ::Lion)) "derivative sigma wrt A")
+
+    ;; :epsilon
+    (is (= (derivative :epsilon :epsilon)
+           :empty-set))
+    (is (= (derivative :epsilon ::Lion)
+           :empty-set))
+    (is (= (derivative :epsilon :empty-set)
+           :empty-set))
+    (is (= (derivative :epsilon :sigma)
+           :empty-set))
+
+    ;; :empty-set
+    (is (= (derivative :empty-set :epsilon)
+           :empty-set))
+    (is (= (derivative :empty-set ::Lion)
+           :empty-set))
+    (is (= (derivative :empty-set :empty-set)
+           :empty-set))
+    (is (= (derivative :empty-set :sigma)
+           :empty-set))
+
+    ;; type
+    (is (= (derivative ::Lion ::Lion)
+           :epsilon))
+    (is (= (derivative ::Fox ::Wolf)
+           :empty-set) "derivative disjoint types")
+
+    (is (thrown? Exception (derivative ::Cat ::Lion))
+        "derivative intersecting types")
+
+    (is (= (:type (try
+                    (derivative ::Cat ::Lion)
+                    (catch clojure.lang.ExceptionInfo e (ex-data e))))
+           :derivative-error))
+    (is (= (:cause (try
+                     (derivative ::Cat ::Lion)
+                     (catch clojure.lang.ExceptionInfo e (ex-data e))))
+           :intersecting-types))
+    (is (= (:expr (:derivative (try
+                                 (derivative ::Cat ::Lion)
+                                 (catch clojure.lang.ExceptionInfo e (ex-data e)))))
+           ::Cat))
+    (is (= (:wrt (:derivative (try
+                                (derivative ::Cat ::Lion)
+                                (catch clojure.lang.ExceptionInfo e (ex-data e)))))
+           ::Lion))
+    (is (= (:type (:derivative (try
+                                 (derivative ::Cat ::Lion)
+                                 (catch clojure.lang.ExceptionInfo e (ex-data e)))))
+           ::Cat))
+    (is (contains? (:intersection (:derivative (try
+                                                 (derivative ::Cat ::Lion)
+                                                 (catch clojure.lang.ExceptionInfo e (ex-data e)))))
+                   ::x))
+
+
+    ;; or
+    (is (= (:type (:derivative (try
+                                 (derivative '(:cat (:or ::Fox ::Lion) ::x) ::Cat)
+                                 (catch clojure.lang.ExceptionInfo e (ex-data e)))))
+           ::Lion) "derivative->derivative->type")
+    (is (= (:wrt (:derivative (try
+                                 (derivative '(:cat (:or ::Fox ::Lion) ::x) ::Cat)
+                                 (catch clojure.lang.ExceptionInfo e (ex-data e)))))
+           ::Cat) "derivative->derivative->wrt")
+    
+    (is (= (derivative '(:or ::Fox ::Lion) ::Fox)
+           :epsilon))
+
+    ;; cat
+    (is (= (derivative '(:cat (:or ::Fox ::Lion) ::x) ::Fox)
+           ::x) "derivative cat with reduction")
+
+    ))
     
 (deftest t-disjoint?
   (derive ::Canine ::Animal)
