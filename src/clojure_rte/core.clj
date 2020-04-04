@@ -69,6 +69,17 @@
               ((:client functions) pattern functions))
    })
 
+(defn with-first-match [pred items continuation]
+  (loop [items items]
+    (cond (empty? items)
+          nil
+
+          (pred (first items))
+          (continuation (first items))
+
+          :else
+          (recur (rest items)))))
+
 (defn remove-once [target items]
   (loop [items items
          acc ()]
@@ -286,17 +297,6 @@
 
 (defn member [obj items]
   (some #{obj} items))
-
-(defn with-first-match [pred items continuation]
-  (loop [items items]
-    (cond (empty? items)
-          nil
-
-          (pred (first items))
-          (continuation (first items))
-
-          :else
-          (recur (rest items)))))
 
 (defn canonicalize-pattern-once [re]
   (traverse-pattern re
