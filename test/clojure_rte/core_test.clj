@@ -96,6 +96,27 @@
     (is (= (sort-operands '((:not ::Lion) (:not ::Cat)))
            '((:not ::Cat) (:not ::Lion))))))
     
+(deftest t-canonicalize-pattern-subtypes
+  (derive ::Canine ::Animal)
+  (derive ::Wolf ::Canine)
+  (derive ::Fox ::Canine)
+  (derive ::Dog ::Canine)
+  (derive ::Feline ::Animal)
+  (derive ::Cat ::Feline)
+  (derive ::Lion ::Feline)
+  (derive ::x ::Cat)
+  (derive ::x ::Lion)
+
+  (testing "canonicalize-pattern with subtypes"
+
+    (is (= ::Animal (canonicalize-pattern '(:or ::Fox ::Animal))))
+    (is (= :sigma (canonicalize-pattern '(:or ::Fox (:not ::Fox)))))
+
+    (is (= ::Fox (canonicalize-pattern '(:and ::Fox ::Animal))))
+    (is (= :empty-set (canonicalize-pattern '(:and ::Fox (:not ::Fox))))
+    ))
+
+
 (deftest t-canonicalize-pattern
   (derive ::Canine ::Animal)
   (derive ::Wolf ::Canine)
@@ -410,4 +431,33 @@
                   (3 2 1)))))
     ))
     
-    
+(deftest t-rte-to-dfa
+  (derive ::Canine ::Animal)
+  (derive ::Wolf ::Canine)
+  (derive ::Fox ::Canine)
+  (derive ::Dog ::Canine)
+  (derive ::Feline ::Animal)
+  (derive ::Cat ::Feline)
+  (derive ::Lion ::Feline)
+  (derive ::x ::Cat)
+  (derive ::x ::Lion)
+
+  (testing "rte-to-dfa"
+    (is (rte-to-dfa '(:cat :epsilon (:+ (:* :epsilon)) :sigma)))
+    (is (rte-to-dfa '(:permute ::Wolf (:? (:+ :empty-set)) (:+ (:* (:and))))))
+    ))
+)
+
+(deftest t-cl-cond
+  (testing "cl-cond"
+    (let [a 100 b 200]
+      (is (= 42 (cl-cond
+                 (a 42))))
+      (is (= 42 (cl-cond
+                 ((= a 1) 41)
+                 ((= a 200) 42))))
+      (is (= 100 (cl-cond
+                  ((= a 1) 41)
+                  (a)
+                  (true -1))))
+      )))

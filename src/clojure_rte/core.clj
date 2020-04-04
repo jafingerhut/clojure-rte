@@ -33,7 +33,10 @@
 
 
 (ns clojure-rte.core
-  (:require [clojure.set :refer [union intersection]])
+  (:require [clojure.set :refer [union intersection]]
+            [clojure.pprint :refer [cl-format]]
+
+            )
   (:gen-class))
 
 (defn -main
@@ -300,6 +303,33 @@
 (defn member [obj items]
   (some #{obj} items))
 
+(defmacro cl-cond [[if1 then1] & others]
+  ;; implementation from
+  ;; https://stackoverflow.com/questions/4128993/consolidated-cond-arguments-in-clojure-cl-style
+  (when (or if1 then1 others)
+    (let [extra-clauses# (if others `(cl-cond ~@others))]
+      (if then1
+        `(if ~if1 ~then1 ~extra-clauses#)
+        `(or ~if1  ~extra-clauses#)))))
+
+;; find an element of the given sequence which is a subtype
+;; of some other type and is not =.  not necessarily the global minimum.
+(defn type-min [atoms]
+  (some (fn [sub]
+          (some (fn [super]
+                  (and (not (= sub super))
+                       (isa? sub super)
+                       sub)) atoms)) atoms))
+
+;; find an element of the given sequence which is a supertype
+;; of some other type and is not =.  not necessarily the global maximum
+(defn type-max [atoms]
+  (some (fn [sub]
+          (some (fn [super]
+                  (and (not (= sub super))
+                       (isa? sub super)
+                       super)) atoms)) atoms))
+
 (defn canonicalize-pattern-once [re]
   (traverse-pattern re
                     (assoc *traversal-functions*
@@ -368,53 +398,82 @@
                                   (assert (< 1 (count operands))
                                           (format "traverse-pattern should have already eliminated this case: re=%s count=%s operands=%s" re (count operands) operands))
                                   (let [operands (dedupe (sort-operands (map canonicalize-pattern operands)))]
-                                    (cond
-                                      (some and? operands)
+                                    (cl-cond
+                                     ((some and? operands)
                                       (cons :and (mapcat (fn [obj]
                                                            (if (and? obj)
                                                              (rest obj)
-                                                             (list obj))) operands))
+                                                             (list obj))) operands)))
 
-                                      (member :empty-set operands)
-                                      :empty-set
+                                     ((member :empty-set operands)
+                                      :empty-set)
 
-                                      (member '(:* :sigma) operands)
+                                     ((member '(:* :sigma) operands)
                                       (cons :and (remove (fn [obj]
-                                                           (= '(:* :sigma) obj)) operands))
+                                                           (= '(:* :sigma) obj)) operands)))
 
-                                      (some or? operands)
+                                     ((some or? operands)
                                       ;; (:and (:or A B) C D) --> (:or (:and A C D) (:and B C D))
                                       (with-first-match or? operands
                                         (fn [or-item]
                                           (let [others (remove (fn [x] (= or-item x)) operands)]
-                                            (cons :or (map (fn [x] (list* :and x others)) (rest or-item))))))
+                                            (cons :or (map (fn [x] (list* :and x others)) (rest or-item)))))))
 
-                                      :else
-                                      (cons :and operands)
+                                     ;; (:and x (:not x)) --> :empty-set
+                                     ((let [nots (filter not? operands)
+                                            others (remove not? operands)]
+                                        (when (some (fn [item]
+                                                      (some #{(list :not item)} nots)) others)
+                                          :empty-set)))
 
-                                      )))
+                                     ;; (:and subtype supertype x y z) --> (:and subtype x y z)
+                                     ((let [atoms (filter (complement seq?) operands)
+                                            max (type-max atoms)
+                                            ]
+                                        (when max
+                                          (cons :and (remove #{max} operands)))))
+                                     
+                                     (:else
+                                      (cons :and operands))
+
+                                     )))
                            :or (fn [operands functions]
                                  (assert (< 1 (count operands))
                                          (format "traverse-pattern should have already eliminated this case: re=%s count=%s operands=%s" re (count operands) operands))
                                  (let [operands (dedupe (sort-operands (map canonicalize-pattern operands)))]
-                                   (cond
-                                     (some or? operands)
+                                   (cl-cond
+                                    ((some or? operands)
                                      (cons :or (mapcat (fn [obj]
                                                          (if (or? obj)
                                                            (rest obj)
-                                                           (list obj))) operands))
+                                                           (list obj))) operands)))
 
-                                     (member '(:* :sigma) operands)
-                                     '(:* :sigma)
+                                    ((member '(:* :sigma) operands)
+                                     '(:* :sigma))
 
-                                     (member :empty-set operands)
-                                     (cons :or (remove #{:empty-set} operands))
+                                    ((member :empty-set operands)
+                                     (cons :or (remove #{:empty-set} operands)))
 
-                                     :else
-                                     (cons :or operands)
 
-                                 )
-                           )))))
+                                    ;; (:or x (:not x)) --> :sigma
+                                    ((let [nots (filter not? operands)
+                                           others (remove not? operands)]
+                                       (when (some (fn [item]
+                                                     (some #{(list :not item)} nots)) others)
+                                         :sigma)))
+
+                                    ;; (:or subtype supertype x y z) --> (:and supertype x y z)
+                                    ((let [atoms (filter (complement seq?) operands)
+                                           min (type-min atoms)
+                                           ]
+                                       (when min
+                                         (cons :or (remove #{min} operands)))))                                     
+
+                                    (:else
+                                     (cons :or operands))
+
+                                    )
+                                   )))))
 
 (defn canonicalize-pattern [pattern]
   ;; find the fixed point of canonicalize-pattern-once
@@ -457,6 +516,9 @@
                                             (disjoint? wrt type)
                                             :empty-set
 
+                                            (isa? wrt type)
+                                            :epsilon
+                                            
                                             :else
                                             (throw (ex-info (format "cannot compute derivative of %s wrt %s because the types are intersecting at %s" type wrt (type-intersection type wrt))
                                                             {:type :derivative-error
@@ -514,7 +576,8 @@
                    (concat triples new-triples))))))))
 
 (defn rte-to-dfa [pattern]
-  (let [[triples derivatives] (find-all-derivatives pattern)
+  (let [pattern (canonicalize-pattern pattern)
+        [triples derivatives] (find-all-derivatives pattern)
         derivatives (cons pattern (remove #{pattern} derivatives))
         index-map (zipmap derivatives (range (count derivatives)))
         triples (map (fn [[primative wrt deriv]]
@@ -539,9 +602,6 @@
     (if (empty? items)
       (:accepting (dfa state))
       (let [[head & tail] items]
-        (println (format "state=%s" state))
-        (println (format "  %s" (dfa state)))
-        (println (format "  --> %s"  (:transitions (dfa state))))
         (if-let [next-state (some (fn [[type next-state]]
                                     (println (format "   type? %s" type))
                                     (if (typep head type)
@@ -560,29 +620,28 @@
        (catch Exception e
          (do
            (cl-format true "e=~A~%" e)
-         (or (some (fn [component]
-                     (simplify unary component)) (gen-components error-case))
-             error-case)))))
+           (or (some (fn [component]
+                       (simplify unary component)) (gen-components error-case))
+               error-case)))))
 
 (defn random-test [num-tries unary-test-fun arg-generator gen-components]
   (loop [num-tries num-tries]
     (if (< 0 num-tries)
-      (let [arg (arg-generator)]
-        (cl-format true "~d: trying ~A~%" num-tries arg)
-        (try (unary-test-fun arg)
-             (catch Exception e
-               (simplify unary-test-fun (arg-generator) gen-components)))))))
+      (let [data (arg-generator)]
+        (cl-format true "~d: trying ~A~%" num-tries data)
+        (unary-test-fun data)
+        (recur (dec num-tries))))))
 
 (defn gen-rte [size types]
   (let [key (rand-nth [:type
                    :? :+ :* :not
                    :and :or 
-                   :cat :permutation
+                   :cat :permute
                    :sigma :empty-set :epsilon])] 
     (case key
       (:type) (rand-nth types)
       (:sigma :empty-set :epsilon) key
-      (:and :or :cat :permutation) (cons key (map (fn [k] (gen-rte (dec size) types))
+      (:and :or :cat :permute) (cons key (map (fn [k] (gen-rte (dec size) types))
                                                   (range size)))
       (:? :+ :* :not) (list key (gen-rte (dec size) types)))))
 
@@ -596,17 +655,13 @@
     (let [[keyword & operands] pattern]
       (case keyword
         (:* :+ :? :not
-            :and :or :cat :permutation) operands
+            :and :or :cat :permute) operands
         ;; case else
         ()))
 
     :else
     ()))
 
-(defn test-derivative [num-tries size]
-  (random-test num-tries derivative
-               (fn [] (gen-rte size '(::Fox ::Wolf ::Cat ::Lion ::x)))
-               rte-components))
 
 (defn test-rte-to-dfa [num-tries size]
   (random-test num-tries rte-to-dfa
@@ -617,4 +672,3 @@
   (random-test num-tries canonicalize-pattern
                (fn [] (gen-rte size '(::Fox ::Wolf ::Cat ::Lion ::x)))
                rte-components))
-
