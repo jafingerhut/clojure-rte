@@ -551,3 +551,68 @@
 
 (defn rte-match [pattern items]
   (rte-execute (rte-compile pattern) items))
+
+(defn simplify [unary error-case gen-components]
+  (try (do (unary error-case)
+           error-case)
+       (catch Exception e
+         (do
+           (cl-format true "e=~A~%" e)
+         (or (some (fn [component]
+                     (simplify unary component)) (gen-components error-case))
+             error-case)))))
+
+(defn random-test [num-tries unary-test-fun arg-generator gen-components]
+  (loop [num-tries num-tries]
+    (if (< 0 num-tries)
+      (let [arg (arg-generator)]
+        (cl-format true "~d: trying ~A~%" num-tries arg)
+        (try (unary-test-fun arg)
+             (catch Exception e
+               (simplify unary-test-fun (arg-generator) gen-components)))))))
+
+(defn gen-rte [size types]
+  (let [key (rand-nth [:type
+                   :? :+ :* :not
+                   :and :or 
+                   :cat :permutation
+                   :sigma :empty-set :epsilon])] 
+    (case key
+      (:type) (rand-nth types)
+      (:sigma :empty-set :epsilon) key
+      (:and :or :cat :permutation) (cons key (map (fn [k] (gen-rte (dec size) types))
+                                                  (range size)))
+      (:? :+ :* :not) (list key (gen-rte (dec size) types)))))
+
+(defn rte-components [pattern]
+  (cond
+    (and (seq? pattern)
+         (empty pattern))
+    ()
+
+    (seq? pattern)
+    (let [[keyword & operands] pattern]
+      (case keyword
+        (:* :+ :? :not
+            :and :or :cat :permutation) operands
+        ;; case else
+        ()))
+
+    :else
+    ()))
+
+(defn test-derivative [num-tries size]
+  (random-test num-tries derivative
+               (fn [] (gen-rte size '(::Fox ::Wolf ::Cat ::Lion ::x)))
+               rte-components))
+
+(defn test-rte-to-dfa [num-tries size]
+  (random-test num-tries rte-to-dfa
+               (fn [] (gen-rte size '(::Fox ::Wolf ::Cat ::Lion ::x)))
+               rte-components))
+
+(defn test-canonicalize-pattern [num-tries size]
+  (random-test num-tries canonicalize-pattern
+               (fn [] (gen-rte size '(::Fox ::Wolf ::Cat ::Lion ::x)))
+               rte-components))
+
