@@ -21,7 +21,8 @@
 
 (ns clojure-rte.core-test
   (:require [clojure.test :refer :all]
-            [clojure-rte.core :refer :all]))
+            [clojure-rte.core :refer :all]
+            [clojure-rte.rte-tester :refer :all]))
 
 (deftest t-nullable
   (testing "nullable"
