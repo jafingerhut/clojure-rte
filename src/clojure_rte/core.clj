@@ -210,13 +210,16 @@
   (isa? (type a-value) a-type))
 
 (defn type-intersection [t1 t2]
-  (intersection (descendants t1) (descendants t2)))
+  (intersection (conj (descendants t1) t1)
+                (conj (descendants t2) t2)))
 
 (defn disjoint? [t1 t2]
-  (let [descendants-1 (descendants t1)
-        descendants-2 (descendants t2)]
-    (and (not-any? (fn [a2] (contains? descendants-1 a2)) descendants-2)
-         (not-any? (fn [a1] (contains? descendants-2 a1)) descendants-1))))
+  (and (not (isa? t1 t2))
+       (not (isa? t2 t1))
+       (let [descendants-1 (descendants t1)
+             descendants-2 (descendants t2)]
+         (and (not-any? (fn [a2] (contains? descendants-1 a2)) descendants-2)
+              (not-any? (fn [a1] (contains? descendants-2 a1)) descendants-1)))))
 
 (defn nullable [expr]
   (traverse-pattern expr
