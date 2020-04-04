@@ -41,9 +41,11 @@
   [& args]
   (println "Hello, World!"))
 
+(declare traverse-pattern)
+(declare canonicalize-pattern)
 
-(def *rte-hash* {})
-(def *traversal-functions*
+(def ^:dynamic *rte-hash* {})
+(def ^:dynamic *traversal-functions*
   {:client (fn [pattern functions]
              (traverse-pattern pattern functions))
    :type (fn [pattern functions]
