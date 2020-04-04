@@ -77,7 +77,7 @@
 
     ))
 
-(deftest t-disjoint?
+(deftest t-isa?
   (testing "disjoint"
    (derive ::Feline ::Animal)
    (derive ::Cat ::Feline)
@@ -109,11 +109,14 @@
 
   (testing "canonicalize-pattern with subtypes"
 
-    (is (= ::Animal (canonicalize-pattern '(:or ::Fox ::Animal))))
-    (is (= :sigma (canonicalize-pattern '(:or ::Fox (:not ::Fox)))))
+    (is (= ::Animal (canonicalize-pattern '(:or ::Fox ::Animal))) "animal")
+    (is (= :sigma (canonicalize-pattern '(:or ::Fox (:not ::Fox)))) "sigma")
 
-    (is (= ::Fox (canonicalize-pattern '(:and ::Fox ::Animal))))
-    (is (= :empty-set (canonicalize-pattern '(:and ::Fox (:not ::Fox))))
+    (is (= ::Fox (canonicalize-pattern '(:and ::Fox ::Animal))) "fox")
+    (is (= :empty-set (canonicalize-pattern '(:and ::Fox (:not ::Fox)))) "empty-set 1")
+
+    ;; intersection of disjoint types
+    (is (= :empty-set (canonicalize-pattern '(:and ::Fox ::Lion))) "empty-set 2")
     ))
 
 
@@ -215,9 +218,11 @@
     (is (= '(:and ::Cat ::Lion)
            (canonicalize-pattern-once '(:and ::Cat ::Lion ::Cat ::Lion))) "and remove duplicate 2")
 
-    (is (= '(:or (:and ::Cat ::Fox ::Lion)
-                 (:and ::Cat ::Lion ::Wolf))
-           (canonicalize-pattern '(:and (:or ::Fox ::Wolf) ::Cat ::Lion))) "and-distribute")
+    ;; this test no longer works, because canonicalize-pattern has become smarter
+    ;;;   and realizes that (:and ::Cat ::Fox) is empty-set
+    ;; (is (= '(:or (:and ::Cat ::Fox ::Lion)
+    ;;              (:and ::Cat ::Lion ::Wolf))
+    ;;        (canonicalize-pattern '(:and (:or ::Fox ::Wolf) ::Cat ::Lion))) "and-distribute")
 
     (is (= :empty-set
            (canonicalize-pattern '(:and  ::Cat :empty-set ::Lion))) "and empty-set")
@@ -369,6 +374,7 @@
   (derive ::x ::Cat)
   (derive ::x ::Lion)
   (testing "disjoint?"
+    (is (not (disjoint? ::Fox ::Animal)))
     (is (not (disjoint? ::Cat ::Lion)))
     (is (disjoint? ::Wolf ::Fox))
     (is (= (set (type-intersection ::Cat ::Lion))
@@ -443,8 +449,9 @@
   (derive ::x ::Lion)
 
   (testing "rte-to-dfa"
-    (is (rte-to-dfa '(:cat :epsilon (:+ (:* :epsilon)) :sigma)))
-    (is (rte-to-dfa '(:permute ::Wolf (:? (:+ :empty-set)) (:+ (:* (:and))))))
+    (is (rte-to-dfa '(:cat :epsilon (:+ (:* :epsilon)) :sigma)) "dfa 1")
+    (is (thrown? clojure.lang.ExceptionInfo
+                 (rte-to-dfa '(:permute ::Wolf (:? (:+ :empty-set)) (:+ (:* (:and)))))) "dfa 2")
     ))
 )
 
@@ -452,12 +459,15 @@
   (testing "cl-cond"
     (let [a 100 b 200]
       (is (= 42 (cl-cond
-                 (a 42))))
+                 (a 42))) "cond 1")
       (is (= 42 (cl-cond
                  ((= a 1) 41)
-                 ((= a 200) 42))))
+                 ((= a 100) 42))) "cond 2")
+      (is (not (cl-cond
+                 ((= a 1) 41)
+                 ((= a 200) 42))) "cond 2b")
       (is (= 100 (cl-cond
                   ((= a 1) 41)
                   (a)
-                  (true -1))))
+                  (true -1))) "cond 3")
       )))

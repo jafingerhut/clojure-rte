@@ -429,6 +429,16 @@
                                                       (some #{(list :not item)} nots)) others)
                                           :empty-set)))
 
+                                     ;; (:and of disjoint types) --> :empty-set
+                                     ((let [atoms (filter (complement seq?) operands)
+                                            max (type-max atoms)
+                                            ]
+                                        (when (some (fn [i1]
+                                                      (some (fn [i2]
+                                                              (and (not (= i1 i2))
+                                                                   (disjoint? i1 i2))) atoms)) atoms)
+                                          :empty-set)))
+                                     
                                      ;; (:and subtype supertype x y z) --> (:and subtype x y z)
                                      ((let [atoms (filter (complement seq?) operands)
                                             max (type-max atoms)
