@@ -65,7 +65,6 @@
   {:client (fn [pattern functions]
              (traverse-pattern pattern functions))
    :type (fn [tag functions]
-           (println (format ":type tag=%s" tag))
            ((:client functions) (resolve-rte-tag tag) functions))
    :* (fn [pattern functions]
         (cons :* ((:client functions) pattern functions)))
