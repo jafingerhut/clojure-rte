@@ -1,32 +1,54 @@
 # clojure-rte
 
-FIXME: description
+This package impements rational type expressions (RTEs) for clojure.
+The implementation is based on a similar package for Common Lisp.
+The theory of how RTEs work can be found here:
+  Introduction:   https://www.lrde.epita.fr/wiki/Publications/newton.16.els
+  Phd Thesis:     https://www.lrde.epita.fr/wiki/Publications/newton.18.phd
 
 ## Installation
 
-Download from http://example.com/FIXME.
+Download from git@gitlab.lrde.epita.fr:jnewton/clojure-rte.git
+   or https://gitlab.lrde.epita.fr/jnewton/clojure-rte.git
 
 ## Usage
 
-FIXME: explanation
-
-    $ java -jar clojure-rte-0.1.0-standalone.jar [args]
 
 ## Options
 
-FIXME: listing of options this app accepts.
+
 
 ## Examples
 
-...
+```clojure
+(rte-match '(:cat (:* (:cat clojure.lang.Keyword java.lang.Long))
+                                  (:? String))
+           '(:x 1 :y 2 :z 42)) ;; --> true
+
+(let [rte (rte-compile '(:cat (:* (:cat clojure.lang.Keyword java.lang.Long))
+                                  (:? String)))]
+  (rte-execute '(:x 1 :y 2 :z 42)) ;; --> true
+  (rte-execute '(:x 1 :y 2 :z 42 "Hello")) ;; --> true
+  (rte-execute '(:x 1 :y 2 :z 42 "Hello" "World")) ;; --> false
+)
+```
+
 
 ### Bugs
 
-...
+The rte keyword `:not` is partially implemented, but know to be buggy.
+The intention is something like the following.
 
-### Any Other Sections
-### That You Think
-### Might be Useful
+```clojure
+(rte-match '(:cat (:* (:cat clojure.lang.Keyword (:not java.lang.Long)))
+                                  (:? String))
+           '(:x 1 :y 2 :z 42))
+;; --> false
+```
+
+This does not yet work.
+
+
 
 ## License
 
