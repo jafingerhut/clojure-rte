@@ -55,7 +55,7 @@
                                           Byte)
                            'int? '(:or Long Integer Short Byte)
                            })
-integer?
+
 (defn resolve-rte-tag [tag]
   (cl-cond
    ((*rte-hash* tag))
