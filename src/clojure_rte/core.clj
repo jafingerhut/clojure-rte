@@ -35,7 +35,6 @@
 (ns clojure-rte.core
   (:require [clojure.set :refer [union intersection]]
             [clojure.pprint :refer [cl-format]]
-
             )
   (:gen-class))
 
@@ -286,6 +285,7 @@
   (fn [obj]
     (and (seq? obj)
          (= target (first obj)))))
+
 (def cat? (seq-matcher :cat))
 (def *? (seq-matcher :*))
 (def not? (seq-matcher :not))
@@ -303,7 +303,6 @@
               (compare (.getName (type a))
                        (.getName (type b)))
 
-              
               (and (seq? a)
                    (seq? b))
               (loop [a a
@@ -333,7 +332,7 @@
     (let [extra-clauses# (if others `(cl-cond ~@others))]
       (if then1
         `(if ~if1 ~then1 ~extra-clauses#)
-        `(or ~if1  ~extra-clauses#)))))
+        `(or ~if1 ~extra-clauses#)))))
 
 ;; find an element of the given sequence which is a subtype
 ;; of some other type and is not =.  not necessarily the global minimum.
