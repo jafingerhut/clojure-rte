@@ -581,7 +581,6 @@
                                          :else
                                          (term1))))
                               :* (fn [operand functions]
-                                   (assert (not (= wrt 'clojure-rte.core/operand)))
                                    `(:cat ~(derivative operand wrt) (:* ~operand))))))))
 
 (defn find-all-derivatives [pattern]
