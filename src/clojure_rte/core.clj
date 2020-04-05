@@ -46,22 +46,43 @@
 (declare traverse-pattern)
 (declare canonicalize-pattern)
 
-(def ^:dynamic *rte-hash* {'integer? '(:or Integer
-                                          Long
-                                          clojure.lang.BigInt
-                                          BigInteger
-                                          Short
-                                          Byte)
-                           'int? '(:or Long Integer Short Byte)
-                           })
+(def ^:dynamic *rte-hash*
+  "Dynamic variable whose value is a map.
+  The map associates symbols with rte expansions.
+  Any tag in this table may be used in place of a type name
+  in an rte pattern."
+  {'integer? '(:or Integer
+                   Long
+                   clojure.lang.BigInt
+                   BigInteger
+                   Short
+                   Byte)
+   'int? '(:or Long Integer Short Byte)
+   })
 
-(defn resolve-rte-tag [tag]
+(defn resolve-rte-tag
+  "Look up a tag in *rte-hash*, or return the given tag
+   if not found"
+  [tag]
+
   (cl-cond
    ((*rte-hash* tag))
    (:else
     tag)))
 
 (def ^:dynamic *traversal-functions*
+  "Default callbacks for walking an rte tree.
+  A function which wants to perform a recursive action on an
+  rte pattern, must call traverse-pattern, passing 
+  (assoc *traversal-functions*
+         key value key value   ...)
+  as second argument, thus overriding the callbacks
+  when special nodes are encountered in the rte pattern.
+  For example, when (:* ...) is encountered, the function
+  (*traversal-functions* :*) is called with two arguments,
+  1) the list of operands given to (:* ...), and 2) the value
+  value of functions, i.e., the extended value of
+  *traversal-functions*"
   {:client (fn [pattern functions]
              (traverse-pattern pattern functions))
    :type (fn [tag functions]
@@ -87,7 +108,15 @@
               ((:client functions) pattern functions))
    })
 
-(defn with-first-match [pred items continuation]
+(defn with-first-match 
+  "Find the first element in the given sequence, items,
+   for which the predicate, pred, returns Boolean true.
+   If such is found, call the continuation with the
+   element.  This type of 'finder' avoids the problem of
+   deciding whether nil was the value found.  The continuation
+   is only called on the found value."
+  [pred items continuation]
+
   (loop [items items]
     (cond (empty? items)
           nil
@@ -98,7 +127,18 @@
           :else
           (recur (rest items)))))
 
-(defn remove-once [target items]
+(defn remove-once 
+  "Non-destructively remove the first element of the sequence which is
+   = to the target value.  The list is unrolled as much as necessary,
+   to remove the target value, and then the leading values are
+   prepended, via concat, to the beginning of the remaining sequence.
+   The tail of the sequence after finding the target is not examined,
+   in case it is lazy.  If the taget does not appear in the list, a
+   copy of the sequence is returned.  If the target item appears more
+   than once, we have no way of knowing, and only the first such
+   occurance is removed."
+  [target items]
+
   (loop [items items
          acc ()]
     (cond
@@ -111,16 +151,36 @@
       :else
       (recur (rest items) (cons (first items) acc)))))
 
-(defn call-with-collector [unary-client]
+(defn call-with-collector
   "This function calls your given function which an argument which can be
    called to collect values.  The return value of call-with-collector is
-   the list of items collected, in reverse order."
+   the list of items collected, in reverse order.  E.g.,
+   (call-with-collector (fn [collect] 
+                            ...body...))
+
+   Within the body, collect is a unary function which can be called
+   zero or more times.  The arguments are collected and returned as a
+   in reverse order as if they were cons-ed onto an internal list.
+   The caller is responsible for reversing the list if necessary."
+  [unary-client]
+
   (with-local-vars [data '()]
     (unary-client (fn [obj]
                     (var-set data (cons obj @data))))
     @data))
 
-(defn visit-permutations [unary-client items]
+(defn visit-permutations 
+  "Call the given unary-client function once on each permutation
+   of the given sequence of items.  Warning, there are n! many
+   such permutations, so this function will be extremely slow
+   if the (count items) is large.  If you want to return a list 
+   of permutations, use visit-permutations in conjunction 
+   with call-with-collector.
+   (call-with-collector
+     (fn [collect]
+       (visit-permutations collect items)))"
+  [unary-client items]
+  
   (letfn [(visit-with-tail [remaining tail]
             (if (empty? remaining)
               (unary-client tail)
@@ -129,7 +189,17 @@
                                  (cons item tail)))))]
     (visit-with-tail items '())))
 
-(defn traverse-pattern [pattern functions]
+(defn traverse-pattern
+  "Workhorse function for walking an rte pattern.
+   This function is the master of understanding the syntax of an rte
+   pattern.  Any function which needs to perform a recursive operation
+   such as derivative, nullable, first-types, or canonicalize-pattern
+   may call traverse-pattern with an augmented map of
+   *traversal-functions*, indicating the callbacks for each rte
+   keyword such as :* :+ :cat etc.  The philosophy is that no other
+   function needs to understand how to walk an rte pattern."
+  [pattern functions]
+
   (letfn [(if-atom []
             (case pattern
               (:epsilon :empty-set :sigma)
@@ -212,21 +282,43 @@
           ;; cond-else (:keyword args) or list-expr
           :else (if-at-least-one-operand))))
 
-(defn rte-constantly [x]
+(defn rte-constantly
+  "Return a binary function, similar to constanty, but the binary
+   function ignors its second argument.  This function is useful as a
+   callback function used to extend *traversal-functions*, as each
+   such callback function must be a binary function."
+  [x]
   (fn [_ _]
     x))
 
-(defn rte-identity [x y]
+(defn rte-identity 
+  "Similar to clojure.core.identity, except that this version is
+   binary and always ignors its second argument.  This function is
+   useful as a callback function used to extend *traversal-functions*,
+   as each such callback function must be a binary function."
+  [x y]
+  
   x)
 
-(defn typep [a-value a-type]
+(defn typep 
+  "Like instance? except that the arguments are reversed, and the
+  given type need not be a class."
+  [a-value a-type]
+  
   (isa? (type a-value) a-type))
 
-(defn type-intersection [t1 t2]
+(defn type-intersection 
+  "Return the set of the subtypes of the two types, ie. the set of types
+  which are both a subtype of t1 and of t2.  If the types don't
+  intersect, #{} is returned."
+  [t1 t2]
+
   (intersection (conj (descendants t1) t1)
                 (conj (descendants t2) t2)))
 
-(defn disjoint? [t1 t2]
+(defn disjoint? 
+  "Predicate to determine whether the two types overlap."
+  [t1 t2]
   (and (not (isa? t1 t2))
        (not (isa? t2 t1))
        (let [descendants-1 (descendants t1)
@@ -234,7 +326,10 @@
          (and (not-any? (fn [a2] (contains? descendants-1 a2)) descendants-2)
               (not-any? (fn [a1] (contains? descendants-2 a1)) descendants-1)))))
 
-(defn nullable [expr]
+(defn nullable 
+  "Determine whether the given rational type expression is nullable.
+  I.e., does the empty-word satisfy the expression."
+  [expr]
   (traverse-pattern expr
                     (assoc *traversal-functions*
                            :empty-set (rte-constantly false)
@@ -255,7 +350,11 @@
                            :not (fn [operand functions]
                                   (not (nullable operand))))))
 
-(defn first-types [expr]
+(defn first-types 
+  "Return a possibly empty set of types (i.e., object which can be
+  passed to isa?) which specify the possible set of first value values
+  in any sequence satisfying this rational type expression."
+  [expr]
   (letfn [(mr [operands functions]
             (reduce (fn [acc next]
                       (union acc (first-types next))) #{} operands))]
@@ -280,18 +379,35 @@
                            :* (fn [operand functions]
                                 (first-types operand))))))
 
-(defn seq-matcher [target]
+(defn seq-matcher
+  "Return a function, a closure, which can be used to determine whether
+  its argument is a sequence whose first element is identically the
+  given obj."
+  [target]
   (fn [obj]
     (and (seq? obj)
+         (not (empty? obj))
          (= target (first obj)))))
 
-(def cat? (seq-matcher :cat))
-(def *? (seq-matcher :*))
-(def not? (seq-matcher :not))
-(def and? (seq-matcher :and))
-(def or? (seq-matcher :or))
+(def cat? 
+  "Predicate determining whether its object is of the form (:cat ...)"
+  (seq-matcher :cat))
+(def *?
+  "Predicate determining whether its object is of the form (:* ...)"
+  (seq-matcher :*))
+(def not? 
+  "Predicate determining whether its object is of the form (:not ...)"
+  (seq-matcher :not))
+(def and?
+  "Predicate determining whether its object is of the form (:and ...)"
+  (seq-matcher :and))
+(def or? 
+  "Predicate determining whether its object is of the form (:or ...)"
+  (seq-matcher :or))
 
 (defn sort-operands [operands]
+  "Sort the given list of operands into deterministic order, making it possible
+  to easily find identical elements, and to write test cases."
   (letfn [(cmp [a b]
             (cond
               (= a b)       0
@@ -321,37 +437,56 @@
               (compare a b)))]
     (sort cmp  operands)))
 
-(defn member [obj items]
-  (some #{obj} items))
+(defn member [target items]
+  "Like cl:member.  Determines whether the given is an element of the given sequence."
+  (some #{target} items))
 
-(defmacro cl-cond [[if1 then1] & others]
-  ;; implementation from
-  ;; https://stackoverflow.com/questions/4128993/consolidated-cond-arguments-in-clojure-cl-style
+(defmacro cl-cond
+  "Like CL:cond.  Each operand of the cl-cond is a list of length at least 1.
+   The same semantics as clojure cond, in that the return value is
+   determined by the first test which returns non-false.  The
+   important semantic difference is that an agument has 1, then the
+   specified form is both the test and the return value, and it is
+   evaluated at most once.
+   Implementation from:
+   https://stackoverflow.com/questions/4128993/consolidated-cond-arguments-in-clojure-cl-style"
+  [[if1 then1] & others]
+  
   (when (or if1 then1 others)
     (let [extra-clauses# (if others `(cl-cond ~@others))]
       (if then1
         `(if ~if1 ~then1 ~extra-clauses#)
         `(or ~if1 ~extra-clauses#)))))
 
-;; find an element of the given sequence which is a subtype
-;; of some other type and is not =.  not necessarily the global minimum.
-(defn type-min [atoms]
+(defn type-min 
+  "Find an element of the given sequence which is a subtype
+  of some other type and is not =.  not necessarily the global minimum."
+  [atoms]
   (some (fn [sub]
           (some (fn [super]
                   (and (not (= sub super))
                        (isa? sub super)
                        sub)) atoms)) atoms))
 
-;; find an element of the given sequence which is a supertype
-;; of some other type and is not =.  not necessarily the global maximum
-(defn type-max [atoms]
+(defn type-max 
+  "Find an element of the given sequence which is a supertype
+  of some other type and is not =.  not necessarily the global maximum"
+  [atoms]
   (some (fn [sub]
           (some (fn [super]
                   (and (not (= sub super))
                        (isa? sub super)
                        super)) atoms)) atoms))
 
-(defn canonicalize-pattern-once [re]
+(defn canonicalize-pattern-once 
+  "Rewrite the given rte patter to a canonical form.
+  This involves recursive re-writing steps for each sub form,
+  including searches for syntatical and semantical reductions.
+  The API for canonicalizing a pattern is canonicalize-pattern,
+  which finds a fixed-point of canonicalize-pattern-once, i.e.,
+  keeps calling canonicalize-pattern-once until it finally
+  stops changing."
+  [re]
   (traverse-pattern re
                     (assoc *traversal-functions*
                            :type (fn [tag functions]
@@ -507,15 +642,20 @@
                                     )
                                    )))))
 
-(defn canonicalize-pattern [pattern]
-  ;; find the fixed point of canonicalize-pattern-once
+(defn canonicalize-pattern 
+  "find the fixed point of canonicalize-pattern-once"
+  [pattern]
+
   (loop [old-pattern []
          new-pattern pattern]
     (if (= old-pattern new-pattern)
       old-pattern
       (recur new-pattern (canonicalize-pattern-once new-pattern)))))
 
-(defn derivative [expr wrt]
+(defn derivative 
+  "Compute the Brzozowski rational expression derivative of the given
+  rte pattern with respect to the given type wrt."
+  [expr wrt]
   (letfn [(walk [patterns]
             (map (fn [p]
                    (derivative (canonicalize-pattern p) wrt))
@@ -582,7 +722,15 @@
                               :* (fn [operand functions]
                                    `(:cat ~(derivative operand wrt) (:* ~operand))))))))
 
-(defn find-all-derivatives [pattern]
+(defn find-all-derivatives 
+  "Start with the given rte pattern, and compute its derivative with
+  respect to all the values returned by first-types.  Continue
+  computing the derivatives of each of the derivatives returned with
+  respect to all of their first-types.  Continue this process until no
+  more derivatives can be found.  Warning, the given pattern might not
+  be an element of the return value.  I.e., the 0'th derivative is not
+  guaranteed to be among the values returned."
+  [pattern]
   (loop [to-do-patterns (list pattern)
          done #{}
          triples [] 
@@ -606,7 +754,26 @@
                    (conj done pattern)
                    (concat triples new-triples))))))))
 
-(defn rte-to-dfa [pattern]
+(defn rte-to-dfa 
+  "Use the Brzozowski derivative aproach to compute a finite automaton
+  representing the given rte patten.  The finite automaton is in the
+  form of an array of states.  The n'th state is array[n].  Each state
+  is a map with the keys:
+
+  :index -- the index of this state in the array
+  :accepting - Boolean true/false indicating whether this state is a
+      final/accepting state.
+  :pattern -- the derivative value representing an rte pattern matching
+      any tail of the input sequence which is accepting from this point
+      onward.
+  :transitions -- A list of pairs, each pair is a 2 element array of the form
+      [type next-state], e.g., [clojure.lang.Keyword 1]
+      which means if the value at the head of the sequence is of type
+      clojure.lang.Keyword, then go to state 1.  The type is some value
+      compatible with isa?.  the state index is some index of the state
+      array representing the finite atomaton."
+  [pattern]
+
   (let [pattern (canonicalize-pattern pattern)
         [triples derivatives] (find-all-derivatives pattern)
         derivatives (cons pattern (remove #{pattern} derivatives))
@@ -624,10 +791,14 @@
                                          [wrt dst]) (grouped index))})
                   derivatives (range (count derivatives))))))
 
-(defn rte-compile [pattern]
+(defn rte-compile 
+  "Compile an rte pattern into a finite automaton."
+  [pattern]
   (rte-to-dfa pattern))
 
 (defn rte-execute [dfa items]
+  "Given a finite automaton generated by rte-to-dfa (or rte-compile), determine
+   whether the given sequence, items, matches the regular type expression."
   (loop [items (seq items)
          state 0]
 
@@ -648,8 +819,24 @@
           (recur tail next-state)
           false)))))
 
-(defn rte-match [pattern items]
+(defn rte-match 
+  "Given a rte pattern, not a finite automaton, determine whether the
+  given sequence, items, matches the regular type expression.  If the
+  caller wishes to check more than one sequence against the same
+  pattern, it is better to call rte-compile, to get an automaton, and
+  use that same automaton in several calls to rte-execute.
+  rte-execute has time complexity O(n) where n is the length of the
+  sequence, while rte-compile has worst case exponential complexity.
+  rte-match contains a call to both rte-compile and rte-execute."
+  [pattern items]
   (rte-execute (rte-compile pattern) items))
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; The following are testing functions which should be eventually
+;; moved to a different namespace.
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
 
 (defn simplify [unary error-case gen-components]
   (try (do (unary error-case)
