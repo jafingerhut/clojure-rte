@@ -471,3 +471,10 @@
                   (a)
                   (true -1))) "cond 3")
       )))
+
+(deftest t-rte-match
+  (testing "rte-match"
+    (let [rte (rte-compile `(:* (:cat ~clojure.lang.Keyword ~java.lang.Long)))]
+      (is (rte-match rte '(:x 1 :y 2 :z 42)))
+      (is (rte-match rte '()))
+      (is (not (rte-match rte '(x 1 y 2 z 42)))))))

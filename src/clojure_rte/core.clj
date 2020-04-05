@@ -600,7 +600,7 @@
                             (trip 0)) triples)]
     (into [] (map (fn [deriv index]
                     {:index index
-                     :accepting (not (nullable deriv))
+                     :accepting (nullable deriv)
                      :pattern deriv
                      :transitions (map (fn [[src wrt dst]]
                                          [wrt dst]) (grouped index))})
@@ -612,15 +612,16 @@
 (defn rte-execute [dfa items]
   (loop [items (seq items)
          state 0]
+
     (if (empty? items)
       (:accepting (dfa state))
-      (let [[head & tail] items]
+      (let [[head & tail] items
+            state-obj (dfa state)]
         (if-let [next-state (some (fn [[type next-state]]
-                                    (println (format "   type? %s" type))
                                     (if (typep head type)
                                       next-state
                                       false))
-                                  (:transitions (dfa state)))]
+                                  (:transitions state-obj))]
           (recur tail next-state)
           false)))))
 
