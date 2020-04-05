@@ -51,8 +51,8 @@
   (derive ::Feline ::Animal)
   (derive ::Cat ::Feline)
   (derive ::Lion ::Feline)
-  (derive ::x ::Cat)
-  (derive ::x ::Lion)
+  (derive ::Cat-Lion ::Cat)
+  (derive ::Cat-Lion ::Lion)
 
   (testing "first-types"
     (is (= #{'a} (first-types 'a)))
@@ -72,9 +72,8 @@
     (is (= #{} (first-types :empty-set)))
     (is (= #{} (first-types :epsilon)))
 
-    (is (= (first-types '(:cat :sigma :clojure-rte.core/Lion :clojure-rte.core/Wolf))
+    (is (= (first-types '(:cat :sigma ::Lion ::Wolf))
            #{:sigma}) "first types cat sigma")
-
     ))
 
 (deftest t-isa?
@@ -104,8 +103,8 @@
   (derive ::Feline ::Animal)
   (derive ::Cat ::Feline)
   (derive ::Lion ::Feline)
-  (derive ::x ::Cat)
-  (derive ::x ::Lion)
+  (derive ::Cat-Lion ::Cat)
+  (derive ::Cat-Lion ::Lion)
 
   (testing "canonicalize-pattern with subtypes"
 
@@ -128,8 +127,8 @@
   (derive ::Feline ::Animal)
   (derive ::Cat ::Feline)
   (derive ::Lion ::Feline)
-  (derive ::x ::Cat)
-  (derive ::x ::Lion)
+  (derive ::Cat-Lion ::Cat)
+  (derive ::Cat-Lion ::Lion)
 
   (testing "canonicalize-pattern"
     ;; syntax errors
@@ -163,17 +162,17 @@
     (is (= '(:cat ::Lion ::Lion) (canonicalize-pattern-once '(:cat ::Lion (:cat ::Lion)))) "recursive cat 2")
     (is (= '(:cat ::Lion ::Lion) (canonicalize-pattern-once '(:cat (:cat ::Lion) ::Lion))) "recursive cat 3")
     (is (= '(:cat ::Lion ::Lion ::Lion) (canonicalize-pattern-once '(:cat (:cat ::Lion) (:cat ::Lion) (:cat ::Lion)))) "recursive cat")
-    (is (= ::x
-           (canonicalize-pattern '(:cat :epsilon ::x)))
+    (is (= ::Cat-Lion
+           (canonicalize-pattern '(:cat :epsilon ::Cat-Lion)))
         "cat epsilon x")
-    (is (= ::x
-           (canonicalize-pattern '(:cat ::x :epsilon)))
+    (is (= ::Cat-Lion
+           (canonicalize-pattern '(:cat ::Cat-Lion :epsilon)))
         "cat x epsilon")
     (is (= :empty-set
-           (canonicalize-pattern '(:cat :empty-set ::x)))
+           (canonicalize-pattern '(:cat :empty-set ::Cat-Lion)))
         "cat epsilon x")
     (is (= :empty-set
-           (canonicalize-pattern '(:cat ::x :empty-set)))
+           (canonicalize-pattern '(:cat ::Cat-Lion :empty-set)))
         "cat x epsilon")
     
 
@@ -266,8 +265,8 @@
   (derive ::Feline ::Animal)
   (derive ::Cat ::Feline)
   (derive ::Lion ::Feline)
-  (derive ::x ::Cat)
-  (derive ::x ::Lion)
+  (derive ::Cat-Lion ::Cat)
+  (derive ::Cat-Lion ::Lion)
   (testing "derivative"
     (is (= (derivative :empty-set ::Lion)
            :empty-set) "derivative empty-set w.r.t A")
@@ -332,16 +331,16 @@
     (is (contains? (:intersection (:derivative (try
                                                  (derivative ::Cat ::Lion)
                                                  (catch clojure.lang.ExceptionInfo e (ex-data e)))))
-                   ::x))
+                   ::Cat-Lion))
 
 
     ;; or
     (is (= (:type (:derivative (try
-                                 (derivative '(:cat (:or ::Fox ::Lion) ::x) ::Cat)
+                                 (derivative '(:cat (:or ::Fox ::Lion) ::Cat-Lion) ::Cat)
                                  (catch clojure.lang.ExceptionInfo e (ex-data e)))))
            ::Lion) "derivative->derivative->type")
     (is (= (:wrt (:derivative (try
-                                 (derivative '(:cat (:or ::Fox ::Lion) ::x) ::Cat)
+                                 (derivative '(:cat (:or ::Fox ::Lion) ::Cat-Lion) ::Cat)
                                  (catch clojure.lang.ExceptionInfo e (ex-data e)))))
            ::Cat) "derivative->derivative->wrt")
     
@@ -349,8 +348,8 @@
            :epsilon))
 
     ;; cat
-    (is (= (derivative '(:cat (:or ::Fox ::Lion) ::x) ::Fox)
-           ::x) "derivative cat with reduction")
+    (is (= (derivative '(:cat (:or ::Fox ::Lion) ::Cat-Lion) ::Fox)
+           ::Cat-Lion) "derivative cat with reduction")
 
     (is (= (derivative '(:cat ::Fox ::Fox ::Fox) ::Fox)
            '(:cat ::Fox ::Fox)))
@@ -371,14 +370,14 @@
   (derive ::Feline ::Animal)
   (derive ::Cat ::Feline)
   (derive ::Lion ::Feline)
-  (derive ::x ::Cat)
-  (derive ::x ::Lion)
+  (derive ::Cat-Lion ::Cat)
+  (derive ::Cat-Lion ::Lion)
   (testing "disjoint?"
     (is (not (disjoint? ::Fox ::Animal)))
     (is (not (disjoint? ::Cat ::Lion)))
     (is (disjoint? ::Wolf ::Fox))
     (is (= (set (type-intersection ::Cat ::Lion))
-           #{::x}))))
+           #{::Cat-Lion}))))
 
 (deftest t-remove-once
   (testing "remove-once"
@@ -445,8 +444,8 @@
   (derive ::Feline ::Animal)
   (derive ::Cat ::Feline)
   (derive ::Lion ::Feline)
-  (derive ::x ::Cat)
-  (derive ::x ::Lion)
+  (derive ::Cat-Lion ::Cat)
+  (derive ::Cat-Lion ::Lion)
 
   (testing "rte-to-dfa"
     (is (rte-to-dfa '(:cat :epsilon (:+ (:* :epsilon)) :sigma)) "dfa 1")
