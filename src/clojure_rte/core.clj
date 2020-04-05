@@ -47,12 +47,27 @@
 (declare traverse-pattern)
 (declare canonicalize-pattern)
 
-(def ^:dynamic *rte-hash* {})
+(def ^:dynamic *rte-hash* {'integer? '(:or Integer
+                                          Long
+                                          clojure.lang.BigInt
+                                          BigInteger
+                                          Short
+                                          Byte)
+                           'int? '(:or Long Integer Short Byte)
+                           })
+integer?
+(defn resolve-rte-tag [tag]
+  (cl-cond
+   ((*rte-hash* tag))
+   (:else
+    tag)))
+
 (def ^:dynamic *traversal-functions*
   {:client (fn [pattern functions]
              (traverse-pattern pattern functions))
-   :type (fn [pattern functions]
-           ((:client functions) pattern functions))
+   :type (fn [tag functions]
+           (println (format ":type tag=%s" tag))
+           ((:client functions) (resolve-rte-tag tag) functions))
    :* (fn [pattern functions]
         (cons :* ((:client functions) pattern functions)))
    :and (fn [patterns functions]
@@ -284,6 +299,11 @@
               (= a ())      1
               (= b ())     -1
 
+              (not (= (type a) (type b)))
+              (compare (.getName (type a))
+                       (.getName (type b)))
+
+              
               (and (seq? a)
                    (seq? b))
               (loop [a a
@@ -336,7 +356,8 @@
 (defn canonicalize-pattern-once [re]
   (traverse-pattern re
                     (assoc *traversal-functions*
-                           :type rte-identity
+                           :type (fn [tag functions]
+                                   (resolve-rte-tag tag))
                            :empty-set rte-identity
                            :epsilon rte-identity
                            :sigma rte-identity
@@ -618,9 +639,14 @@
       (let [[head & tail] items
             state-obj (dfa state)]
         (if-let [next-state (some (fn [[type next-state]]
-                                    (if (typep head type)
-                                      next-state
-                                      false))
+                                    (let [type (if (and (symbol? type)
+                                                        (resolve type)
+                                                        (class? (resolve type)))
+                                                 (resolve type)
+                                                 type)]
+                                      (if (typep head type)
+                                        next-state
+                                        false)))
                                   (:transitions state-obj))]
           (recur tail next-state)
           false)))))
@@ -676,13 +702,12 @@
     :else
     ()))
 
-
 (defn test-rte-to-dfa [num-tries size]
   (random-test num-tries rte-to-dfa
-               (fn [] (gen-rte size '(::Fox ::Wolf ::Cat ::Lion ::x)))
+               (fn [] (gen-rte size '(::Fox ::Wolf ::Cat ::Lion ::Cat-Lion)))
                rte-components))
 
 (defn test-canonicalize-pattern [num-tries size]
   (random-test num-tries canonicalize-pattern
-               (fn [] (gen-rte size '(::Fox ::Wolf ::Cat ::Lion ::x)))
+               (fn [] (gen-rte size '(::Fox ::Wolf ::Cat ::Lion ::Cat-Lion)))
                rte-components))
