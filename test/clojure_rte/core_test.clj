@@ -476,4 +476,16 @@
     (let [rte (rte-compile `(:* (:cat ~clojure.lang.Keyword ~java.lang.Long)))]
       (is (rte-execute rte '(:x 1 :y 2 :z 42)))
       (is (rte-execute rte '()))
-      (is (not (rte-execute rte '(x 1 y 2 z 42)))))))
+      (is (not (rte-execute rte '(x 1 y 2 z 42)))))
+    (let [rte (rte-compile '(:* (:cat clojure.lang.Keyword java.lang.Long)))]
+      (is (rte-execute rte '(:x 1 :y 2 :z 42)))
+      (is (rte-execute rte '()))
+      (is (not (rte-execute rte '(x 1 y 2 z 42)))))
+
+    (is (rte-match '(:cat (:* integer?) (:? String))
+                   '( 1 2 3 4 "hello")))
+    (is (not (rte-match '(:cat (:* integer?) (:? String))
+                        '( 1 2 3 4 "hello" "world"))))
+
+
+    ))
