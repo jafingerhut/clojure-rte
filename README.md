@@ -16,16 +16,25 @@ Download from git@gitlab.lrde.epita.fr:jnewton/clojure-rte.git
 
 ## Options
 
-`(:* ...)` --- matches 0 or more times
-`(:+ ...)` --- matches 1 or more times
-`(:? ...)` --- match 0 or 1 time
-`(:cat ...)` --- matches a sequence of patterns
-`(:and ...)` --- simulaneously matches all of the given patterns
-`(:or ...)` --- matches any of the given patterns
-`(:permute ...)` --- matches a sequence in any order
-`:empty-set` --- identity for `:or`
-`:epsilon` --- matching nothing once, identity for `:cat`
-`:sigma` --- matches anything once, identity for `:and`
+* `(:* ...)` --- matches 0 or more times
+
+* `(:+ ...)` --- matches 1 or more times
+
+* `(:? ...)` --- match 0 or 1 time
+
+* `(:cat ...)` --- matches a sequence of patterns
+
+* `(:and ...)` --- simulaneously matches all of the given patterns
+
+* `(:or ...)` --- matches any of the given patterns
+
+* `(:permute ...)` --- matches a sequence in any order
+
+* `:empty-set` --- identity for `:or`
+
+* `:epsilon` --- matching nothing once, identity for `:cat`
+
+* `:sigma` --- matches anything once, identity for `:and`
 
 
 ## Examples
