@@ -489,3 +489,9 @@
 
 
     ))
+
+(deftest t-syntax
+  (testing "syntax"
+    (is (thrown? (rte-compile (:* :epsilon :epsilon))))
+    (is (thrown? (rte-compile (:? :epsilon :epsilon))))
+    (is (thrown? (rte-compile (:+ :epsilon :epsilon))))))

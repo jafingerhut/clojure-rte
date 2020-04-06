@@ -30,7 +30,8 @@
 ;;    a hierarchical rte, i.e., an element of a sequence which itself
 ;;    is a sequence matching an rte, vs simply a variable whose value
 ;;    is substituted into an rte expression.
-
+;;
+;; *  (rte-compile (:* :epsilon :epsilon)) should be an error
 
 (ns clojure-rte.core
   (:require [clojure.set :refer [union intersection]]
