@@ -16,8 +16,33 @@ Download from git@gitlab.lrde.epita.fr:jnewton/clojure-rte.git
 RTE allows the clojure programmer to specify regular patterns of types
 in sequences.  The pattern language resembles that of regular
 expressions for strings, so the user very quickly has an intuition of
-how it works.  A regular type expression is a sequence of the
-following grammar.
+how it works.
+
+Whereas with string regular expressions, the leaf level thing you
+specify is a character such as `"a*b+"` which means a string of
+characters consisting of 0 or more `'a'` characters followed by 1 or
+more `'b'` characters; with regular type expressions you specify
+type-designators, and repetition information about those types.
+Rather than using post-fix notation we use lisp-friendly prefix
+notation.  `(:* String)` means a sequence of objects consisting of 0
+or more object of type `String`.  The concept of *followed-by* is made
+explicit by the `:cat` operator such as: `(:cat (:* Long) (:+
+String))` a sequence consisting of 0 or more object of type `Long`
+followed (in the same sequence) by one or more object of type String.
+
+Which kinds of type designators can be used?  You may use 
+
+- Any type name which is accepted by the `isa?` function.
+- Any name which is registered in `*rte-known*`.
+
+The dynamic variable `*rte-known*` is intended for applications to
+extend but comes equipped with several useful *meta-types*. For example,
+`integer?` means `(:or Integer
+                   Long
+                   clojure.lang.BigInt
+                   BigInteger
+                   Short
+                   Byte)`, and `int?` means `(:or Long Integer Short Byte)`.
 
 
 ## Options
