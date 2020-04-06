@@ -13,6 +13,13 @@ Download from git@gitlab.lrde.epita.fr:jnewton/clojure-rte.git
 
 ## Usage
 
+```mermaid
+graph TD;
+  A-->B;
+  A-->C;
+  B-->D;
+  C-->D;
+```
 
 ## Options
 
