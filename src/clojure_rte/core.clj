@@ -47,7 +47,7 @@
 (declare traverse-pattern)
 (declare canonicalize-pattern)
 
-(def ^:dynamic *rte-hash*
+(def ^:dynamic *rte-known*
   "Dynamic variable whose value is a map.
   The map associates symbols with rte expansions.
   Any tag in this table may be used in place of a type name
@@ -62,12 +62,12 @@
    })
 
 (defn resolve-rte-tag
-  "Look up a tag in *rte-hash*, or return the given tag
+  "Look up a tag in *rte-known*, or return the given tag
    if not found"
   [tag]
 
   (cl-cond
-   ((*rte-hash* tag))
+   ((*rte-known* tag))
    (:else
     tag)))
 
@@ -235,10 +235,10 @@
                 (:rte) (do (assert (= 1 (count operands))
                                    (format "invalid pattern %s" pattern))
                            (let [[name] operands]
-                             (assert (contains? *rte-hash* name)
+                             (assert (contains? *rte-known* name)
                                      (format "invalid rte name %s in pattern %s"
                                              name pattern))
-                             (traverse-pattern (*rte-hash* name) functions)))
+                             (traverse-pattern (*rte-known* name) functions)))
 
                 (:permute)
                 (cons :or (call-with-collector (fn [collect]
