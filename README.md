@@ -120,13 +120,6 @@ Download from git@gitlab.lrde.epita.fr:jnewton/clojure-rte.git
 ```
 
 
-* `:epsilon` --- matching nothing once, identity for `:cat`
-
-** Example 
-
-```clojure
-```
-
 
 * `:sigma` --- matches anything once, identity for `:and`
 
@@ -141,6 +134,9 @@ Download from git@gitlab.lrde.epita.fr:jnewton/clojure-rte.git
   (rex-execute rte [1 "hello" 2 3 "world" 4 1 "hello" 2 3 "world" 4]) ;; true
   )
 ```
+
+* `:epsilon` --- matching nothing once, identity for `:cat`.  This is probably not useful to the end user.  However, internally `(:? x)` expands to `(:or x :epsilon)`.
+
 
 
 
