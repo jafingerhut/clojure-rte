@@ -17,7 +17,8 @@ Download from git@gitlab.lrde.epita.fr:jnewton/clojure-rte.git
 ## Options
 
 * `(:cat ...)` --- matches a sequence of patterns
-** Example 
+
+Example 
 
 ```clojure
 (let [rte (rte-compile '(:cat integer? String))]
@@ -29,7 +30,8 @@ Download from git@gitlab.lrde.epita.fr:jnewton/clojure-rte.git
 ```
 
 * `(:+ ...)` --- matches 1 or more times
-** Example 
+
+Example 
 
 ```clojure
 (let [rte (rte-compile '(:+ integer?))]
@@ -41,7 +43,8 @@ Download from git@gitlab.lrde.epita.fr:jnewton/clojure-rte.git
 ```
 
 * `(:* ...)` --- matches 0 or more times
-** Example 
+
+Example 
 
 ```clojure
 (let [rte (rte-compile '(:* integer?))]
@@ -53,7 +56,8 @@ Download from git@gitlab.lrde.epita.fr:jnewton/clojure-rte.git
 ```
 
 * `(:? ...)` --- match 0 or 1 time
-** Example 
+
+Example 
 
 ```clojure
 (let [rte (rte-compile '(:? integer?))]
@@ -70,7 +74,8 @@ Download from git@gitlab.lrde.epita.fr:jnewton/clojure-rte.git
 ```
 
 * `(:and ...)` --- simulaneously matches all of the given patterns
-** Example ---  Keyword followed by 1 or two integers, repeated any number of times which is a multiple of 3 total items
+
+Example ---  Keyword followed by 1 or two integers, repeated any number of times which is a multiple of 3 total items
 
 ```clojure
 (let [rte (rte-compile '(:and (:* (:cat Keyword integer? (:? Integer)))
@@ -83,7 +88,8 @@ Download from git@gitlab.lrde.epita.fr:jnewton/clojure-rte.git
 
 
 * `(:or ...)` --- matches any of the given patterns
-** Example  ---   either 0 or more integers, or 1 or more strings
+
+Example  ---   either 0 or more integers, or 1 or more strings
 
 ```clojure
 (let [rte (rte-compile '(:or (:* integer?) (:+ String)))]
@@ -109,7 +115,8 @@ Download from git@gitlab.lrde.epita.fr:jnewton/clojure-rte.git
 
 
 * `:empty-set` --- identity for `:or`
-** Example 
+
+Example any number of integers or strings in any order.
 
 ```clojure
 (let [rte (rte-compile '(:* (:or integer? String)))]
@@ -123,7 +130,7 @@ Download from git@gitlab.lrde.epita.fr:jnewton/clojure-rte.git
 
 * `:sigma` --- matches anything once, identity for `:and`
 
-** Example -- any number of repetitions of integer anything String
+Example -- any number of repetitions of integer anything String
 
 ```clojure
 (let [rte (rte-compile '(:* (:cat integer? :sigma String)))]
