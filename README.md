@@ -13,17 +13,16 @@ Download from git@gitlab.lrde.epita.fr:jnewton/clojure-rte.git
 
 ## Usage
 
-```mermaid
-graph TD;
-  A-->B;
-  A-->C;
-  B-->D;
-  C-->D;
-```
+RTE allows the clojure programmer to specify regular patterns of types
+in sequences.  The pattern language resembles that of regular
+expressions for strings, so the user very quickly has an intuition of
+how it works.  A regular type expression is a sequence of the
+following grammar.
+
 
 ## Options
 
-* `(:cat ...)` --- matches a sequence of patterns
+* `(:cat ...)` --- Takes 0 or more operands.  Matches a sequence of patterns
 
 Example 
 
@@ -36,7 +35,7 @@ Example
   )
 ```
 
-* `(:+ ...)` --- matches 1 or more times
+* `(:+ ...)` --- Takes exactly one operands.  Matches 1 or more times
 
 Example 
 
@@ -49,7 +48,7 @@ Example
   )
 ```
 
-* `(:* ...)` --- matches 0 or more times
+* `(:* ...)` --- Takes exactly one operands.  Matches 0 or more times
 
 Example 
 
@@ -62,7 +61,7 @@ Example
   )
 ```
 
-* `(:? ...)` --- match 0 or 1 time
+* `(:? ...)` --- Takes exactly one operands. Matchs 0 or 1 time.
 
 Example 
 
@@ -80,7 +79,7 @@ Example
   )
 ```
 
-* `(:and ...)` --- simulaneously matches all of the given patterns
+* `(:and ...)` ---  Takes 0 or more operands.  Simulaneously matches all of the given patterns
 
 Example ---  Keyword followed by 1 or two integers, repeated any number of times which is a multiple of 3 total items
 
@@ -96,7 +95,7 @@ Example ---  Keyword followed by 1 or two integers, repeated any number of times
 
 * `(:or ...)` --- matches any of the given patterns
 
-Example  ---   either 0 or more integers, or 1 or more strings
+Example  ---  Takes 0 or more operands.  Either 0 or more integers, or 1 or more strings
 
 ```clojure
 (let [rte (rte-compile '(:or (:* integer?) (:+ String)))]
@@ -107,7 +106,7 @@ Example  ---   either 0 or more integers, or 1 or more strings
 ```
 
 
-* `(:permute ...)` --- matches a sequence in any order
+* `(:permute ...)` ---  Takes 0 or more operands.  Matches a sequence in any order.
 ** Example --- two integers and a string in any order
 
 ```clojure
