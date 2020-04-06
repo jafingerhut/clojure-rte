@@ -121,6 +121,7 @@ Download from git@gitlab.lrde.epita.fr:jnewton/clojure-rte.git
 
 
 * `:epsilon` --- matching nothing once, identity for `:cat`
+
 ** Example 
 
 ```clojure
@@ -128,6 +129,7 @@ Download from git@gitlab.lrde.epita.fr:jnewton/clojure-rte.git
 
 
 * `:sigma` --- matches anything once, identity for `:and`
+
 ** Example -- any number of repetitions of integer anything String
 
 ```clojure
