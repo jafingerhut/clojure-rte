@@ -16,25 +16,130 @@ Download from git@gitlab.lrde.epita.fr:jnewton/clojure-rte.git
 
 ## Options
 
-* `(:* ...)` --- matches 0 or more times
+* `(:cat ...)` --- matches a sequence of patterns
+** Example 
+
+```clojure
+(let [rte (rte-compile '(:cat integer? String))]
+  (rte-execute rte [1 "hello"]) ;; true
+  (rte-execute rte [1.0 "hello"]) ;; false
+  (rte-execute rte [1 2]) ;; false
+  (rte-execute rte [1 2 "hello"]) ;; false
+  )
+```
 
 * `(:+ ...)` --- matches 1 or more times
+** Example 
+
+```clojure
+(let [rte (rte-compile '(:+ integer?))]
+  (rte-execute rte [1 2 3 4 5]) ;; true
+  (rte-execute rte [1]) ;; true
+  (rte-execute rte []) ;; false
+  (rte-execute rte [1.0 2 3.0 4 5]) ;; false
+  )
+```
+
+* `(:* ...)` --- matches 0 or more times
+** Example 
+
+```clojure
+(let [rte (rte-compile '(:* integer?))]
+  (rte-execute rte [1 2 3 4 5]) ;; true
+  (rte-execute rte [1]) ;; true
+  (rte-execute rte []) ;; true
+  (rte-execute rte [1.0 2 3.0 4 5]) ;; false
+  )
+```
 
 * `(:? ...)` --- match 0 or 1 time
+** Example 
 
-* `(:cat ...)` --- matches a sequence of patterns
+```clojure
+(let [rte (rte-compile '(:? integer?))]
+  (rte-execute rte [1]) ;; true
+  (rte-execute rte []) ;; true
+  (rte-execute rte [1 2]) ;; false
+  )
+
+(let [rte (rte-compile '(:cat integer? (:? String)))]
+  (rte-execute rte [1 2 3 4 5]) ;; true
+  (rte-execute rte [1 2 3 4 5 "hello"]) ;; true
+  (rte-execute rte [1 2 3 4 5 "hello" "world"]) ;; false
+  )
+```
 
 * `(:and ...)` --- simulaneously matches all of the given patterns
+** Example ---  Keyword followed by 1 or two integers, repeated any number of times which is a multiple of 3 total items
+
+```clojure
+(let [rte (rte-compile '(:and (:* (:cat Keyword integer? (:? Integer)))
+                              (:+ (:sigma :sigma :sigma))))]
+  (rte-execute rte [:x 1 :x 2 :x 3]) ;; true
+  (rte-execute rte [:x 1 2 :y 2 3]) ;; true
+  (rte-execute rte [:x 1 :y 3]) ;; false
+  )
+```
+
 
 * `(:or ...)` --- matches any of the given patterns
+** Example  ---   either 0 or more integers, or 1 or more strings
+
+```clojure
+(let [rte (rte-compile '(:or (:* integer?) (:+ String)))]
+  (rex-execute rte []) ;; true, 0 integers
+  (rex-execute rte [1 2 3]) ;; true
+  (rex-execute rte ["hello" "world"]) ;; true one or more strings
+  )
+```
+
 
 * `(:permute ...)` --- matches a sequence in any order
+** Example --- two integers and a string in any order
+
+```clojure
+(let [rte (rte-compile '(:permute integer? integer? String))]
+  (rex-execute rte [1 2 "hello"]) ;; true
+  (rex-execute rte [1 "hello" 2]) ;; true
+  (rex-execute rte ["hello" 1 2]) ;; true
+  (rex-execute rte ["hello" 2]) ;; false
+  (rex-execute rte [1 2]) ;; false
+  )
+```
+
 
 * `:empty-set` --- identity for `:or`
+** Example 
+
+```clojure
+(let [rte (rte-compile '(:* (:or integer? String)))]
+  (rex-execute rte [1]) ;; true
+  (rex-execute rte [1 "hello"]) ;; true
+  (rex-execute rte ["hello" "world" 1 2 "hello" 3 "world"]) ;; true
+
+```
+
 
 * `:epsilon` --- matching nothing once, identity for `:cat`
+** Example 
+
+```clojure
+```
+
 
 * `:sigma` --- matches anything once, identity for `:and`
+** Example -- any number of repetitions of integer anything String
+
+```clojure
+(let [rte (rte-compile '(:* (:cat integer? :sigma String)))]
+  (rex-execute rte []) ;; true
+  (rex-execute rte [1]) ;; false
+  (rex-execute rte [1 2]) ;; false
+  (rex-execute rte [1 "hello" 2]) ;; true
+  (rex-execute rte [1 "hello" 2 3 "world" 4 1 "hello" 2 3 "world" 4]) ;; true
+  )
+```
+
 
 
 ## Examples
@@ -55,7 +160,7 @@ Download from git@gitlab.lrde.epita.fr:jnewton/clojure-rte.git
 
 ### Bugs
 
-The rte keyword `:not` is partially implemented, but know to be buggy.
+The rte keyword `:not` is partially implemented, but known to be buggy.
 The intention is something like the following.
 
 ```clojure
