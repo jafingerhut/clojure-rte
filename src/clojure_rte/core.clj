@@ -94,8 +94,16 @@
 
   (cl-cond   
    ((*rte-known* tag))
+   ((and (symbol? tag)
+         (resolve tag)
+         (class? (resolve tag)))
+    tag)
+   ((not (empty? (or (descendants tag)
+                     (ancestors tag)))) tag)
    (:else
-    tag)))
+    (println (format "warning unknown type %s" tag))
+    tag))
+)
 
 (def ^:dynamic *traversal-functions*
   "Default callbacks for walking an rte tree.
