@@ -56,17 +56,17 @@
                    Long
                    clojure.lang.BigInt
                    BigInteger
-                   Short
+                   Short    
                    Byte)
    'int? '(:or Long Integer Short Byte)
    })
-
+      
 (defn resolve-rte-tag
   "Look up a tag in *rte-known*, or return the given tag
    if not found"
   [tag]
 
-  (cl-cond
+  (cl-cond    
    ((*rte-known* tag))
    (:else
     tag)))
@@ -169,7 +169,7 @@
     (unary-client (fn [obj]
                     (var-set data (cons obj @data))))
     @data))
-
+    
 (defn visit-permutations 
   "Call the given unary-client function once on each permutation
    of the given sequence of items.  Warning, there are n! many
