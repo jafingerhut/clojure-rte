@@ -79,12 +79,12 @@
    evaluated at most once.
    Implementation from:
    https://stackoverflow.com/questions/4128993/consolidated-cond-arguments-in-clojure-cl-style"
-  [[if1 then1] & others]
+  [[if1 & then1] & others]
   
   (when (or if1 then1 others)
     (let [extra-clauses# (if others `(cl-cond ~@others))]
       (if then1
-        `(if ~if1 ~then1 ~extra-clauses#)
+        `(if ~if1 (do ~@then1) ~extra-clauses#)
         `(or ~if1 ~extra-clauses#)))))
 
 (defn resolve-rte-tag

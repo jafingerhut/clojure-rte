@@ -469,6 +469,10 @@
                   ((= a 1) 41)
                   (a)
                   (true -1))) "cond 3")
+
+      (is (= -2 (cl-cond
+                  ((= a 1) 41)
+                  (true -1 -2))) "cond 4")
       )))
 
 (deftest t-rte-match
