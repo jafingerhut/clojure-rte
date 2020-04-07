@@ -11,10 +11,11 @@ time complexity of matching a sequence, `rte-execute` against the
 pattern is `O(n)` where `n` is the length of the sequence.  I.e., the
 time to perform the match is not a function of the complexity of the
 pattern; it is only a function of the sequence length.  On the
-contrary, the time to compile the pattern may be exponential in worst
-case.  For this reason, the programmer is encouraged to arrange that
-expressions be compiled either once, and used many times, or if
-possible to compile the expressions at compile-time/load-time via:
+contrary, the time to compile the pattern depends on the complexity of
+the pattern, and may be exponential in worst case.  For this reason,
+the programmer is encouraged to arrange that expressions be compiled
+either once, and used many times, or if possible to compile the
+expressions at compile-time/load-time via:
 
 ```clojure
 (def *my-rte* (rte-compile ...))
@@ -38,10 +39,10 @@ more `'b'` characters; with regular type expressions you specify
 type-designators, and repetition information about those types.
 Rather than using post-fix notation we use lisp-friendly prefix
 notation.  `(:* String)` means a sequence of objects consisting of 0
-or more object of type `String`.  The concept of *followed-by* is made
+or more objects of type `String`.  The concept of *followed-by* is made
 explicit by the `:cat` operator such as: `(:cat (:* Long) (:+
-String))` a sequence consisting of 0 or more object of type `Long`
-followed (in the same sequence) by one or more object of type String.
+String))` a sequence consisting of 0 or more objects of type `Long`
+followed (in the same sequence) by one or more objects of type `String`.
 
 Which kinds of type designators can be used?  You may use 
 
@@ -49,7 +50,7 @@ Which kinds of type designators can be used?  You may use
 - Any name which is registered in `*rte-known*`.
 
 The dynamic variable `*rte-known*` is intended for applications to
-extend but comes equipped with several useful *meta-types*. For example,
+extend but comes equipped with several useful *quasi-types*. For example,
 `integer?` means `(:or Integer
                    Long
                    clojure.lang.BigInt
@@ -60,7 +61,7 @@ extend but comes equipped with several useful *meta-types*. For example,
 
 ## Options
 
-* `(:cat ...)` --- Takes 0 or more operands.  Matches a sequence of patterns
+* `(:cat ...)` --- Takes 0 or more operands.  Matches a sequence of patterns.
 
 Example 
 
@@ -73,7 +74,7 @@ Example
   )
 ```
 
-* `(:+ ...)` --- Takes exactly one operands.  Matches 1 or more times
+* `(:+ ...)` --- Takes exactly one operands.  Matches 1 or more times.
 
 Example 
 
@@ -86,7 +87,7 @@ Example
   )
 ```
 
-* `(:* ...)` --- Takes exactly one operands.  Matches 0 or more times
+* `(:* ...)` --- Takes exactly one operands.  Matches 0 or more times.
 
 Example 
 
@@ -117,9 +118,9 @@ Example
   )
 ```
 
-* `(:and ...)` ---  Takes 0 or more operands.  Simultaneously matches all of the given patterns
+* `(:and ...)` ---  Takes 0 or more operands.  Simultaneously matches all of the given patterns.
 
-Example ---  Keyword followed by 1 or two integers, repeated any number of times which is a multiple of 3 total items
+Example ---  Keyword followed by 1 or two integers, repeated any number of times which is a multiple of 3 total items.
 
 ```clojure
 (let [rte (rte-compile '(:and (:* (:cat Keyword integer? (:? Integer)))
@@ -131,9 +132,9 @@ Example ---  Keyword followed by 1 or two integers, repeated any number of times
 ```
 
 
-* `(:or ...)` --- matches any of the given patterns
+* `(:or ...)` --- matches any of the given patterns.
 
-Example  ---  Takes 0 or more operands.  Either 0 or more integers, or 1 or more strings
+Example  ---  Takes 0 or more operands.  Either 0 or more integers, or 1 or more strings.
 
 ```clojure
 (let [rte (rte-compile '(:or (:* integer?) (:+ String)))]
@@ -145,7 +146,8 @@ Example  ---  Takes 0 or more operands.  Either 0 or more integers, or 1 or more
 
 
 * `(:permute ...)` ---  Takes 0 or more operands.  Matches a sequence in any order.
-** Example --- two integers and a string in any order
+
+Example --- two integers and a string in any order.
 
 ```clojure
 (let [rte (rte-compile '(:permute integer? integer? String))]
@@ -158,7 +160,7 @@ Example  ---  Takes 0 or more operands.  Either 0 or more integers, or 1 or more
 ```
 
 
-* `:empty-set` --- identity for `:or`
+* `:empty-set` --- identity for `:or`.
 
 Example any number of integers or strings in any order.
 
@@ -172,9 +174,9 @@ Example any number of integers or strings in any order.
 
 
 
-* `:sigma` --- matches anything once, identity for `:and`
+* `:sigma` --- matches anything once, identity for `:and`.
 
-Example -- any number of repetitions of integer anything String
+Example -- any number of repetitions of integer anything String.
 
 ```clojure
 (let [rte (rte-compile '(:* (:cat integer? :sigma String)))]
