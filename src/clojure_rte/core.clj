@@ -61,12 +61,29 @@
    'int? '(:or Long Integer Short Byte)
    })
       
+(defmacro cl-cond
+  "Like CL:cond.  Each operand of the cl-cond is a list of length at least 1.
+   The same semantics as clojure cond, in that the return value is
+   determined by the first test which returns non-false.  The
+   important semantic difference is that an agument has 1, then the
+   specified form is both the test and the return value, and it is
+   evaluated at most once.
+   Implementation from:
+   https://stackoverflow.com/questions/4128993/consolidated-cond-arguments-in-clojure-cl-style"
+  [[if1 then1] & others]
+  
+  (when (or if1 then1 others)
+    (let [extra-clauses# (if others `(cl-cond ~@others))]
+      (if then1
+        `(if ~if1 ~then1 ~extra-clauses#)
+        `(or ~if1 ~extra-clauses#)))))
+
 (defn resolve-rte-tag
   "Look up a tag in *rte-known*, or return the given tag
    if not found"
   [tag]
 
-  (cl-cond    
+  (cl-cond   
    ((*rte-known* tag))
    (:else
     tag)))
@@ -455,23 +472,6 @@
 (defn member [target items]
   "Like cl:member.  Determines whether the given is an element of the given sequence."
   (some #{target} items))
-
-(defmacro cl-cond
-  "Like CL:cond.  Each operand of the cl-cond is a list of length at least 1.
-   The same semantics as clojure cond, in that the return value is
-   determined by the first test which returns non-false.  The
-   important semantic difference is that an agument has 1, then the
-   specified form is both the test and the return value, and it is
-   evaluated at most once.
-   Implementation from:
-   https://stackoverflow.com/questions/4128993/consolidated-cond-arguments-in-clojure-cl-style"
-  [[if1 then1] & others]
-  
-  (when (or if1 then1 others)
-    (let [extra-clauses# (if others `(cl-cond ~@others))]
-      (if then1
-        `(if ~if1 ~then1 ~extra-clauses#)
-        `(or ~if1 ~extra-clauses#)))))
 
 (defn type-min 
   "Find an element of the given sequence which is a subtype
