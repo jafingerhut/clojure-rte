@@ -59,6 +59,14 @@
                    Short    
                    Byte)
    'int? '(:or Long Integer Short Byte)
+   'rational? '(:or integer? ratio? decimal?)
+   'ratio? 'clojure.lang.Ratio
+   'string? 'String
+   'number? 'Number
+   'keyword? 'clojure.lang.Keyword
+   'symbol? 'clojure.lang.Symbol
+   'decimal? 'BigDecimal
+   'float? '(:or Double Float)
    })
       
 (defmacro cl-cond

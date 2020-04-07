@@ -492,6 +492,18 @@
 
 (deftest t-syntax
   (testing "syntax"
-    (is (thrown? (rte-compile (:* :epsilon :epsilon))))
-    (is (thrown? (rte-compile (:? :epsilon :epsilon))))
-    (is (thrown? (rte-compile (:+ :epsilon :epsilon))))))
+    (is (thrown? clojure.lang.ExceptionInfo (rte-compile '(:* :epsilon :epsilon))))
+    (is (thrown? clojure.lang.ExceptionInfo (rte-compile '(:? :epsilon :epsilon))))
+    (is (thrown? clojure.lang.ExceptionInfo (rte-compile '(:+ :epsilon :epsilon))))))
+
+(deftest t-types
+  (testing "types"
+    (is (rte-match '(:* int?) [ 1 2 3]))
+    (is (rte-match '(:* number?) [ 1 2.0 1/3]))
+    (is (rte-match '(:* symbol?)  '(a b c)))
+    (is (rte-match '(:* keyword?)  '(:a :b :c)))
+    (is (not (rte-match '(:* symbol?)  '(a :b c))))
+    (is (rte-match '(:* string?)  '("hello" "world")))
+    (is (rte-match '(:* rational?) [ 1 2 1/3]))
+    (is (rte-match '(:* float?) [ 1.0 2.0 3.0]))
+))
