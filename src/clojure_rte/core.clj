@@ -259,12 +259,11 @@
             (let [[token operand] pattern]
               (case token
                 (:rte)
-                (throw (ex-info (format "not yet implemented %s" pattern)
-                                {:type :rte-syntax-error
+                (throw (ex-info (format "not yet implemented: derivative of %s" pattern)
+                                {:type :rte-not-yet-implemented
                                  :keyword keyword
                                  :pattern pattern
                                  :functions functions
-                                 :cause :unary-keyword
                                  }))
                 
                 (:or :and :cat :permute)
