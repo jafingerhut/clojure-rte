@@ -492,6 +492,7 @@
 
 (deftest t-syntax
   (testing "syntax"
+    (is (thrown? clojure.lang.ExceptionInfo (rte-compile '(:rte :epsilon :epsilon))))
     (is (thrown? clojure.lang.ExceptionInfo (rte-compile '(:* :epsilon :epsilon))))
     (is (thrown? clojure.lang.ExceptionInfo (rte-compile '(:? :epsilon :epsilon))))
     (is (thrown? clojure.lang.ExceptionInfo (rte-compile '(:+ :epsilon :epsilon))))))
