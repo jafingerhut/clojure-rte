@@ -1,6 +1,6 @@
 # clojure-rte
 
-This package impements rational type expressions (RTEs) for the (Clojure)[clojure.org] programming language.
+This package impements rational type expressions (RTEs) for the [Clojure](clojure.org) programming language.
 The implementation is based on a similar package for Common Lisp.
 The theory of how RTEs work can be found here:
   Introduction:   https://www.lrde.epita.fr/wiki/Publications/newton.16.els
