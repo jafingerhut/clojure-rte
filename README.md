@@ -6,7 +6,11 @@ The theory of how RTEs work can be found here: [Type-Checking of Heterogeneous S
 
 An important aspect of this implementation is that a regular type
 expression pattern is represented internally (after compilation with
-`rte-compile`) as a symbolic finite automaton.  This means that the
+`rte-compile`) as a symbolic finite automaton.
+
+![Symbolic Finite Automaton](img/symbolic-finite-automaton.png "Atuomaton")
+
+  This means that the
 time complexity of matching a sequence, `rte-execute` against the
 pattern is `O(n)` where `n` is the length of the sequence.  I.e., the
 time to perform the match is not a function of the complexity of the
