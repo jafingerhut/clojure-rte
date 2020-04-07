@@ -10,8 +10,8 @@ expression pattern is represented internally (after compilation with
 
 <img src="img/symbolic-finite-automaton.png" alt="Symbolic Finite Automaton" width="300"/>
 
-  This means that the
-time complexity of matching a sequence, `rte-execute` against the
+This means that the
+time complexity of matching a sequence, `rte-execute`, against a
 pattern is `O(n)` where `n` is the length of the sequence.  I.e., the
 time to perform the match is not a function of the complexity of the
 pattern; it is only a function of the sequence length.  On the
