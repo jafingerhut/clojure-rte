@@ -8,7 +8,7 @@ An important aspect of this implementation is that a regular type
 expression pattern is represented internally (after compilation with
 `rte-compile`) as a symbolic finite automaton.
 
-![Symbolic Finite Automaton](img/symbolic-finite-automaton.png "Atuomaton")
+![Symbolic Finite Automaton](img/symbolic-finite-automaton.png =100x100 "Atuomaton")
 
   This means that the
 time complexity of matching a sequence, `rte-execute` against the
