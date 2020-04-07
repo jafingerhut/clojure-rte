@@ -229,17 +229,37 @@
                                         }))
                 ;; case-else
                 ((:type functions) pattern functions))))
-          (if-at-least-one-operand []
+          (if-exactly-one-operand []
+            (let [[token operand] pattern]
+              (case token
+                (:rte)
+                (throw (ex-info (format "not yet implemented %s" pattern)
+                                {:type :rte-syntax-error
+                                 :keyword keyword
+                                 :pattern pattern
+                                 :functions functions
+                                 :cause :unary-keyword
+                                 }))
+                
+                (:or :and :cat :permute)
+                (traverse-pattern operand functions)
+                
+                (:not :*)
+                ((functions token) operand functions)
+                
+                (:+)
+                (traverse-pattern `(:cat ~operand
+                                         (:* ~operand)) functions)
+                
+                (:?)
+                (traverse-pattern `(:or :epsilon
+                                        ~operand) functions)
+                
+                ;;case-else
+                ((:type functions) pattern functions))))
+          (if-multiple-operands []
             (let [[token & operands] pattern]
               (case token
-                (:rte) (do (assert (= 1 (count operands))
-                                   (format "invalid pattern %s" pattern))
-                           (let [[name] operands]
-                             (assert (contains? *rte-known* name)
-                                     (format "invalid rte name %s in pattern %s"
-                                             name pattern))
-                             (traverse-pattern (*rte-known* name) functions)))
-
                 (:permute)
                 (cons :or (call-with-collector (fn [collect]
                                                  (visit-permutations
@@ -249,26 +269,17 @@
                 (:or
                  :and
                  :cat)
-                (if (= 1 (count operands))
-                  (traverse-pattern (first operands) functions)
-                  ((functions token) operands functions))
+                ((functions token) operands functions)
 
-                (:not
-                 :*)
-                (do (assert (= 1 (count operands))
-                            (format "invalid pattern %s" pattern))
-                    ((functions token) (first operands) functions))
+                (:not :* :+ :? :rte)
+                (throw (ex-info (format "invalid pattern %s, expecting exactly one operand" pattern)
+                                {:type :rte-syntax-error
+                                 :keyword keyword
+                                 :pattern pattern
+                                 :functions functions
+                                 :cause :unary-keyword
+                                 }))
 
-                (:+)
-                (do (assert (= 1 (count operands))
-                            (format "invalid pattern %s" pattern))
-                    (traverse-pattern `(:cat ~(first operands) (:* ~(first operands))) functions))
-
-                (:?)
-                (do (assert (= 1 (count operands))
-                            (format "invalid pattern %s" pattern))
-                    (traverse-pattern `(:or :epsilon
-                                            ~(first operands)) functions))
                 ;;case-else
                 ((:type functions) pattern functions))))]
     (cond (not (seq? pattern))
@@ -277,11 +288,14 @@
           (empty? pattern)
           (if-nil)
 
-          (empty? (rest pattern)) ;; singleton list
+          (empty? (rest pattern)) ;; singleton list, (:and), (:or) etc
           (if-singleton-list)
 
-          ;; cond-else (:keyword args) or list-expr
-          :else (if-at-least-one-operand))))
+          (empty? (rest (rest pattern))) ;; (:and x) (:+ x)
+          (if-exactly-one-operand)
+
+          ;; cond-else (:keyword args) or list-expr ;; (:and x y) (:+ x y)
+          :else (if-multiple-operands))))
 
 (defn rte-constantly
   "Return a binary function, similar to constanty, but the binary
