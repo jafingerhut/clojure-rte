@@ -10,6 +10,8 @@ expression pattern is represented internally (after compilation with
 
 ![Symbolic Finite Automaton](img/symbolic-finite-automaton.png =100x100 "Atuomaton")
 
+<img src="img/symbolic-finite-automaton.png" alt="Automaton" width="100"/>
+
   This means that the
 time complexity of matching a sequence, `rte-execute` against the
 pattern is `O(n)` where `n` is the length of the sequence.  I.e., the
