@@ -67,6 +67,7 @@
    'symbol? 'clojure.lang.Symbol
    'decimal? 'BigDecimal
    'float? '(:or Double Float)
+   'seq? 'clojure.lang.ISeq
    })
       
 (defmacro cl-cond
