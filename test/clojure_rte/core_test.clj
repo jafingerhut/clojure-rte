@@ -138,7 +138,6 @@
     (is (thrown? clojure.lang.ExceptionInfo (canonicalize-pattern '(:+))))
     (is (thrown? clojure.lang.ExceptionInfo (canonicalize-pattern '(:rte))))
 
-
     ;; type
     (is (= ::Lion (canonicalize-pattern-once ::Lion)) "canonicalize :type")
 
@@ -477,7 +476,7 @@
 
 (deftest t-rte-match
   (testing "rte-match"
-    (let [rte (rte-compile `(:* (:cat ~clojure.lang.Keyword ~java.lang.Long)))]
+    (let [rte (rte-compile '(:* (:cat clojure.lang.Keyword java.lang.Long)))]
       (is (rte-execute rte '(:x 1 :y 2 :z 42)))
       (is (rte-execute rte '()))
       (is (not (rte-execute rte '(x 1 y 2 z 42)))))
