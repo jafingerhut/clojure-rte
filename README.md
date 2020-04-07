@@ -1,19 +1,32 @@
 # clojure-rte
 
-This package impements rational type expressions (RTEs) for the [Clojure](clojure.org) programming language.
-The implementation is based on a similar package for Common Lisp.
-The theory of how RTEs work can be found here:
-  Introduction:   https://www.lrde.epita.fr/wiki/Publications/newton.16.els
-  Phd Thesis:     https://www.lrde.epita.fr/wiki/Publications/newton.18.phd
+This package implements rational type expressions (RTEs) for the [Clojure](https://clojure.org) programming language.
+The implementation is based on a similar package for [Common Lisp](https://lisp-lang.org).
+The theory of how RTEs work can be found here: [Type-Checking of Heterogeneous Sequences in Common Lisp](https://www.lrde.epita.fr/wiki/Publications/newton.16.els) and [Representing and Computing with Types in Dynamically Typed Languages](https://www.lrde.epita.fr/wiki/Publications/newton.18.phd)
+
+An important aspect of this implementation is that a regular type
+expression pattern is represented internally (after compilation with
+`rte-compile`) as a symbolic finite automaton.  This means that the
+time complexity of matching a sequence, `rte-execute` against the
+pattern is `O(n)` where `n` is the length of the sequence.  I.e., the
+time to perform the match is not a function of the complexity of the
+pattern; it is only a function of the sequence length.  On the
+contrary, the time to compile the pattern may be exponential in worst
+case.  For this reason, the programmer is encouraged to arrange that
+expressions be compiled either once, and used many times, or if
+possible to compile the expressions at compile-time/load-time via:
+
+```clojure
+(def *my-rte* (rte-compile ...))
+```
 
 ## Installation
 
-Download from git@gitlab.lrde.epita.fr:jnewton/clojure-rte.git
-   or https://gitlab.lrde.epita.fr/jnewton/clojure-rte.git
+Download from [LRDE](https://www.lrde.epita.fr/wiki/Home) GitLab [git@gitlab](git@gitlab.lrde.epita.fr:jnewton/clojure-rte.git) or [https](https://gitlab.lrde.epita.fr/jnewton/clojure-rte.git).
 
 ## Usage
 
-RTE allows the clojure programmer to specify regular patterns of types
+RTE allows the Clojure programmer to specify regular patterns of types
 in sequences.  The pattern language resembles that of regular
 expressions for strings, so the user very quickly has an intuition of
 how it works.
@@ -86,7 +99,7 @@ Example
   )
 ```
 
-* `(:? ...)` --- Takes exactly one operands. Matchs 0 or 1 time.
+* `(:? ...)` --- Takes exactly one operands. Matches 0 or 1 time.
 
 Example 
 
@@ -104,7 +117,7 @@ Example
   )
 ```
 
-* `(:and ...)` ---  Takes 0 or more operands.  Simulaneously matches all of the given patterns
+* `(:and ...)` ---  Takes 0 or more operands.  Simultaneously matches all of the given patterns
 
 Example ---  Keyword followed by 1 or two integers, repeated any number of times which is a multiple of 3 total items
 
@@ -196,7 +209,7 @@ Example -- any number of repetitions of integer anything String
 
 ### Bugs
 
-The rte keyword `:not` is partially implemented, but known to be buggy.
+The keyword `:not` is partially implemented, but known to be buggy.
 The intention is something like the following.
 
 ```clojure
@@ -208,7 +221,9 @@ The intention is something like the following.
 
 This does not yet work.
 
+## Contributors
 
+[Jim Newton](https://www.lrde.epita.fr/wiki/User:Jnewton)
 
 ## License
 ```
@@ -233,3 +248,6 @@ This does not yet work.
 ;; OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
 ;; WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 ```
+
+<!--  LocalWords:  Clojure LRDE GitLab gitlab https
+ -->
