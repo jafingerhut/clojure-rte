@@ -752,6 +752,9 @@
                               :* (fn [operand functions]
                                    `(:cat ~(derivative operand wrt) (:* ~operand))))))))
 
+(defn derivatives-narrow [pattern wrt-type]
+  [[pattern wrt-type (derivative pattern wrt-type)]])
+
 (defn find-all-derivatives 
   "Start with the given rte pattern, and compute its derivative with
   respect to all the values returned by first-types.  Continue
@@ -771,18 +774,18 @@
             to-do-patterns (rest to-do-patterns)]
         (if (done pattern)
           (recur to-do-patterns done triples)
-          (let [[new-triples new-derivatives]
-                (reduce (fn [[acc-triples acc-derivs] wrt-type]
-                          (let [deriv (derivative pattern wrt-type)]
-                            [(conj acc-triples [pattern wrt-type deriv])
-                             (if (done deriv)
-                               acc-derivs
-                               (cons deriv acc-derivs))]
-                            ))
-                        [[] ()] (first-types pattern))]
-            (recur (concat new-derivatives to-do-patterns)
-                   (conj done pattern)
-                   (concat triples new-triples))))))))
+          (letfn [(xx [[acc-triples acc-derivs] wrt-type]
+                    (let [triples (derivatives-narrow pattern wrt-type)]
+                      ;; triples is a seq of triples each triple is of the form [pattern wrt-type deriv]
+                      [(concat acc-triples triples)
+                       (concat acc-derivs (remove done (map (fn [s] (s 3)) triples)))]
+                      )
+                    )]
+            (let [[new-triples new-derivatives]
+                  (reduce xx [[] ()] (first-types pattern))]
+              (recur (concat new-derivatives to-do-patterns)
+                     (conj done pattern)
+                     (concat triples new-triples)))))))))
 
 (defn rte-to-dfa 
   "Use the Brzozowski derivative aproach to compute a finite automaton
