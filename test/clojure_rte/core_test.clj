@@ -173,7 +173,8 @@
     (is (= :empty-set
            (canonicalize-pattern '(:cat ::Cat-Lion :empty-set)))
         "cat x epsilon")
-    
+    (is (= (canonicalize-pattern '(:cat ::Fox (:* :sigma) (:* :sigma) ::Cat))
+           '(:cat ::Fox (:* :sigma) ::Cat)) "cat sigma* sigma*")
 
     ;; :not
     (is (= :epsilon (canonicalize-pattern-once '(:not :sigma))) "not sigma")

@@ -536,24 +536,33 @@
                                   (let [operands (map canonicalize-pattern operands)]
                                     (assert (< 1 (count operands))
                                             (format "traverse-pattern should have already eliminated this case: re=%s count=%s operands=%s" re (count operands) operands))
-                                    (cond
+                                    (cl-cond
                                       ;; (:cat x (:cat a b) y) --> (:cat x a b y)
-                                      (some cat? operands)
+                                      ((some cat? operands)
                                       (cons :cat (mapcat (fn [obj]
                                                            (if (cat? obj)
                                                              (rest obj)
-                                                             (list obj))) operands))
+                                                             (list obj))) operands)))
 
                                       ;; (:cat x "empty-set" y) --> :emptyset
-                                      (member :empty-set operands)
-                                      :empty-set
+                                      ((member :empty-set operands)
+                                      :empty-set)
 
-                                      ;; (:cat x :epeilon y) --> (:cat x y)
-                                      (member :epsilon operands)
-                                      (cons :cat (remove #{:epsilon} operands))
+                                      ;; (:cat x :epsilon y) --> (:cat x y)
+                                      ((member :epsilon operands)
+                                      (cons :cat (remove #{:epsilon} operands)))
 
-                                      :else
-                                      (cons :cat operands))))
+                                      ;; (:cat x (:* :sigma) (:* :sigma) y) --> (:cat x y)
+                                      ((let [[head tail] (split-with (complement #{'(:* :sigma)}) operands)]
+                                         ;; tail the first tail starting with  (:* :sigma)
+                                         (if (and tail
+                                                  (rest tail)
+                                                  (= '(:* :sigma) (first (rest tail))))
+                                          (cons :cat (concat head '((:* :sigma)) (drop-while #{'(:* :sigma)} tail)))
+                                          false)))
+
+                                      (:else
+                                       (cons :cat operands)))))
                            :not (fn [operand functions]
                                   (let [operand (canonicalize-pattern operand)]
                                     (case operand
