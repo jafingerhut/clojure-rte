@@ -700,66 +700,62 @@
                    (derivative (canonicalize-pattern p) wrt))
                  patterns))]
     (canonicalize-pattern
-     (traverse-pattern expr
-                       (assoc *traversal-functions*
-                              :epsilon (rte-constantly :empty-set)
-                              :empty-set (rte-constantly :empty-set)     
-                              :sigma (fn [type functions]
-                                       (cond (= wrt :sigma)
-                                             :epsilon         
+     (if (= :epsilon wrt)
+       expr ;; diriv of anything with respect to :epsilon is that thing.
+       (traverse-pattern expr
+                         (assoc *traversal-functions*
+                                :epsilon (rte-constantly :empty-set)
+                                :empty-set (rte-constantly :empty-set)     
+                                :sigma (rte-constantly :epsilon)
+                                :type (fn [type functions]
+                                        (cond (seq? wrt)
+                                              (throw (ex-info (format "not yet implemented: derivative of %s wrt %s"
+                                                                      expr wrt)
+                                                              {:type :rte-not-yet-implemented
+                                                               :keyword keyword
+                                                               :pattern expr
+                                                               :wrt wrt
+                                                               :functions functions
+                                                               }))
+                                              
+                                              (disjoint? wrt type)
+                                              :empty-set
 
-                                             (= wrt :epsilon)    
-                                             :empty-set
-                                             
-                                             :else
-                                             (throw (ex-info (format "cannot compute derivative of :sigma wrt %s because they intersecting" wrt)
-                                                            {:type :derivative-error
-                                                             :derivative {:expr expr
-                                                                          :type type
-                                                                          :wrt wrt
-                                                                          :functions functions}
-                                                             :cause :intersecting-types
-                                                             }))))
-                              :type (fn [type functions]
-                                      (cond (= wrt type)
-                                            :epsilon
-
-                                            (disjoint? wrt type)
-                                            :empty-set
-
-                                            (isa? wrt type)
-                                            :epsilon
-                                            
-                                            :else
-                                            (throw (ex-info (format "cannot compute derivative of %s wrt %s because the types are intersecting at %s" type wrt (type-intersection type wrt))
-                                                            {:type :derivative-error
-                                                             :derivative {:expr expr
-                                                                          :type type
-                                                                          :wrt wrt
-                                                                          :functions functions
-                                                                          :intersection (type-intersection type wrt)}
-                                                             :cause :intersecting-types
-                                                             
-                                                             }))))
-                              :or (fn [operands functions]
-                                    (cons :or (walk operands)))
-                              :and (fn [operands functions]
-                                     (cons :and (walk operands)))
-                              :not (fn [operand functions]
-                                     (cons :not (walk (list operand))))
-                              :cat (fn [[head & tail] functions]
-                                     (letfn [(term1 []
-                                               `(:cat ~(derivative head wrt)
-                                                      ~@tail))
-                                             (term2 []
-                                               (derivative `(:cat ~@tail) wrt))]
-                                       (cond
-                                         (nullable head) ;; nu = :epsilon
-                                         `(:or ~(term1) ~(term2))
-                                         :else
-                                         (term1))))
-                              :* (fn [operand functions]
-                                   `(:cat ~(derivative operand wrt) (:* ~operand))))))))
+                                              (isa? wrt type)
+                                              :epsilon
+                                              
+                                              :else
+                                              (do
+                                                (println (format "splitting wrt=%s into smaller types %s and %s"
+                                                                 wrt
+                                                                 `(and ~wrt ~expr)
+                                                                 `(and ~wrt (not ~expr))
+                                                                 ))
+                                                (throw (ex-info "providing smaller types"
+                                                                {:type :split-type
+                                                                 :sub-types [{:type `(and ~wrt ~expr)}
+                                                                             {:type `(and ~wrt (not ~expr))}]
+                                                                 })))
+                                              ))
+                                :or (fn [operands functions]
+                                      (cons :or (walk operands)))
+                                :and (fn [operands functions]
+                                       (cons :and (walk operands)))
+                                :not (fn [operand functions]
+                                       (cons :not (walk (list operand))))
+                                :cat (fn [[head & tail] functions]
+                                       (letfn [(term1 []
+                                                 `(:cat ~(derivative head wrt)
+                                                        ~@tail))
+                                               (term2 []
+                                                 (derivative `(:cat ~@tail) wrt))]
+                                         (cond
+                                           (nullable head) ;; nu = :epsilon
+                                           `(:or ~(term1) ~(term2))
+                                           :else
+                                           (term1))))
+                                :* (fn [operand functions]
+                                     `(:cat ~(derivative operand wrt) (:* ~operand)))))))))
 
 (defn derivatives-narrow [pattern wrt-type]
   [[pattern wrt-type (derivative pattern wrt-type)]])
