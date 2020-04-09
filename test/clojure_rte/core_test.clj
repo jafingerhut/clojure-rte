@@ -142,8 +142,8 @@
     (is (= ::Lion (canonicalize-pattern-once ::Lion)) "canonicalize :type")
 
     ;; :*
-    (is (= (canonicalize-pattern-once '(:* (:* x)))
-           '(:* x)) "a** -> a*")
+    (is (= (canonicalize-pattern-once '(:* (:* ::Fox)))
+           '(:* ::Fox)) "a** -> a*")
     (is (= '(:* ::Lion) (canonicalize-pattern-once '(:* ::Lion))) "canonicalize :type *")
     (is (= :epsilon (canonicalize-pattern-once '(:* :epsilon))) ":epsilon* -> :epsilon")
     (is (= :epsilon (canonicalize-pattern-once '(:* :empty-set))) ":empty-set* -> :epsilon")
