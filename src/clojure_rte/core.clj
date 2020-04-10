@@ -933,7 +933,7 @@
         (if (done pattern)
           (recur to-do-patterns done triples)
           (letfn [(xx [[acc-triples acc-derivs] wrt-type]
-                    (let [triple (derivative pattern wrt-type)]
+                    (let [triple [pattern wrt-type (derivative pattern wrt-type)]]
                       [(conj acc-triples triple)
                        (if (done (triple 2))
                          acc-derivs
