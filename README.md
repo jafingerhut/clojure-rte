@@ -65,7 +65,8 @@ extend but comes equipped with several useful *quasi-types*. For example,
 
 ## Options
 
-RTE supports the following keywords `:cat`, `:and`, `:or`, `:not`, `:+`, `:*`, and `:?`.
+RTE supports the following keywords `:cat`, `:+`, `:*`, `:?`, `:and`, `:or`, `:permute`, 
+`:empty-set`, `:sigma`, `:epsilon`, and `:not`.
 
 
 * `(:cat ...)` --- Takes 0 or more operands.  Matches a sequence of patterns.
