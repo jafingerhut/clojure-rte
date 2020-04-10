@@ -871,10 +871,14 @@
 
              (:else
               (let [new-type (first items)]
-                (f (rest items) (cons new-type left) (remove (fn [t2] (disjoint? t2 new-type)) right))
-                (if (some (fn [t2] (disjoint? new-type t2)) left)
-                  (f (rest items) left right) ;;   Double & !Float, we can omit Float in right
-                  (f (rest items) left (cons new-type right)))))))]
+                (case new-type
+                  (nil)
+                  (:sigma)
+                  (do
+                    (f (rest items) (cons new-type left) (remove (fn [t2] (disjoint? t2 new-type)) right))
+                    (if (some (fn [t2] (disjoint? new-type t2)) left)
+                      (f (rest items) left right) ;;   Double & !Float, we can omit Float in right
+                      (f (rest items) left (cons new-type right)))))))))]
     (f items () ())))
 
 (defn mdtd [type-set]
