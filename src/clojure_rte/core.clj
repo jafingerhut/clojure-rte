@@ -31,6 +31,7 @@
 ;;    is a sequence matching an rte, vs simply a variable whose value
 ;;    is substituted into an rte expression.
 ;;
+;; * fully implement (satisfies)
 
 (ns clojure-rte.core
   (:require [clojure.set :refer [union intersection]]
@@ -749,8 +750,8 @@
   because the types are disjoint."
   [expr wrt]
 
-  (assert (not (seq? expr)))
-  (assert (seq? wrt))
+  (assert (not (seq? expr)) (cl-format false "not expecting sequence expr= ~A" expr))
+  (assert (seq? wrt) (cl-format false "expecting sequence, not ~A" wrt))
   (assert (= 'and (first wrt)))
   (cond
     (some #{`(~'not ~expr)} (rest wrt))
