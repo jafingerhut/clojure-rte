@@ -372,10 +372,8 @@
     (isa? (type a-value) (resolve a-type))
   
     (not (seq? a-type))
-    (throw (ex-info (format "(1) invalid type designator %s" a-type)
-                    {:type :invalid-type-designator
-                     :type-designator a-type
-                     }))
+    false
+
     :else
     (let [[name & others] a-type]
       (case name
@@ -791,7 +789,7 @@
                                 :epsilon (rte-constantly :empty-set)
                                 :empty-set (rte-constantly :empty-set)     
                                 :sigma (fn [type functions]
-                                         (println (format "type=%s wrt=%s" type wrt))
+                                         ;;(println (format "type=%s wrt=%s" type wrt))
                                          :epsilon)
                                 :type (fn [type functions]
                                         (cond (and (seq? wrt)
@@ -806,11 +804,11 @@
                                               
                                               :else
                                               (do
-                                                (println (format "splitting wrt=%s into smaller types %s and %s"
-                                                                 wrt
-                                                                 `(~'and ~wrt ~expr)
-                                                                 `(~'and ~wrt (not ~expr))
-                                                                 ))
+                                                ;; (println (format "splitting wrt=%s into smaller types %s and %s"
+                                                ;;                  wrt
+                                                ;;                  `(~'and ~wrt ~expr)
+                                                ;;                  `(~'and ~wrt (not ~expr))
+                                                ;;                  ))
                                                 (throw (ex-info "providing smaller types"
                                                                 {:type :split-type
                                                                  :sub-types [{:type `(~'and ~wrt ~expr)}
@@ -853,14 +851,16 @@
   [items binary-fun]
   
   (letfn [(f [items left right]
-            (println (format "remaining %s   left=%s  right=%s" (seq items) (seq left) (seq right)))
+            ;;(println (format "remaining %s   left=%s  right=%s" (seq items) (seq left) (seq right)))
             (cl-cond
              ((some #{:sigma} right)
-              (println (format "right pruning %s" right)))
+              ;;(println (format "right pruning %s" right))
+              )
              ((and left
                    (some (fn [t2]
                            (disjoint? t2 (first left))) (rest left)))
-              (println (format "left pruning %s" left)))
+              ;;(println (format "left pruning %s" left))
+              )
              ((empty? items)
               (let [[left right] (type-reduce left right)]
                 (binary-fun left right)))
@@ -879,7 +879,7 @@
 
 (defn mdtd [type-set]
   ;; find a disjoint type
-  (println (format "mdtd type-set = %s" type-set))
+  ;;(println (format "mdtd type-set = %s" type-set))
   (letfn [(independent? [t1]
             (every? (fn [t2]
                       (or (= t1 t2)
@@ -888,14 +888,14 @@
     (let [independent (filter independent? type-set)
           dependent (remove (set independent) type-set)]
 
-      (cl-format true "independent = ~A~%" (seq independent))
-      (cl-format true "dependent = ~A~%" dependent)
+      ;;(cl-format true "independent = ~A~%" (seq independent))
+      ;;(cl-format true "dependent = ~A~%" dependent)
       (concat independent (call-with-collector
                            (fn [collect]
                              (map-type-partitions
                               (seq dependent)
                               (fn [left right]
-                                (cl-format true "left=~A  right=~A~%" left right)
+                                ;;(cl-format true "left=~A  right=~A~%" left right)
                                 (cond
                                   (and (empty? right)
                                        (= 1 (count left)))
@@ -942,7 +942,7 @@
                     )]
             (let [disjoined (mdtd (conj (first-types pattern) :sigma))
                   [new-triples new-derivatives] (do
-                                                  (cl-format true "disjointed = ~A~%" disjoined)
+                                                  ;;(cl-format true "disjointed = ~A~%" disjoined)
                                                   (reduce xx [[] ()] disjoined))]
               (recur (concat new-derivatives to-do-patterns)
                      (conj done pattern)
