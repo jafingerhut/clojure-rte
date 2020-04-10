@@ -837,21 +837,6 @@
                                 :* (fn [operand functions]
                                      `(:cat ~(derivative operand wrt) (:* ~operand)))))))))
 
-(defn derivatives-narrow [pattern wrt-type]
-  (try (let [deriv (derivative pattern wrt-type)]
-         (println (format "computed deriv=%s" deriv))
-         [[pattern wrt-type deriv]])
-       (catch clojure.lang.ExceptionInfo e
-         (cl-cond
-          ((= :split-type (:type (ex-data e)))
-           (println (format "%s was split into %s" wrt-type (:sub-types (ex-data e))))
-           (mapcat (fn [wrt-sub] (derivatives-narrow pattern wrt-sub))
-                   (:sub-types (ex-data e))))
-          
-          (:else
-           (println (format "failed to catch %s" e))
-           (throw e))))))
-
 (defn type-reduce [left right]
   (loop [left left
          right right]
@@ -948,18 +933,17 @@
         (if (done pattern)
           (recur to-do-patterns done triples)
           (letfn [(xx [[acc-triples acc-derivs] wrt-type]
-                    (let [triples (derivatives-narrow pattern wrt-type)]
-                      ;; triples is a seq of triples each triple is of the form [pattern wrt-type deriv]
-                      [(concat acc-triples triples)
-                       (concat acc-derivs (remove done (map (fn [s] (s 2)) triples)))]
+                    (let [triple (derivative pattern wrt-type)]
+                      [(conj acc-triples triple)
+                       (if (done (triple 2))
+                         acc-derivs
+                         (conj acc-derivs (triple 2)))]
                       )
                     )]
             (let [disjoined (mdtd (conj (first-types pattern) :sigma))
                   [new-triples new-derivatives] (do
                                                   (cl-format true "disjointed = ~A~%" disjoined)
                                                   (reduce xx [[] ()] disjoined))]
-
-
               (recur (concat new-derivatives to-do-patterns)
                      (conj done pattern)
                      (concat triples new-triples)))))))))
