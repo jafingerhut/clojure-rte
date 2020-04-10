@@ -845,6 +845,30 @@
 
       :else [left right])))
 
+(defn remove-supertypes [types]
+  (let [supers (call-with-collector
+                 (fn [collect]
+                   (doseq [t1 types
+                           t2 types]
+                     (if (and (not (= t1 t2))
+                              (isa? t1 t2))
+                       (collect t2)))))]
+    (for [x types
+          :when (not (some #{x} supers))]
+      x)))
+
+(defn remove-subtypes [types]
+  (let [supers (call-with-collector
+                 (fn [collect]
+                   (doseq [t1 types
+                           t2 types]
+                     (if (and (not (= t1 t2))
+                              (isa? t2 t1))
+                       (collect t2)))))]
+    (for [x types
+          :when (not (some #{x} supers))]
+      x)))
+
 (defn map-type-partitions 
   "Iterate through all the ways to partition types between a right and left set.
   Some care is made to prune branches which are provably empty."
@@ -861,8 +885,22 @@
                            (disjoint? t2 (first left))) (rest left)))
               ;;(println (format "left pruning %s" left))
               )
+             ((and left right
+                   ;; exists t2 in right such that t1 < t2
+                   ;; then t1 & !t2 = nil
+                   (some (fn [t2] (isa? (first left) t2))  right))
+              ;; prune
+              )
+
+             ((and left right
+                   ;; exists t2 in right such that t1 < t2
+                   ;; then t1 & !t2 = nil
+                   (some (fn [t1] (isa? t1 (first right)))  left))
+              ;; prune
+              )
+
              ((empty? items)
-              (let [[left right] (type-reduce left right)]
+              (let [[left right] (type-reduce (remove-supertypes left) (remove-subtypes right))]
                 (binary-fun left right)))
              ;; TODO consider subsets A < B
              ;;    then A and ! B is empty
