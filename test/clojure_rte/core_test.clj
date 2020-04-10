@@ -275,13 +275,13 @@
     (is (= (derivative :sigma :sigma)
            :epsilon) "derivative sigma wrt sigma")
     (is (= (derivative :sigma :epsilon)
-           :empty-set) "derivative sigma wrt epsilon")
-    (is (thrown? clojure.lang.ExceptionInfo
-                 (derivative :sigma ::Lion)) "derivative sigma wrt A")
+           :sigma) "derivative sigma wrt epsilon")
+    ;; (is (thrown? clojure.lang.ExceptionInfo
+    ;;              (derivative :sigma ::Lion)) "derivative sigma wrt A")
 
     ;; :epsilon
     (is (= (derivative :epsilon :epsilon)
-           :empty-set))
+           :epsilon))
     (is (= (derivative :epsilon ::Lion)
            :empty-set))
     (is (= (derivative :epsilon :empty-set)
@@ -305,44 +305,44 @@
     (is (= (derivative ::Fox ::Wolf)
            :empty-set) "derivative disjoint types")
 
-    (is (thrown? clojure.lang.ExceptionInfo (derivative ::Cat ::Lion))
-        "derivative intersecting types")
+    ;; (is (thrown? clojure.lang.ExceptionInfo (derivative ::Cat ::Lion))
+    ;;     "derivative intersecting types")
 
-    (is (= (:type (try
-                    (derivative ::Cat ::Lion)
-                    (catch clojure.lang.ExceptionInfo e (ex-data e))))
-           :derivative-error))
-    (is (= (:cause (try
-                     (derivative ::Cat ::Lion)
-                     (catch clojure.lang.ExceptionInfo e (ex-data e))))
-           :intersecting-types))
-    (is (= (:expr (:derivative (try
-                                 (derivative ::Cat ::Lion)
-                                 (catch clojure.lang.ExceptionInfo e (ex-data e)))))
-           ::Cat))
-    (is (= (:wrt (:derivative (try
-                                (derivative ::Cat ::Lion)
-                                (catch clojure.lang.ExceptionInfo e (ex-data e)))))
-           ::Lion))
-    (is (= (:type (:derivative (try
-                                 (derivative ::Cat ::Lion)
-                                 (catch clojure.lang.ExceptionInfo e (ex-data e)))))
-           ::Cat))
-    (is (contains? (:intersection (:derivative (try
-                                                 (derivative ::Cat ::Lion)
-                                                 (catch clojure.lang.ExceptionInfo e (ex-data e)))))
-                   ::Cat-Lion))
+    ;; (is (= (:type (try
+    ;;                 (derivative ::Cat ::Lion)
+    ;;                 (catch clojure.lang.ExceptionInfo e (ex-data e))))
+    ;;        :derivative-error))
+    ;; (is (= (:cause (try
+    ;;                  (derivative ::Cat ::Lion)
+    ;;                  (catch clojure.lang.ExceptionInfo e (ex-data e))))
+    ;;        :intersecting-types))
+    ;; (is (= (:expr (:derivative (try
+    ;;                              (derivative ::Cat ::Lion)
+    ;;                              (catch clojure.lang.ExceptionInfo e (ex-data e)))))
+    ;;        ::Cat))
+    ;; (is (= (:wrt (:derivative (try
+    ;;                             (derivative ::Cat ::Lion)
+    ;;                             (catch clojure.lang.ExceptionInfo e (ex-data e)))))
+    ;;        ::Lion))
+    ;; (is (= (:type (:derivative (try
+    ;;                              (derivative ::Cat ::Lion)
+    ;;                              (catch clojure.lang.ExceptionInfo e (ex-data e)))))
+    ;;        ::Cat))
+    ;; (is (contains? (:intersection (:derivative (try
+    ;;                                              (derivative ::Cat ::Lion)
+    ;;                                              (catch clojure.lang.ExceptionInfo e (ex-data e)))))
+    ;;                ::Cat-Lion))
 
 
     ;; or
-    (is (= (:type (:derivative (try
-                                 (derivative '(:cat (:or ::Fox ::Lion) ::Cat-Lion) ::Cat)
-                                 (catch clojure.lang.ExceptionInfo e (ex-data e)))))
-           ::Lion) "derivative->derivative->type")
-    (is (= (:wrt (:derivative (try
-                                 (derivative '(:cat (:or ::Fox ::Lion) ::Cat-Lion) ::Cat)
-                                 (catch clojure.lang.ExceptionInfo e (ex-data e)))))
-           ::Cat) "derivative->derivative->wrt")
+    ;; (is (= (:type (:derivative (try
+    ;;                              (derivative '(:cat (:or ::Fox ::Lion) ::Cat-Lion) ::Cat)
+    ;;                              (catch clojure.lang.ExceptionInfo e (ex-data e)))))
+    ;;        ::Lion) "derivative->derivative->type")
+    ;; (is (= (:wrt (:derivative (try
+    ;;                              (derivative '(:cat (:or ::Fox ::Lion) ::Cat-Lion) ::Cat)
+    ;;                              (catch clojure.lang.ExceptionInfo e (ex-data e)))))
+    ;;        ::Cat) "derivative->derivative->wrt")
     
     (is (= (derivative '(:or ::Fox ::Lion) ::Fox)
            :epsilon))
@@ -449,8 +449,8 @@
 
   (testing "rte-to-dfa"
     (is (rte-to-dfa '(:cat :epsilon (:+ (:* :epsilon)) :sigma)) "dfa 1")
-    (is (thrown? clojure.lang.ExceptionInfo
-                 (rte-to-dfa '(:permute ::Wolf (:? (:+ :empty-set)) (:+ (:* (:and)))))) "dfa 2")
+    ;; (is (thrown? clojure.lang.ExceptionInfo
+    ;;              (rte-to-dfa '(:permute ::Wolf (:? (:+ :empty-set)) (:+ (:* (:and)))))) "dfa 2")
     ))
 
 
