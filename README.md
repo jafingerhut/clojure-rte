@@ -44,8 +44,8 @@ type-designators, and repetition information about those types.
 Rather than using post-fix notation we use lisp-friendly prefix
 notation.  `(:* String)` means a sequence of objects consisting of 0
 or more objects of type `String`.  The concept of *followed-by* is made
-explicit by the `:cat` operator such as: `(:cat (:* Long) (:+
-String))` a sequence consisting of 0 or more objects of type `Long`
+explicit by the `:cat` operator such as: `(:cat (:* Long) (:+String))`
+a sequence consisting of 0 or more objects of type `Long`
 followed (in the same sequence) by one or more objects of type `String`.
 
 Which kinds of type designators can be used?  You may use 
@@ -65,6 +65,9 @@ extend but comes equipped with several useful *quasi-types*. For example,
 
 ## Options
 
+RTE supports the following keywords `:cat`, `:and`, `:or`, `:not`, `:+`, `:*`, and `:?`.
+
+
 * `(:cat ...)` --- Takes 0 or more operands.  Matches a sequence of patterns.
 
 Example 
@@ -78,7 +81,7 @@ Example
   )
 ```
 
-* `(:+ ...)` --- Takes exactly one operands.  Matches 1 or more times.
+* `(:+ ...)` --- Takes exactly one operand.  Matches 1 or more times.
 
 Example 
 
@@ -91,7 +94,7 @@ Example
   )
 ```
 
-* `(:* ...)` --- Takes exactly one operands.  Matches 0 or more times.
+* `(:* ...)` --- Takes exactly one operand.  Matches 0 or more times.
 
 Example 
 
@@ -104,7 +107,7 @@ Example
   )
 ```
 
-* `(:? ...)` --- Takes exactly one operands. Matches 0 or 1 time.
+* `(:? ...)` --- Takes exactly one operand. Matches 0 or 1 time.
 
 Example 
 
@@ -192,9 +195,22 @@ Example -- any number of repetitions of integer anything String.
   )
 ```
 
-* `:epsilon` --- matching nothing once, identity for `:cat`.  This is probably not useful to the end user.  However, internally `(:? x)` expands to `(:or x :epsilon)`.
+* `:epsilon` --- matching nothing once, identity for `:cat`.  This is probably
+not useful to the end user.  However, internally `(:? x)` expands to `(:or x :epsilon)`.
 
+* `(:not ...)` --- Takes exactly one operand.  Matches any sequence
+except ones which match the pattern.  This can be confusing.
 
+Example -- `String` matches a singleton sequence whose element is a string.  So `(:not String)` matches any sequence except one of length 1 consisting of a string, including matching the empty sequence.
+
+```clojure
+(rte-match '(:not String] []) ;; true
+(rte-match '(:not String] ["hello"]) ;; false
+(rte-match '(:not String] ["hello" "world"]) ;; true
+```
+
+If you want to match a sequence like  `[:x 100 :y 200 :z 300]`  but not if any of the values after the keyword is a String, use the following.
+`(rte-match '(:* (:cat Keyword (:and :sigma (:not String)))) ...)`, because `(:and :sigma (:not String))` will match any singleton sequence whose element is NOT a string.
 
 
 ## Examples
@@ -214,9 +230,6 @@ Example -- any number of repetitions of integer anything String.
 
 
 ### Bugs
-
-The keyword `:not` is partially implemented, but known to be buggy.
-The intention is something like the following.
 
 ```clojure
 (rte-match '(:cat (:* (:cat clojure.lang.Keyword (:not java.lang.Long)))
@@ -255,5 +268,5 @@ This does not yet work.
 ;; WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 ```
 
-<!--  LocalWords:  Clojure LRDE GitLab gitlab https
+<!--  LocalWords:  Clojure LRDE GitLab gitlab https rte src img RTEs
  -->
