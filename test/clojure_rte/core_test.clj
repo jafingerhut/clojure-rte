@@ -130,6 +130,17 @@
   (derive ::Cat-Lion ::Cat)
   (derive ::Cat-Lion ::Lion)
 
+  (derive ::Fish ::Animal)
+  (derive ::Shark-a ::Fish)
+  (derive ::Shark-b ::Fish)
+  (derive ::Shark-c ::Fish)
+  (derive ::Shark-d ::Fish)
+  (derive ::Shark ::Shark-a)
+  (derive ::Shark ::Shark-b)
+  (derive ::Shark ::Shark-c)
+  (derive ::Shark ::Shark-d)
+
+
   (testing "canonicalize-pattern"
     ;; syntax errors
     (is (thrown? clojure.lang.ExceptionInfo (canonicalize-pattern '(:*))))
@@ -217,11 +228,9 @@
     (is (= '(:and ::Cat ::Lion)
            (canonicalize-pattern-once '(:and ::Cat ::Lion ::Cat ::Lion))) "and remove duplicate 2")
 
-    ;; this test no longer works, because canonicalize-pattern has become smarter
-    ;;;   and realizes that (:and ::Cat ::Fox) is empty-set
-    ;; (is (= '(:or (:and ::Cat ::Fox ::Lion)
-    ;;              (:and ::Cat ::Lion ::Wolf))
-    ;;        (canonicalize-pattern '(:and (:or ::Fox ::Wolf) ::Cat ::Lion))) "and-distribute")
+    (is (= '(:or (:and ::Shark-a ::Shark-b ::Shark-d)
+                 (:and ::Shark-b ::Shark-c ::Shark-d))
+    (canonicalize-pattern '(:and (:or ::Shark-a ::Shark-c) ::Shark-d ::Shark-b))) "and-distribute")
 
     (is (= :empty-set
            (canonicalize-pattern '(:and  ::Cat :empty-set ::Lion))) "and empty-set")
@@ -276,8 +285,8 @@
            :epsilon) "derivative sigma wrt sigma")
     (is (= (derivative :sigma :epsilon)
            :sigma) "derivative sigma wrt epsilon")
-    ;; (is (thrown? clojure.lang.ExceptionInfo
-    ;;              (derivative :sigma ::Lion)) "derivative sigma wrt A")
+    (is (= :epsilon
+           (derivative :sigma ::Lion)) "derivative sigma wrt A")
 
     ;; :epsilon
     (is (= (derivative :epsilon :epsilon)
@@ -305,44 +314,9 @@
     (is (= (derivative ::Fox ::Wolf)
            :empty-set) "derivative disjoint types")
 
-    ;; (is (thrown? clojure.lang.ExceptionInfo (derivative ::Cat ::Lion))
-    ;;     "derivative intersecting types")
-
-    ;; (is (= (:type (try
-    ;;                 (derivative ::Cat ::Lion)
-    ;;                 (catch clojure.lang.ExceptionInfo e (ex-data e))))
-    ;;        :derivative-error))
-    ;; (is (= (:cause (try
-    ;;                  (derivative ::Cat ::Lion)
-    ;;                  (catch clojure.lang.ExceptionInfo e (ex-data e))))
-    ;;        :intersecting-types))
-    ;; (is (= (:expr (:derivative (try
-    ;;                              (derivative ::Cat ::Lion)
-    ;;                              (catch clojure.lang.ExceptionInfo e (ex-data e)))))
-    ;;        ::Cat))
-    ;; (is (= (:wrt (:derivative (try
-    ;;                             (derivative ::Cat ::Lion)
-    ;;                             (catch clojure.lang.ExceptionInfo e (ex-data e)))))
-    ;;        ::Lion))
-    ;; (is (= (:type (:derivative (try
-    ;;                              (derivative ::Cat ::Lion)
-    ;;                              (catch clojure.lang.ExceptionInfo e (ex-data e)))))
-    ;;        ::Cat))
-    ;; (is (contains? (:intersection (:derivative (try
-    ;;                                              (derivative ::Cat ::Lion)
-    ;;                                              (catch clojure.lang.ExceptionInfo e (ex-data e)))))
-    ;;                ::Cat-Lion))
 
 
     ;; or
-    ;; (is (= (:type (:derivative (try
-    ;;                              (derivative '(:cat (:or ::Fox ::Lion) ::Cat-Lion) ::Cat)
-    ;;                              (catch clojure.lang.ExceptionInfo e (ex-data e)))))
-    ;;        ::Lion) "derivative->derivative->type")
-    ;; (is (= (:wrt (:derivative (try
-    ;;                              (derivative '(:cat (:or ::Fox ::Lion) ::Cat-Lion) ::Cat)
-    ;;                              (catch clojure.lang.ExceptionInfo e (ex-data e)))))
-    ;;        ::Cat) "derivative->derivative->wrt")
     
     (is (= (derivative '(:or ::Fox ::Lion) ::Fox)
            :epsilon))
