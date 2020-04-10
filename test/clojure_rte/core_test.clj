@@ -486,3 +486,26 @@
     (is (rte-match '(:* rational?) [ 1 2 1/3]))
     (is (rte-match '(:* float?) [ 1.0 2.0 3.0]))
 ))
+
+(deftest t-not
+  (testing "patterns with :not"
+    (is (rte-match '(:cat (:* (:cat clojure.lang.Keyword (:not java.lang.Long))))
+                   '(:x 1 :y 2 :z 42 "hello" 3)))
+    
+    (is (not (rte-match '(:cat clojure.lang.Keyword (:not java.lang.Long))
+                        '(:x 1))))
+    
+    (is (not (rte-match '(:* (:cat clojure.lang.Keyword (:and :sigma (:not java.lang.Long))))
+                        '(:x 1))))
+    (is (not (rte-match '(:* (:cat clojure.lang.Keyword (:and :sigma (:not java.lang.Long))))
+                        '(:x 1 :y 2))))
+    (is (not (rte-match '(:* (:cat clojure.lang.Keyword (:and :sigma (:not java.lang.Long))))
+                        '(:x 1 :y 2 :z 3))))
+    (is (rte-match '(:* (:cat clojure.lang.Keyword (:and :sigma (:not java.lang.Long))))
+                   '(:x "hello" :y "hello" :z "hello")))
+    
+    
+
+    ;; currently this test fails
+    (is (rte-match '(:not Number) ["Hello" "world"]))
+    ))
