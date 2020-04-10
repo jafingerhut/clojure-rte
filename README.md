@@ -230,17 +230,6 @@ If you want to match a sequence like  `[:x 100 :y 200 :z 300]`  but not if any o
 ```
 
 
-### Bugs
-
-```clojure
-(rte-match '(:cat (:* (:cat clojure.lang.Keyword (:not java.lang.Long)))
-                                  (:? String))
-           '(:x 1 :y 2 :z 42))
-;; --> false
-```
-
-This does not yet work.
-
 ## Contributors
 
 [Jim Newton](https://www.lrde.epita.fr/wiki/User:Jnewton)
