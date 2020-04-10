@@ -31,6 +31,7 @@
 ;;    is a sequence matching an rte, vs simply a variable whose value
 ;;    is substituted into an rte expression.
 ;;
+;; * fully implement (satisfies)
 
 (ns clojure-rte.core
   (:require [clojure.set :refer [union intersection]]
@@ -349,10 +350,48 @@
 
 (defn typep 
   "Like instance? except that the arguments are reversed, and the
-  given type need not be a class."
+  given type need not be a class.
+  This function also handles CL style type designators such as
+  (not A)
+  (and A B)
+  (or A B)
+  (satisfies A B)
+  (= obj)
+  (member a b c)"
   [a-value a-type]
+
+  (cond 
+    (= :sigma a-type)
+    true
+
+    (= :empty-set a-type)
+    false
+    
+    (and (symbol? a-type)
+         (resolve a-type)
+         (class? (resolve a-type)))
+    (isa? (type a-value) (resolve a-type))
   
-  (isa? (type a-value) a-type))
+    (not (seq? a-type))
+    false
+
+    :else
+    (let [[name & others] a-type]
+      (case name
+        (not) (not (apply typep a-value others))
+        (and) (every? (fn [t1]
+                        (typep a-value t1)) others)
+        (or) (some (fn [t1]
+                     (typep a-value t1)) others)
+        (satisfies) ((resolve (first others)) a-value)
+        (=) (= (first others) a-value)
+        (member) (some #{a-value} others)
+        (throw (ex-info (format "(2) invalid type designator %s, %s not in %s"
+                                a-type name '(not and or satisfies = member))
+
+                    {:type :invalid-type-designator
+                     :type-designator a-type
+                     }))))))
 
 (defn type-intersection 
   "Return the set of the subtypes of the two types, ie. the set of types
@@ -366,12 +405,26 @@
 (defn disjoint? 
   "Predicate to determine whether the two types overlap."
   [t1 t2]
-  (and (not (isa? t1 t2))
-       (not (isa? t2 t1))
-       (let [descendants-1 (descendants t1)
-             descendants-2 (descendants t2)]
-         (and (not-any? (fn [a2] (contains? descendants-1 a2)) descendants-2)
-              (not-any? (fn [a1] (contains? descendants-2 a1)) descendants-1)))))
+  (cond
+    (= :empty-set t1)
+    true
+
+    (= :empty-set t2)
+    true
+    
+    (= :sigma t1)
+    false
+
+    (= :sigma t2)
+    false
+
+    :else
+    (and (not (isa? t1 t2))
+         (not (isa? t2 t1))
+         (let [descendants-1 (descendants t1)
+               descendants-2 (descendants t2)]
+           (and (not-any? (fn [a2] (contains? descendants-1 a2)) descendants-2)
+                (not-any? (fn [a1] (contains? descendants-2 a1)) descendants-1))))))
 
 (defn nullable 
   "Determine whether the given rational type expression is nullable.
@@ -536,24 +589,33 @@
                                   (let [operands (map canonicalize-pattern operands)]
                                     (assert (< 1 (count operands))
                                             (format "traverse-pattern should have already eliminated this case: re=%s count=%s operands=%s" re (count operands) operands))
-                                    (cond
+                                    (cl-cond
                                       ;; (:cat x (:cat a b) y) --> (:cat x a b y)
-                                      (some cat? operands)
+                                      ((some cat? operands)
                                       (cons :cat (mapcat (fn [obj]
                                                            (if (cat? obj)
                                                              (rest obj)
-                                                             (list obj))) operands))
+                                                             (list obj))) operands)))
 
                                       ;; (:cat x "empty-set" y) --> :emptyset
-                                      (member :empty-set operands)
-                                      :empty-set
+                                      ((member :empty-set operands)
+                                      :empty-set)
 
-                                      ;; (:cat x :epeilon y) --> (:cat x y)
-                                      (member :epsilon operands)
-                                      (cons :cat (remove #{:epsilon} operands))
+                                      ;; (:cat x :epsilon y) --> (:cat x y)
+                                      ((member :epsilon operands)
+                                      (cons :cat (remove #{:epsilon} operands)))
 
-                                      :else
-                                      (cons :cat operands))))
+                                      ;; (:cat x (:* :sigma) (:* :sigma) y) --> (:cat x y)
+                                      ((let [[head tail] (split-with (complement #{'(:* :sigma)}) operands)]
+                                         ;; tail the first tail starting with  (:* :sigma)
+                                         (if (and tail
+                                                  (rest tail)
+                                                  (= '(:* :sigma) (first (rest tail))))
+                                          (cons :cat (concat head '((:* :sigma)) (drop-while #{'(:* :sigma)} tail)))
+                                          false)))
+
+                                      (:else
+                                       (cons :cat operands)))))
                            :not (fn [operand functions]
                                   (let [operand (canonicalize-pattern operand)]
                                     (case operand
@@ -682,6 +744,27 @@
       old-pattern
       (recur new-pattern (canonicalize-pattern-once new-pattern)))))
 
+(defn compute-compound-derivative
+  "wrt may be a compound type designator such as (and A (not B)).
+  So co compute the derivative of B wrt (and A (not B)) we get :empty-set
+  because the types are disjoint."
+  [expr wrt]
+
+  (assert (not (seq? expr)) (cl-format false "not expecting sequence expr= ~A" expr))
+  (assert (seq? wrt) (cl-format false "expecting sequence, not ~A" wrt))
+  (assert (= 'and (first wrt)))
+  (cond
+    (some #{`(~'not ~expr)} (rest wrt))
+    :empty-set
+
+    :else
+    (throw (ex-info (format "not yet implemented: derivative of %s wrt %s"
+                            expr wrt)
+                    {:type :rte-not-yet-implemented
+                     :pattern expr
+                     :wrt wrt
+                     }))))    
+
 (defn derivative 
   "Compute the Brzozowski rational expression derivative of the given
   rte pattern with respect to the given type wrt."
@@ -691,66 +774,188 @@
                    (derivative (canonicalize-pattern p) wrt))
                  patterns))]
     (canonicalize-pattern
-     (traverse-pattern expr
-                       (assoc *traversal-functions*
-                              :epsilon (rte-constantly :empty-set)
-                              :empty-set (rte-constantly :empty-set)     
-                              :sigma (fn [type functions]
-                                       (cond (= wrt :sigma)
-                                             :epsilon         
+     (cond
+       (= :empty-set expr)
+       :empty-set
+       
+       (= :epsilon wrt)
+       expr ;; deriv of anything with respect to :epsilon is that thing.
 
-                                             (= wrt :epsilon)    
-                                             :empty-set
-                                             
-                                             :else
-                                             (throw (ex-info (format "cannot compute derivative of :sigma wrt %s because they intersecting" wrt)
-                                                            {:type :derivative-error
-                                                             :derivative {:expr expr
-                                                                          :type type
-                                                                          :wrt wrt
-                                                                          :functions functions}
-                                                             :cause :intersecting-types
-                                                             }))))
-                              :type (fn [type functions]
-                                      (cond (= wrt type)
-                                            :epsilon
+       (= wrt expr)
+       :epsilon
 
-                                            (disjoint? wrt type)
-                                            :empty-set
+       :else
+       (traverse-pattern expr
+                         (assoc *traversal-functions*
+                                :epsilon (rte-constantly :empty-set)
+                                :empty-set (rte-constantly :empty-set)     
+                                :sigma (fn [type functions]
+                                         ;;(println (format "type=%s wrt=%s" type wrt))
+                                         :epsilon)
+                                :type (fn [type functions]
+                                        (cond (and (seq? wrt)
+                                                   (= 'and (first wrt)))
+                                              (compute-compound-derivative expr wrt)
+                                              
+                                              (disjoint? wrt type)
+                                              :empty-set
 
-                                            (isa? wrt type)
-                                            :epsilon
-                                            
-                                            :else
-                                            (throw (ex-info (format "cannot compute derivative of %s wrt %s because the types are intersecting at %s" type wrt (type-intersection type wrt))
-                                                            {:type :derivative-error
-                                                             :derivative {:expr expr
-                                                                          :type type
-                                                                          :wrt wrt
-                                                                          :functions functions
-                                                                          :intersection (type-intersection type wrt)}
-                                                             :cause :intersecting-types
-                                                             
-                                                             }))))
-                              :or (fn [operands functions]
-                                    (cons :or (walk operands)))
-                              :and (fn [operands functions]
-                                     (cons :and (walk operands)))
-                              :not (fn [operand functions]
-                                     (cons :not (walk (list operand))))
-                              :cat (fn [[head & tail] functions]
-                                     (letfn [(term1 []
-                                               `(:cat ~(derivative head wrt)
-                                                      ~@tail))
-                                             (term2 []
-                                               (derivative `(:cat ~@tail) wrt))]
-                                       (cond
-                                         (nullable head) ;; nu = :epsilon
-                                         `(:or ~(term1) ~(term2))
-                                         :else
-                                         (term1))))
-                              :* (fn [operand functions]
-                                   `(:cat ~(derivative operand wrt) (:* ~operand))))))))
+                                              (isa? wrt type)
+                                              :epsilon
+                                              
+                                              :else
+                                              (do
+                                                ;; (println (format "splitting wrt=%s into smaller types %s and %s"
+                                                ;;                  wrt
+                                                ;;                  `(~'and ~wrt ~expr)
+                                                ;;                  `(~'and ~wrt (not ~expr))
+                                                ;;                  ))
+                                                (throw (ex-info "providing smaller types"
+                                                                {:type :split-type
+                                                                 :sub-types [{:type `(~'and ~wrt ~expr)}
+                                                                             {:type `(~'and ~wrt (~'not ~expr))}]
+                                                                 })))
+                                              ))
+                                :or (fn [operands functions]
+                                      (cons :or (walk operands)))
+                                :and (fn [operands functions]
+                                       (cons :and (walk operands)))
+                                :not (fn [operand functions]
+                                       (cons :not (walk (list operand))))
+                                :cat (fn [[head & tail] functions]
+                                       (letfn [(term1 []
+                                                 `(:cat ~(derivative head wrt)
+                                                        ~@tail))
+                                               (term2 []
+                                                 (derivative `(:cat ~@tail) wrt))]
+                                         (cond
+                                           (nullable head) ;; nu = :epsilon
+                                           `(:or ~(term1) ~(term2))
+                                           :else
+                                           (term1))))
+                                :* (fn [operand functions]
+                                     `(:cat ~(derivative operand wrt) (:* ~operand)))))))))
+
+(defn type-reduce [left right]
+  (loop [left left
+         right right]
+    (cond
+      (and (< 1 (count left))
+           (some #{:sigma} left))
+      (recur (remove #{:sigma} left) right)
+
+      :else [left right])))
+
+(defn remove-supertypes [types]
+  (let [supers (call-with-collector
+                 (fn [collect]
+                   (doseq [t1 types
+                           t2 types]
+                     (if (and (not (= t1 t2))
+                              (isa? t1 t2))
+                       (collect t2)))))]
+    (for [x types
+          :when (not (some #{x} supers))]
+      x)))
+
+(defn remove-subtypes [types]
+  (let [supers (call-with-collector
+                 (fn [collect]
+                   (doseq [t1 types
+                           t2 types]
+                     (if (and (not (= t1 t2))
+                              (isa? t2 t1))
+                       (collect t2)))))]
+    (for [x types
+          :when (not (some #{x} supers))]
+      x)))
+
+(defn map-type-partitions 
+  "Iterate through all the ways to partition types between a right and left set.
+  Some care is made to prune branches which are provably empty."
+  [items binary-fun]
+  
+  (letfn [(f [items left right]
+            ;;(println (format "remaining %s   left=%s  right=%s" (seq items) (seq left) (seq right)))
+            (cl-cond
+             ((some #{:sigma} right)
+              ;;(println (format "right pruning %s" right))
+              )
+             ((and left
+                   (some (fn [t2]
+                           (disjoint? t2 (first left))) (rest left)))
+              ;;(println (format "left pruning %s" left))
+              )
+             ((and left right
+                   ;; exists t2 in right such that t1 < t2
+                   ;; then t1 & !t2 = nil
+                   (some (fn [t2] (isa? (first left) t2))  right))
+              ;; prune
+              )
+
+             ((and left right
+                   ;; exists t2 in right such that t1 < t2
+                   ;; then t1 & !t2 = nil
+                   (some (fn [t1] (isa? t1 (first right)))  left))
+              ;; prune
+              )
+
+             ((empty? items)
+              (let [[left right] (type-reduce (remove-supertypes left) (remove-subtypes right))]
+                (binary-fun left right)))
+             ;; TODO consider subsets A < B
+             ;;    then A and ! B is empty
+             ;;    A & B is A
+             ;;    !A and !B is !B
+
+             (:else
+              (let [new-type (first items)]
+                (case new-type
+                  (nil)
+                  (:sigma)
+                  (do
+                    (f (rest items) (cons new-type left) (remove (fn [t2] (disjoint? t2 new-type)) right))
+                    (if (some (fn [t2] (disjoint? new-type t2)) left)
+                      (f (rest items) left right) ;;   Double & !Float, we can omit Float in right
+                      (f (rest items) left (cons new-type right)))))))))]
+    (f items () ())))
+
+(defn mdtd [type-set]
+  ;; find a disjoint type
+  ;;(println (format "mdtd type-set = %s" type-set))
+  (letfn [(independent? [t1]
+            (every? (fn [t2]
+                      (or (= t1 t2)
+                          (disjoint? t1 t2))) type-set))]
+
+    (let [independent (filter independent? type-set)
+          dependent (remove (set independent) type-set)]
+
+      ;;(cl-format true "independent = ~A~%" (seq independent))
+      ;;(cl-format true "dependent = ~A~%" dependent)
+      (concat independent (call-with-collector
+                           (fn [collect]
+                             (map-type-partitions
+                              (seq dependent)
+                              (fn [left right]
+                                ;;(cl-format true "left=~A  right=~A~%" left right)
+                                (cond
+                                  (and (empty? right)
+                                       (= 1 (count left)))
+                                  (collect (first left))
+
+                                  (and (empty? left)
+                                       (= 1 (count right)))
+                                  (collect (list 'not (first right)))
+
+                                  (and (empty? right)
+                                       (empty? left))
+                                  :sigma
+
+                                  :else
+                                  (let [right (map (fn [x]
+                                                     (list 'not x)) right)]
+                                    (collect `(~'and ~@left ~@right))))))))))))
 
 (defn find-all-derivatives 
   "Start with the given rte pattern, and compute its derivative with
@@ -767,22 +972,24 @@
          ]
     (if (empty? to-do-patterns)
       [ triples (seq done)]
-      (let [pattern (first to-do-patterns)
-            to-do-patterns (rest to-do-patterns)]
+      (let [[pattern & to-do-patterns] to-do-patterns]
         (if (done pattern)
           (recur to-do-patterns done triples)
-          (let [[new-triples new-derivatives]
-                (reduce (fn [[acc-triples acc-derivs] wrt-type]
-                          (let [deriv (derivative pattern wrt-type)]
-                            [(conj acc-triples [pattern wrt-type deriv])
-                             (if (done deriv)
-                               acc-derivs
-                               (cons deriv acc-derivs))]
-                            ))
-                        [[] ()] (first-types pattern))]
-            (recur (concat new-derivatives to-do-patterns)
-                   (conj done pattern)
-                   (concat triples new-triples))))))))
+          (letfn [(xx [[acc-triples acc-derivs] wrt-type]
+                    (let [triple [pattern wrt-type (derivative pattern wrt-type)]]
+                      [(conj acc-triples triple)
+                       (if (done (triple 2))
+                         acc-derivs
+                         (conj acc-derivs (triple 2)))]
+                      )
+                    )]
+            (let [disjoined (mdtd (conj (first-types pattern) :sigma))
+                  [new-triples new-derivatives] (do
+                                                  ;;(cl-format true "disjointed = ~A~%" disjoined)
+                                                  (reduce xx [[] ()] disjoined))]
+              (recur (concat new-derivatives to-do-patterns)
+                     (conj done pattern)
+                     (concat triples new-triples)))))))))
 
 (defn rte-to-dfa 
   "Use the Brzozowski derivative aproach to compute a finite automaton
@@ -837,14 +1044,9 @@
       (let [[head & tail] items
             state-obj (dfa state)]
         (if-let [next-state (some (fn [[type next-state]]
-                                    (let [type (if (and (symbol? type)
-                                                        (resolve type)
-                                                        (class? (resolve type)))
-                                                 (resolve type)
-                                                 type)]
-                                      (if (typep head type)
-                                        next-state
-                                        false)))
+                                    (if (typep head type)
+                                      next-state
+                                      false))
                                   (:transitions state-obj))]
           (recur tail next-state)
           false)))))
