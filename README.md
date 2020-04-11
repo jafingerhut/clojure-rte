@@ -284,6 +284,19 @@ For example to find a sequence which contains 1 or more `integer?` but does not 
 ==> [Byte]
 ```
 
+Another example.  `(:* (:cat keyword? :sigma))` matches a sequence of alternating `Keyword` anything pairs such as `[:x 100 :y "hello"]`. `(:cat (:* :sigma) keyword? (:* :sigma))` matches any sequence which contains at least one `Keyword` somewhere.   So does there exist a sequence which matches the first but not the secone?
+
+```clojure
+(let [pattern1' (:* (:cat keyword? :sigma))
+      pattern2 '(:cat (:* :sigma) keyword? (:* :sigma))]
+  (rte-trace (rte-compile `(:and ~pattern1 ~pattern2))))
+
+==> []
+```
+
+We see that indeed the empty sequence matches `pattern1` but does not match `pattern2`.
+
+
 ## Not yet implemented
 
 There are several important extensions we would like to implement.
