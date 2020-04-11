@@ -249,6 +249,41 @@ If you want to match a sequence like  `[:x 100 :y 200 :z 300]`  but not if any o
 )
 ```
 
+## Algebra of RTEs
+
+Given two RTEs it is possible to ask questions of habitation and
+vacuity.  For example, given two patterns, one might ask, is there a
+sequence which matches neither of the patterns?  Or to ask whether
+every sequence which matches one also matches the other.
+
+* `rte-trace` takes a compiled RTE, return value of `rte-compile` and
+  returns a sequence of type designators indicating the values of a
+  sequence which will satisfy the original pattern.
+
+```clojure
+(rte-trace (rte-compile '(:and (:cat :sigma :sigma)
+                               (:* integer?))))
+
+==> [Byte Byte]
+
+(rte-trace (rte-compile '(:and (:cat :sigma :sigma)
+                               (:* (:and :sigma (:not Byte)))
+                               (:* integer?))))
+
+==> [Long Long]
+```
+
+* If you have two patterns, and you'd like to know what sequence matches one but not the other.
+For example to find a sequence which contains 1 or more `integer?` but does not contain 0 or more `Number`.
+
+```clojure
+(let [pattern1 '(:+ integer?)
+      pattern2 '(:* Number)]
+  (rte-trace (rte-compile `(:and ~pattern1 (:not ~pattern2)))))
+
+==> [Byte]
+```
+
 ## Not yet implemented
 
 There are several important extensions we would like to implement.

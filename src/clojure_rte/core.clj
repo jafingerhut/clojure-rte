@@ -1034,6 +1034,20 @@
                                          [wrt dst]) (grouped index))})
                   derivatives (range (count derivatives))))))
 
+(defn rte-trace
+  "Given a compiled rte, find a sequence of types which satisfy the corresponding pattern."
+  [rte]
+  (letfn [(f [state path lineage]
+            (cond
+              (:accepting (rte state)) path
+              (some #{state} lineage) false
+              :else (some (fn [[type dst-state]]
+                            (f dst-state (conj path type) (conj lineage state)))
+                          (:transitions (rte state))))
+            )]
+    (f 0 [] ())))
+
+
 (defn rte-compile 
   "Compile an rte pattern into a finite automaton."
   [pattern]
