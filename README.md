@@ -241,7 +241,7 @@ If you want to match a sequence like  `[:x 100 :y 200 :z 300]`  but not if any o
 
 There are several important extensions we would like to implement.
 
-* The `:rte` keyword such as `(:rte (:* Integer))` which means a singleton sequence whose element is a sequence of integers.  This keyword is used to disignate hierarchical structure.  `(:* (:rte (:* Integer)))` means a sequence of 0 or more sequences whose elements are integers. `(:* (:or (:rte (:* String)) (:rte (:* Integer))))` is a seqence of sequences each of which contains only strings or only Integers, e.g., 
+* The `:rte` keyword such as `(:rte (:* Integer))` which means a singleton sequence whose element is a sequence of integers.  This keyword is used to designate hierarchical structure.  `(:* (:rte (:* Integer)))` means a sequence of 0 or more sequences whose elements are integers. `(:* (:or (:rte (:* String)) (:rte (:* Integer))))` is a sequence of sequences each of which contains only strings or only Integers, e.g., 
 ```clojure
 [[1 2 3]
  ["hello" "world"]
@@ -263,12 +263,19 @@ but not
   
   A *type designator* is defined by the following recursive definition.  If `A` and `B` are type designators and `f` is a symbol whose global value `(resolve 'f)` is a unary predicate function,
   then
-  ** Any symbol designates a type, provided it can be resolved with the function `resolve`, and the resulting value is true according to the `class?` predicate.  I.e., if the prediate `(fn [x] (and (symbol? x) (resolve x) (class? (resolve x))))` is returns true.
+
+  ** Any symbol designates a type, provided it can be resolved with the function `resolve`, and the resulting value is true according to the `class?` predicate.  I.e., if the predicate `(fn [x] (and (symbol? x) (resolve x) (class? (resolve x))))` is returns true.
+
   ** `(and A B)` is a type designator, designating the set of values which are simultaneously of type `A` and `B`. `(and ...)` may have arbitrarily many operands. `(and A)` means `A`, and `(and)` means the empty set of all possible.
+
   ** `(or A B)` is a type designator, designating the set of values which are of type `A` or of type `B`, or perhaps of both. `(or ...)` may have arbitrarily many operands.  `(or A)` means `A`, and `(or)` means the empty set of values.
+
   ** `(not A)` is a type designating, designating the set of values which are *not* of type `A`.
+
   ** `(satisfies f)` is a type designator, designating the set of values, `x` for which `(f x)` returns Boolean *true*.  It is assumed that `f` may be called with any value, always returns, and has no side effects.
+
   ** `(= x)`  is a type designator, designating the set of all values which are equal `=` to its literal operand.  For example `(= 42)` is the set of all values equal to 42, which include among others the `java.lang.Long 42`, the `java.lang.Short 42`, and the  `java.lang.Byte 42`.
+
   ** `(member x y z ...)` is a type designator equivalent to `(or (= x) (= y) (= z) ...)`.
   
 ## Contributors
@@ -300,4 +307,6 @@ but not
 ```
 
 <!--  LocalWords:  Clojure LRDE GitLab gitlab https rte src img RTEs
+ -->
+<!--  LocalWords:  DSL
  -->
