@@ -73,7 +73,7 @@ extend but comes equipped with several useful *quasi-types*. For example,
 
 ## Options
 
-RTE supports the following keywords `:cat`, `:+`, `:*`, `:?`, `:and`, `:or`, `:permute`, 
+RTE supports the following keywords `:cat`, `:+`, `:*`, `:?`, `:exp`, `:and`, `:or`, `:permute`, 
 `:empty-set`, `:sigma`, `:epsilon`, and `:not`.
 
 
@@ -134,12 +134,24 @@ Example
   )
 ```
 
+* `(:exp (n ...))` --- This has a syntax different than the rest.  `:exp` takes exactly one argument which is a parenthesized pair, indicating the number of repititons, and a pattern.
+
+Example --- to match a sequence 0 to 5 Integers,
+
+```clojure
+(let [rte (rte-compile '(:exp (5 (:? integer?))))]
+   (rte-execute rte []) ;; true
+   (rte-execute rte [1 2 3]) ;; true
+   (rte-execute rte [1 2 3 3 4 5 6]) ;; false
+   )
+```
+
 * `(:and ...)` ---  Takes 0 or more operands.  Simultaneously matches all of the given patterns.
 
 Example ---  Keyword followed by 1 or two integers, repeated any number of times which is a multiple of 3 total items.
 
 ```clojure
-(let [rte (rte-compile '(:and (:* (:cat Keyword integer? (:? Integer)))
+(let [rte (rte-compile '(:and (:* (:cat Keyword integer? (:? integer?)))
                               (:+ (:sigma :sigma :sigma))))]
   (rte-execute rte [:x 1 :x 2 :x 3]) ;; true
   (rte-execute rte [:x 1 2 :y 2 3]) ;; true
@@ -241,7 +253,7 @@ If you want to match a sequence like  `[:x 100 :y 200 :z 300]`  but not if any o
 
 There are several important extensions we would like to implement.
 
-1. The `:rte` keyword such as `(:rte (:* Integer))` which means a singleton sequence whose element is a sequence of integers.  This keyword is used to designate hierarchical structure.  `(:* (:rte (:* Integer)))` means a sequence of 0 or more sequences whose elements are integers. `(:* (:or (:rte (:* String)) (:rte (:* Integer))))` is a sequence of sequences each of which contains only strings or only Integers, e.g., 
+1. The `:rte` keyword such as `(:rte (:* integer?))` which means a singleton sequence whose element is a sequence of integers.  This keyword is used to designate hierarchical structure.  `(:* (:rte (:* integer?)))` means a sequence of 0 or more sequences whose elements are integers. `(:* (:or (:rte (:* String)) (:rte (:* integer?))))` is a sequence of sequences each of which contains only strings or only Integers, e.g., 
 ```clojure
 [[1 2 3]
  ["hello" "world"]

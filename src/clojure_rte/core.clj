@@ -70,6 +70,15 @@
    'seq? 'clojure.lang.ISeq
    })
       
+(defn cl-prog1 [val & _]
+  val)
+
+(defn cl-prog2 [_ val & _]
+  val)
+
+(defn cl-progn [& others]
+  (last others))
+
 (defmacro cl-cond
   "Like CL:cond.  Each operand of the cl-cond is a list of length at least 1.
    The same semantics as clojure cond, in that the return value is
@@ -239,7 +248,6 @@
             (case pattern
               (:epsilon :empty-set :sigma)
               ((functions pattern) pattern functions)
-
               ((:type functions) pattern functions)))
           (if-nil []
             ((:type functions) () functions))
@@ -254,6 +262,7 @@
                  :*
                  :?
                  :+
+                 :exp
                  :rte) (throw (ex-info (format "invalid pattern %s, expecting exactly one operand" pattern)
                                        {:type :rte-syntax-error
                                         :keyword keyword
@@ -280,6 +289,14 @@
                 (:not :*)
                 ((functions token) operand functions)
                 
+                (:exp)
+                (let [[n operand] operand
+                      operand (traverse-pattern operand functions)
+                      repeated-operand (map (fn [_]
+                                              operand) (range n))]
+                  (assert (>= n 0))
+                  (traverse-pattern `(:cat ~@repeated-operand) functions))
+
                 (:+)
                 (traverse-pattern `(:cat ~operand
                                          (:* ~operand)) functions)
@@ -287,7 +304,7 @@
                 (:?)
                 (traverse-pattern `(:or :epsilon
                                         ~operand) functions)
-                
+
                 ;;case-else
                 ((:type functions) pattern functions))))
           (if-multiple-operands []
@@ -304,7 +321,7 @@
                  :cat)
                 ((functions token) operands functions)
 
-                (:not :* :+ :? :rte)
+                (:not :* :+ :? :rte :exp)
                 (throw (ex-info (format "invalid pattern %s, expecting exactly one operand" pattern)
                                 {:type :rte-syntax-error
                                  :keyword keyword
@@ -790,12 +807,11 @@
                                 :epsilon (rte-constantly :empty-set)
                                 :empty-set (rte-constantly :empty-set)     
                                 :sigma (fn [type functions]
-                                         ;;(println (format "type=%s wrt=%s" type wrt))
                                          :epsilon)
                                 :type (fn [type functions]
                                         (cond (and (seq? wrt)
                                                    (= 'and (first wrt)))
-                                              (compute-compound-derivative expr wrt)
+                                              (compute-compound-derivative type wrt)
                                               
                                               (disjoint? wrt type)
                                               :empty-set
@@ -805,11 +821,6 @@
                                               
                                               :else
                                               (do
-                                                ;; (println (format "splitting wrt=%s into smaller types %s and %s"
-                                                ;;                  wrt
-                                                ;;                  `(~'and ~wrt ~expr)
-                                                ;;                  `(~'and ~wrt (not ~expr))
-                                                ;;                  ))
                                                 (throw (ex-info "providing smaller types"
                                                                 {:type :split-type
                                                                  :sub-types [{:type `(~'and ~wrt ~expr)}
@@ -836,55 +847,52 @@
                                 :* (fn [operand functions]
                                      `(:cat ~(derivative operand wrt) (:* ~operand)))))))))
 
-(defn type-reduce [left right]
-  (loop [left left
-         right right]
-    (cond
-      (and (< 1 (count left))
-           (some #{:sigma} left))
-      (recur (remove #{:sigma} left) right)
-
-      :else [left right])))
-
-(defn remove-supertypes [types]
-  (let [supers (call-with-collector
-                 (fn [collect]
-                   (doseq [t1 types
-                           t2 types]
-                     (if (and (not (= t1 t2))
-                              (isa? t1 t2))
-                       (collect t2)))))]
-    (for [x types
-          :when (not (some #{x} supers))]
-      x)))
-
-(defn remove-subtypes [types]
-  (let [supers (call-with-collector
-                 (fn [collect]
-                   (doseq [t1 types
-                           t2 types]
-                     (if (and (not (= t1 t2))
-                              (isa? t2 t1))
-                       (collect t2)))))]
-    (for [x types
-          :when (not (some #{x} supers))]
-      x)))
-
 (defn map-type-partitions 
   "Iterate through all the ways to partition types between a right and left set.
   Some care is made to prune branches which are provably empty."
   [items binary-fun]
   
-  (letfn [(f [items left right]
-            ;;(println (format "remaining %s   left=%s  right=%s" (seq items) (seq left) (seq right)))
+  (letfn [(remove-supertypes [types]
+            ;; Given a list of symbols designating types, return a new list
+            ;; excluding those which are supertypes of others in the list.
+            (let [supers (call-with-collector
+                          (fn [collect]
+                            (doseq [t1 types
+                                    t2 types]
+                              (if (and (not (= t1 t2))
+                                       (isa? t1 t2))
+                                (collect t2)))))]
+              (for [x types
+                    :when (not (some #{x} supers))]
+                x)))
+          (remove-subtypes [types]
+            ;; Given a list of symbols designating types, return a new list
+            ;; excluding those which are subypes of others in the list.
+            (let [supers (call-with-collector
+                          (fn [collect]
+                            (doseq [t1 types
+                                    t2 types]
+                              (if (and (not (= t1 t2))
+                                       (isa? t2 t1))
+                                (collect t2)))))]
+              (for [x types
+                    :when (not (some #{x} supers))]
+                x)))(type-reduce [left right]
+                      (loop [left left
+                             right right]
+                        (cond
+                          (and (< 1 (count left))
+                               (some #{:sigma} left))
+                          (recur (remove #{:sigma} left) right)
+
+                          :else [left right])))
+          (f [items left right]
             (cl-cond
              ((some #{:sigma} right)
-              ;;(println (format "right pruning %s" right))
               )
              ((and left
                    (some (fn [t2]
                            (disjoint? t2 (first left))) (rest left)))
-              ;;(println (format "left pruning %s" left))
               )
              ((and left right
                    ;; exists t2 in right such that t1 < t2
@@ -920,9 +928,13 @@
                       (f (rest items) left (cons new-type right)))))))))]
     (f items () ())))
 
-(defn mdtd [type-set]
+(defn mdtd 
+  "Given a set of type designators, return a newly computed list of type
+  designators which implement the Maximal Disjoint Type Decomposition.
+  I.e., the computed list designates a set whose union is the same as
+  the given set, but all the elements are mutually disjoint."
+  [type-set]
   ;; find a disjoint type
-  ;;(println (format "mdtd type-set = %s" type-set))
   (letfn [(independent? [t1]
             (every? (fn [t2]
                       (or (= t1 t2)
@@ -930,15 +942,11 @@
 
     (let [independent (filter independent? type-set)
           dependent (remove (set independent) type-set)]
-
-      ;;(cl-format true "independent = ~A~%" (seq independent))
-      ;;(cl-format true "dependent = ~A~%" dependent)
       (concat independent (call-with-collector
                            (fn [collect]
                              (map-type-partitions
                               (seq dependent)
                               (fn [left right]
-                                ;;(cl-format true "left=~A  right=~A~%" left right)
                                 (cond
                                   (and (empty? right)
                                        (= 1 (count left)))
@@ -984,9 +992,7 @@
                       )
                     )]
             (let [disjoined (mdtd (conj (first-types pattern) :sigma))
-                  [new-triples new-derivatives] (do
-                                                  ;;(cl-format true "disjointed = ~A~%" disjoined)
-                                                  (reduce xx [[] ()] disjoined))]
+                  [new-triples new-derivatives] (reduce xx [[] ()] disjoined)]
               (recur (concat new-derivatives to-do-patterns)
                      (conj done pattern)
                      (concat triples new-triples)))))))))

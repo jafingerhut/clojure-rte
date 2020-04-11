@@ -21,6 +21,7 @@
 
 (ns clojure-rte.core-test
   (:require [clojure.test :refer :all]
+            [clojure.pprint :refer [cl-format]]
             [clojure-rte.core :refer :all]
             [clojure-rte.rte-tester :refer :all]))
 
@@ -509,3 +510,20 @@
     ;; currently this test fails
     (is (rte-match '(:not Number) ["Hello" "world"]))
     ))
+
+(deftest t-mdtd
+  (testing "mdtd"
+    (is (= (set (mdtd #{:sigma java.lang.Exception clojure.lang.ExceptionInfo}))
+           #{`(~'and :sigma (~'not ~java.lang.Exception))
+             `(~'and ~java.lang.Exception (~'not ~clojure.lang.ExceptionInfo))
+             clojure.lang.ExceptionInfo}))))
+
+(deftest t-exp
+  (testing "exp"
+    (map (fn [n] 
+           (let [data (map (constantly 12) (range n))
+                 pattern `(:cat (:exp (~n (:? Long))) (:exp (~n Long)))
+                 rte (rte-compile pattern)]
+
+             (is (rte-execute rte data) (format "n=%s" n))))
+         (range 10))))
