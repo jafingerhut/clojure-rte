@@ -19,25 +19,31 @@
 ;; OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
 ;; WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-(ns clojure-rte.tester
-  (:require [clojure.pprint :refer [cl-format]])
-)
+(ns clojure-rte.cl-compat)
 
+(defn cl-prog1 [val & _]
+  val)
 
-(defn simplify [unary error-case gen-components]
-  (try (do (unary error-case)
-           error-case)
-       (catch Exception e
-         (do
-           (cl-format true "e=~A~%" e)
-           (or (some (fn [component]
-                       (simplify unary component)) (gen-components error-case))
-               error-case)))))
+(defn cl-prog2 [_ val & _]
+  val)
 
-(defn random-test [num-tries unary-test-fun arg-generator gen-components]
-  (loop [num-tries num-tries]
-    (if (< 0 num-tries)
-      (let [data (arg-generator)]
-        (cl-format true "~d: trying ~A~%" num-tries data)
-        (unary-test-fun data)
-        (recur (dec num-tries))))))
+(defn cl-progn [& others]
+  (last others))
+
+(defmacro cl-cond
+  "Like CL:cond.  Each operand of the cl-cond is a list of length at least 1.
+   The same semantics as clojure cond, in that the return value is
+   determined by the first test which returns non-false.  The
+   important semantic difference is that an agument has 1, then the
+   specified form is both the test and the return value, and it is
+   evaluated at most once.
+   Implementation from:
+   https://stackoverflow.com/questions/4128993/consolidated-cond-arguments-in-clojure-cl-style"
+  [[if1 & then1] & others]
+  
+  (when (or if1 then1 others)
+    (let [extra-clauses# (if others `(cl-cond ~@others))]
+      (if then1
+        `(if ~if1 (do ~@then1) ~extra-clauses#)
+        `(or ~if1 ~extra-clauses#)))))
+

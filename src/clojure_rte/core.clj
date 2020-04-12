@@ -34,8 +34,14 @@
 ;; * fully implement (satisfies)
 
 (ns clojure-rte.core
-  (:require [clojure.set :refer [union intersection]]
+  (:require [clojure.set :refer [union]]
             [clojure.pprint :refer [cl-format]]
+            [clojure-rte.cl-compat :refer [cl-cond cl-prog1 cl-prog2 cl-progn]]
+            [clojure-rte.util :refer [with-first-match remove-once call-with-collector
+                                      visit-permutations rte-constantly rte-identity
+                                      sort-operands member]]
+            [clojure-rte.type :refer [typep type-intersection disjoint?
+                                      map-type-partitions type-min type-max]]
             )
   (:gen-class))
 
@@ -70,32 +76,6 @@
    'seq? 'clojure.lang.ISeq
    })
       
-(defn cl-prog1 [val & _]
-  val)
-
-(defn cl-prog2 [_ val & _]
-  val)
-
-(defn cl-progn [& others]
-  (last others))
-
-(defmacro cl-cond
-  "Like CL:cond.  Each operand of the cl-cond is a list of length at least 1.
-   The same semantics as clojure cond, in that the return value is
-   determined by the first test which returns non-false.  The
-   important semantic difference is that an agument has 1, then the
-   specified form is both the test and the return value, and it is
-   evaluated at most once.
-   Implementation from:
-   https://stackoverflow.com/questions/4128993/consolidated-cond-arguments-in-clojure-cl-style"
-  [[if1 & then1] & others]
-  
-  (when (or if1 then1 others)
-    (let [extra-clauses# (if others `(cl-cond ~@others))]
-      (if then1
-        `(if ~if1 (do ~@then1) ~extra-clauses#)
-        `(or ~if1 ~extra-clauses#)))))
-
 (defn resolve-rte-tag
   "Look up a tag in *rte-known*, or return the given tag
    if not found"
@@ -151,87 +131,6 @@
    :epsilon (fn [pattern functions]
               ((:client functions) pattern functions))
    })
-
-(defn with-first-match 
-  "Find the first element in the given sequence, items,
-   for which the predicate, pred, returns Boolean true.
-   If such is found, call the continuation with the
-   element.  This type of 'finder' avoids the problem of
-   deciding whether nil was the value found.  The continuation
-   is only called on the found value."
-  [pred items continuation]
-
-  (loop [items items]
-    (cond (empty? items)
-          nil
-
-          (pred (first items))
-          (continuation (first items))
-
-          :else
-          (recur (rest items)))))
-
-(defn remove-once 
-  "Non-destructively remove the first element of the sequence which is
-   = to the target value.  The list is unrolled as much as necessary,
-   to remove the target value, and then the leading values are
-   prepended, via concat, to the beginning of the remaining sequence.
-   The tail of the sequence after finding the target is not examined,
-   in case it is lazy.  If the taget does not appear in the list, a
-   copy of the sequence is returned.  If the target item appears more
-   than once, we have no way of knowing, and only the first such
-   occurance is removed."
-  [target items]
-
-  (loop [items items
-         acc ()]
-    (cond
-      (empty? items)
-      (reverse acc)
-
-      (= (first items) target)
-      (concat (reverse acc) (rest items))
-
-      :else
-      (recur (rest items) (cons (first items) acc)))))
-
-(defn call-with-collector
-  "This function calls your given function which an argument which can be
-   called to collect values.  The return value of call-with-collector is
-   the list of items collected, in reverse order.  E.g.,
-   (call-with-collector (fn [collect] 
-                            ...body...))
-
-   Within the body, collect is a unary function which can be called
-   zero or more times.  The arguments are collected and returned as a
-   in reverse order as if they were cons-ed onto an internal list.
-   The caller is responsible for reversing the list if necessary."
-  [unary-client]
-
-  (with-local-vars [data '()]
-    (unary-client (fn [obj]
-                    (var-set data (cons obj @data))))
-    @data))
-    
-(defn visit-permutations 
-  "Call the given unary-client function once on each permutation
-   of the given sequence of items.  Warning, there are n! many
-   such permutations, so this function will be extremely slow
-   if the (count items) is large.  If you want to return a list 
-   of permutations, use visit-permutations in conjunction 
-   with call-with-collector.
-   (call-with-collector
-     (fn [collect]
-       (visit-permutations collect items)))"
-  [unary-client items]
-  
-  (letfn [(visit-with-tail [remaining tail]
-            (if (empty? remaining)
-              (unary-client tail)
-              (doseq [item remaining]
-                (visit-with-tail (remove-once item remaining)
-                                 (cons item tail)))))]
-    (visit-with-tail items '())))
 
 (defn traverse-pattern
   "Workhorse function for walking an rte pattern.
@@ -347,102 +246,6 @@
           ;; cond-else (:keyword args) or list-expr ;; (:and x y) (:+ x y)
           :else (if-multiple-operands))))
 
-(defn rte-constantly
-  "Return a binary function, similar to constanty, but the binary
-   function ignors its second argument.  This function is useful as a
-   callback function used to extend *traversal-functions*, as each
-   such callback function must be a binary function."
-  [x]
-  (fn [_ _]
-    x))
-
-(defn rte-identity 
-  "Similar to clojure.core.identity, except that this version is
-   binary and always ignors its second argument.  This function is
-   useful as a callback function used to extend *traversal-functions*,
-   as each such callback function must be a binary function."
-  [x y]
-  
-  x)
-
-(defn typep 
-  "Like instance? except that the arguments are reversed, and the
-  given type need not be a class.
-  This function also handles CL style type designators such as
-  (not A)
-  (and A B)
-  (or A B)
-  (satisfies A B)
-  (= obj)
-  (member a b c)"
-  [a-value a-type]
-
-  (cond 
-    (= :sigma a-type)
-    true
-
-    (= :empty-set a-type)
-    false
-    
-    (and (symbol? a-type)
-         (resolve a-type)
-         (class? (resolve a-type)))
-    (isa? (type a-value) (resolve a-type))
-  
-    (not (seq? a-type))
-    false
-
-    :else
-    (let [[name & others] a-type]
-      (case name
-        (not) (not (apply typep a-value others))
-        (and) (every? (fn [t1]
-                        (typep a-value t1)) others)
-        (or) (some (fn [t1]
-                     (typep a-value t1)) others)
-        (satisfies) ((resolve (first others)) a-value)
-        (=) (= (first others) a-value)
-        (member) (some #{a-value} others)
-        (throw (ex-info (format "(2) invalid type designator %s, %s not in %s"
-                                a-type name '(not and or satisfies = member))
-
-                    {:type :invalid-type-designator
-                     :type-designator a-type
-                     }))))))
-
-(defn type-intersection 
-  "Return the set of the subtypes of the two types, ie. the set of types
-  which are both a subtype of t1 and of t2.  If the types don't
-  intersect, #{} is returned."
-  [t1 t2]
-
-  (intersection (conj (descendants t1) t1)
-                (conj (descendants t2) t2)))
-
-(defn disjoint? 
-  "Predicate to determine whether the two types overlap."
-  [t1 t2]
-  (cond
-    (= :empty-set t1)
-    true
-
-    (= :empty-set t2)
-    true
-    
-    (= :sigma t1)
-    false
-
-    (= :sigma t2)
-    false
-
-    :else
-    (and (not (isa? t1 t2))
-         (not (isa? t2 t1))
-         (let [descendants-1 (descendants t1)
-               descendants-2 (descendants t2)]
-           (and (not-any? (fn [a2] (contains? descendants-1 a2)) descendants-2)
-                (not-any? (fn [a1] (contains? descendants-2 a1)) descendants-1))))))
-
 (defn nullable 
   "Determine whether the given rational type expression is nullable.
   I.e., does the empty-word satisfy the expression."
@@ -521,62 +324,6 @@
 (def or? 
   "Predicate determining whether its object is of the form (:or ...)"
   (seq-matcher :or))
-
-(defn sort-operands [operands]
-  "Sort the given list of operands into deterministic order, making it possible
-  to easily find identical elements, and to write test cases."
-  (letfn [(cmp [a b]
-            (cond
-              (= a b)       0
-              (= a ())      1
-              (= b ())     -1
-
-              (not (= (type a) (type b)))
-              (compare (.getName (type a))
-                       (.getName (type b)))
-
-              (and (seq? a)
-                   (seq? b))
-              (loop [a a
-                     b b]
-                (cond
-                  (= a b)   0
-                  (= a ())   1
-                  (= b ())  -1
-                  (= (first a) (first b))   (recur (rest a) (rest b))
-
-                  :else     (cmp (first a) (first b))))
-
-              (seq? a)        1
-              (seq? b)       -1
-
-              :else
-              (compare a b)))]
-    (sort cmp  operands)))
-
-(defn member [target items]
-  "Like cl:member.  Determines whether the given is an element of the given sequence."
-  (some #{target} items))
-
-(defn type-min 
-  "Find an element of the given sequence which is a subtype
-  of some other type and is not =.  not necessarily the global minimum."
-  [atoms]
-  (some (fn [sub]
-          (some (fn [super]
-                  (and (not (= sub super))
-                       (isa? sub super)
-                       sub)) atoms)) atoms))
-
-(defn type-max 
-  "Find an element of the given sequence which is a supertype
-  of some other type and is not =.  not necessarily the global maximum"
-  [atoms]
-  (some (fn [sub]
-          (some (fn [super]
-                  (and (not (= sub super))
-                       (isa? sub super)
-                       super)) atoms)) atoms))
 
 (defn canonicalize-pattern-once 
   "Rewrite the given rte patter to a canonical form.
@@ -847,87 +594,6 @@
                                 :* (fn [operand functions]
                                      `(:cat ~(derivative operand wrt) (:* ~operand)))))))))
 
-(defn map-type-partitions 
-  "Iterate through all the ways to partition types between a right and left set.
-  Some care is made to prune branches which are provably empty."
-  [items binary-fun]
-  
-  (letfn [(remove-supertypes [types]
-            ;; Given a list of symbols designating types, return a new list
-            ;; excluding those which are supertypes of others in the list.
-            (let [supers (call-with-collector
-                          (fn [collect]
-                            (doseq [t1 types
-                                    t2 types]
-                              (if (and (not (= t1 t2))
-                                       (isa? t1 t2))
-                                (collect t2)))))]
-              (for [x types
-                    :when (not (some #{x} supers))]
-                x)))
-          (remove-subtypes [types]
-            ;; Given a list of symbols designating types, return a new list
-            ;; excluding those which are subypes of others in the list.
-            (let [supers (call-with-collector
-                          (fn [collect]
-                            (doseq [t1 types
-                                    t2 types]
-                              (if (and (not (= t1 t2))
-                                       (isa? t2 t1))
-                                (collect t2)))))]
-              (for [x types
-                    :when (not (some #{x} supers))]
-                x)))(type-reduce [left right]
-                      (loop [left left
-                             right right]
-                        (cond
-                          (and (< 1 (count left))
-                               (some #{:sigma} left))
-                          (recur (remove #{:sigma} left) right)
-
-                          :else [left right])))
-          (f [items left right]
-            (cl-cond
-             ((some #{:sigma} right)
-              )
-             ((and left
-                   (some (fn [t2]
-                           (disjoint? t2 (first left))) (rest left)))
-              )
-             ((and left right
-                   ;; exists t2 in right such that t1 < t2
-                   ;; then t1 & !t2 = nil
-                   (some (fn [t2] (isa? (first left) t2))  right))
-              ;; prune
-              )
-
-             ((and left right
-                   ;; exists t2 in right such that t1 < t2
-                   ;; then t1 & !t2 = nil
-                   (some (fn [t1] (isa? t1 (first right)))  left))
-              ;; prune
-              )
-
-             ((empty? items)
-              (let [[left right] (type-reduce (remove-supertypes left) (remove-subtypes right))]
-                (binary-fun left right)))
-             ;; TODO consider subsets A < B
-             ;;    then A and ! B is empty
-             ;;    A & B is A
-             ;;    !A and !B is !B
-
-             (:else
-              (let [new-type (first items)]
-                (case new-type
-                  (nil)
-                  (:sigma)
-                  (do
-                    (f (rest items) (cons new-type left) (remove (fn [t2] (disjoint? t2 new-type)) right))
-                    (if (some (fn [t2] (disjoint? new-type t2)) left)
-                      (f (rest items) left right) ;;   Double & !Float, we can omit Float in right
-                      (f (rest items) left (cons new-type right)))))))))]
-    (f items () ())))
-
 (defn mdtd 
   "Given a set of type designators, return a newly computed list of type
   designators which implement the Maximal Disjoint Type Decomposition.
@@ -1082,68 +748,3 @@
   rte-match contains a call to both rte-compile and rte-execute."
   [pattern items]
   (rte-execute (rte-compile pattern) items))
-
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; The following are testing functions which should be eventually
-;; moved to a different namespace.
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-
-(defn simplify [unary error-case gen-components]
-  (try (do (unary error-case)
-           error-case)
-       (catch Exception e
-         (do
-           (cl-format true "e=~A~%" e)
-           (or (some (fn [component]
-                       (simplify unary component)) (gen-components error-case))
-               error-case)))))
-
-(defn random-test [num-tries unary-test-fun arg-generator gen-components]
-  (loop [num-tries num-tries]
-    (if (< 0 num-tries)
-      (let [data (arg-generator)]
-        (cl-format true "~d: trying ~A~%" num-tries data)
-        (unary-test-fun data)
-        (recur (dec num-tries))))))
-
-(defn gen-rte [size types]
-  (let [key (rand-nth [:type
-                   :? :+ :* :not
-                   :and :or 
-                   :cat :permute
-                   :sigma :empty-set :epsilon])] 
-    (case key
-      (:type) (rand-nth types)
-      (:sigma :empty-set :epsilon) key
-      (:and :or :cat :permute) (cons key (map (fn [k] (gen-rte (dec size) types))
-                                                  (range size)))
-      (:? :+ :* :not) (list key (gen-rte (dec size) types)))))
-
-(defn rte-components [pattern]
-  (cond
-    (and (seq? pattern)
-         (empty pattern))
-    ()
-
-    (seq? pattern)
-    (let [[keyword & operands] pattern]
-      (case keyword
-        (:* :+ :? :not
-            :and :or :cat :permute) operands
-        ;; case else
-        ()))
-
-    :else
-    ()))
-
-(defn test-rte-to-dfa [num-tries size]
-  (random-test num-tries rte-to-dfa
-               (fn [] (gen-rte size '(::Fox ::Wolf ::Cat ::Lion ::Cat-Lion)))
-               rte-components))
-
-(defn test-canonicalize-pattern [num-tries size]
-  (random-test num-tries canonicalize-pattern
-               (fn [] (gen-rte size '(::Fox ::Wolf ::Cat ::Lion ::Cat-Lion)))
-               rte-components))
