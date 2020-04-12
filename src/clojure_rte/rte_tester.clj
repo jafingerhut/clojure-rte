@@ -20,7 +20,47 @@
 ;; WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 (ns clojure-rte.rte-tester
-  (:require [clojure-rte.tester :refer :all]
-            [clojure-rte.core :refer :all]
+  (:require [clojure-rte.tester :refer [ random-test]]
+            ;; [clojure-rte.core :refer []]
             ))
 
+(defn rte-components [pattern]
+  (cond
+    (and (seq? pattern)
+         (empty pattern))
+    ()
+
+    (seq? pattern)
+    (let [[keyword & operands] pattern]
+      (case keyword
+        (:* :+ :? :not
+            :and :or :cat :permute) operands
+        ;; case else
+        ()))
+
+    :else
+    ()))
+
+(defn gen-rte [size types]
+  (let [key (rand-nth [:type
+                   :? :+ :* :not
+                   :and :or 
+                   :cat :permute
+                   :sigma :empty-set :epsilon])] 
+    (case key
+      (:type) (rand-nth types)
+      (:sigma :empty-set :epsilon) key
+      (:and :or :cat :permute) (cons key (map (fn [k] (gen-rte (dec size) types))
+                                                  (range size)))
+      (:? :+ :* :not) (list key (gen-rte (dec size) types)))))
+
+
+(defn test-rte-to-dfa [num-tries size]
+  (random-test num-tries rte-to-dfa
+               (fn [] (gen-rte size '(::Fox ::Wolf ::Cat ::Lion ::Cat-Lion)))
+               rte-components))
+
+(defn test-canonicalize-pattern [num-tries size]
+  (random-test num-tries canonicalize-pattern
+               (fn [] (gen-rte size '(::Fox ::Wolf ::Cat ::Lion ::Cat-Lion)))
+               rte-components))
