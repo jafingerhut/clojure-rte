@@ -37,6 +37,7 @@
   (:require [clojure.set :refer [union intersection]]
             [clojure.pprint :refer [cl-format]]
             [clojure-rte.cl-compat :refer [cl-cond cl-prog1 cl-prog2 cl-progn]]
+            [clojure-rte.util :refer [with-first-match remove-once call-with-collector visit-permutations rte-constantly rte-identity sort-operands member]]
             )
   (:gen-class))
 
@@ -126,87 +127,6 @@
    :epsilon (fn [pattern functions]
               ((:client functions) pattern functions))
    })
-
-(defn with-first-match 
-  "Find the first element in the given sequence, items,
-   for which the predicate, pred, returns Boolean true.
-   If such is found, call the continuation with the
-   element.  This type of 'finder' avoids the problem of
-   deciding whether nil was the value found.  The continuation
-   is only called on the found value."
-  [pred items continuation]
-
-  (loop [items items]
-    (cond (empty? items)
-          nil
-
-          (pred (first items))
-          (continuation (first items))
-
-          :else
-          (recur (rest items)))))
-
-(defn remove-once 
-  "Non-destructively remove the first element of the sequence which is
-   = to the target value.  The list is unrolled as much as necessary,
-   to remove the target value, and then the leading values are
-   prepended, via concat, to the beginning of the remaining sequence.
-   The tail of the sequence after finding the target is not examined,
-   in case it is lazy.  If the taget does not appear in the list, a
-   copy of the sequence is returned.  If the target item appears more
-   than once, we have no way of knowing, and only the first such
-   occurance is removed."
-  [target items]
-
-  (loop [items items
-         acc ()]
-    (cond
-      (empty? items)
-      (reverse acc)
-
-      (= (first items) target)
-      (concat (reverse acc) (rest items))
-
-      :else
-      (recur (rest items) (cons (first items) acc)))))
-
-(defn call-with-collector
-  "This function calls your given function which an argument which can be
-   called to collect values.  The return value of call-with-collector is
-   the list of items collected, in reverse order.  E.g.,
-   (call-with-collector (fn [collect] 
-                            ...body...))
-
-   Within the body, collect is a unary function which can be called
-   zero or more times.  The arguments are collected and returned as a
-   in reverse order as if they were cons-ed onto an internal list.
-   The caller is responsible for reversing the list if necessary."
-  [unary-client]
-
-  (with-local-vars [data '()]
-    (unary-client (fn [obj]
-                    (var-set data (cons obj @data))))
-    @data))
-    
-(defn visit-permutations 
-  "Call the given unary-client function once on each permutation
-   of the given sequence of items.  Warning, there are n! many
-   such permutations, so this function will be extremely slow
-   if the (count items) is large.  If you want to return a list 
-   of permutations, use visit-permutations in conjunction 
-   with call-with-collector.
-   (call-with-collector
-     (fn [collect]
-       (visit-permutations collect items)))"
-  [unary-client items]
-  
-  (letfn [(visit-with-tail [remaining tail]
-            (if (empty? remaining)
-              (unary-client tail)
-              (doseq [item remaining]
-                (visit-with-tail (remove-once item remaining)
-                                 (cons item tail)))))]
-    (visit-with-tail items '())))
 
 (defn traverse-pattern
   "Workhorse function for walking an rte pattern.
@@ -321,24 +241,6 @@
 
           ;; cond-else (:keyword args) or list-expr ;; (:and x y) (:+ x y)
           :else (if-multiple-operands))))
-
-(defn rte-constantly
-  "Return a binary function, similar to constanty, but the binary
-   function ignors its second argument.  This function is useful as a
-   callback function used to extend *traversal-functions*, as each
-   such callback function must be a binary function."
-  [x]
-  (fn [_ _]
-    x))
-
-(defn rte-identity 
-  "Similar to clojure.core.identity, except that this version is
-   binary and always ignors its second argument.  This function is
-   useful as a callback function used to extend *traversal-functions*,
-   as each such callback function must be a binary function."
-  [x y]
-  
-  x)
 
 (defn typep 
   "Like instance? except that the arguments are reversed, and the
@@ -496,42 +398,6 @@
 (def or? 
   "Predicate determining whether its object is of the form (:or ...)"
   (seq-matcher :or))
-
-(defn sort-operands [operands]
-  "Sort the given list of operands into deterministic order, making it possible
-  to easily find identical elements, and to write test cases."
-  (letfn [(cmp [a b]
-            (cond
-              (= a b)       0
-              (= a ())      1
-              (= b ())     -1
-
-              (not (= (type a) (type b)))
-              (compare (.getName (type a))
-                       (.getName (type b)))
-
-              (and (seq? a)
-                   (seq? b))
-              (loop [a a
-                     b b]
-                (cond
-                  (= a b)   0
-                  (= a ())   1
-                  (= b ())  -1
-                  (= (first a) (first b))   (recur (rest a) (rest b))
-
-                  :else     (cmp (first a) (first b))))
-
-              (seq? a)        1
-              (seq? b)       -1
-
-              :else
-              (compare a b)))]
-    (sort cmp  operands)))
-
-(defn member [target items]
-  "Like cl:member.  Determines whether the given is an element of the given sequence."
-  (some #{target} items))
 
 (defn type-min 
   "Find an element of the given sequence which is a subtype
@@ -852,15 +718,16 @@
                                 (collect t2)))))]
               (for [x types
                     :when (not (some #{x} supers))]
-                x)))(type-reduce [left right]
-                      (loop [left left
-                             right right]
-                        (cond
-                          (and (< 1 (count left))
-                               (some #{:sigma} left))
-                          (recur (remove #{:sigma} left) right)
+                x)))
+          (type-reduce [left right]
+            (loop [left left
+                   right right]
+              (cond
+                (and (< 1 (count left))
+                     (some #{:sigma} left))
+                (recur (remove #{:sigma} left) right)
 
-                          :else [left right])))
+                :else [left right])))
           (f [items left right]
             (cl-cond
              ((some #{:sigma} right)
