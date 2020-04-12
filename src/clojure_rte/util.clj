@@ -153,7 +153,7 @@
 
               :else
               (compare a b)))]
-    (sort cmp  operands)))
+    (sort cmp operands)))
 
 (defn member
   "Like cl:member.  Determines whether the given is an element of the given sequence."
