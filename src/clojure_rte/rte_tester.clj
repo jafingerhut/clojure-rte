@@ -20,8 +20,8 @@
 ;; WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 (ns clojure-rte.rte-tester
-  (:require [clojure-rte.tester :refer [ random-test]]
-            ;; [clojure-rte.core :refer []]
+  (:require [clojure-rte.tester  :as tester]
+            [clojure-rte.core :refer [rte-to-dfa canonicalize-pattern]]
             ))
 
 (defn rte-components [pattern]
@@ -56,11 +56,11 @@
 
 
 (defn test-rte-to-dfa [num-tries size]
-  (random-test num-tries rte-to-dfa
+  (tester/random-test num-tries rte-to-dfa
                (fn [] (gen-rte size '(::Fox ::Wolf ::Cat ::Lion ::Cat-Lion)))
                rte-components))
 
 (defn test-canonicalize-pattern [num-tries size]
-  (random-test num-tries canonicalize-pattern
+  (tester/random-test num-tries canonicalize-pattern
                (fn [] (gen-rte size '(::Fox ::Wolf ::Cat ::Lion ::Cat-Lion)))
                rte-components))
