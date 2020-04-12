@@ -54,13 +54,15 @@
                                                   (range size)))
       (:? :+ :* :not) (list key (gen-rte (dec size) types)))))
 
+(def ^:dynamic *test-types*
+  '(integer? int? rational? ratio? string? keyword? symbol? decimal? float? seq?))
 
 (defn test-rte-to-dfa [num-tries size]
   (tester/random-test num-tries rte-to-dfa
-               (fn [] (gen-rte size '(::Fox ::Wolf ::Cat ::Lion ::Cat-Lion)))
+               (fn [] (gen-rte size *test-types*))
                rte-components))
 
 (defn test-canonicalize-pattern [num-tries size]
   (tester/random-test num-tries canonicalize-pattern
-               (fn [] (gen-rte size '(::Fox ::Wolf ::Cat ::Lion ::Cat-Lion)))
+               (fn [] (gen-rte size *test-types*))
                rte-components))
