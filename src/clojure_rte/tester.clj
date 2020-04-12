@@ -19,5 +19,25 @@
 ;; OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
 ;; WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-(ns clojure-rte.tester)
+(ns clojure-rte.tester
+  (:require [clojure.pprint :refer [cl-format]])
+)
 
+
+(defn simplify [unary error-case gen-components]
+  (try (do (unary error-case)
+           error-case)
+       (catch Exception e
+         (do
+           (cl-format true "e=~A~%" e)
+           (or (some (fn [component]
+                       (simplify unary component)) (gen-components error-case))
+               error-case)))))
+
+(defn random-test [num-tries unary-test-fun arg-generator gen-components]
+  (loop [num-tries num-tries]
+    (if (< 0 num-tries)
+      (let [data (arg-generator)]
+        (cl-format true "~d: trying ~A~%" num-tries data)
+        (unary-test-fun data)
+        (recur (dec num-tries))))))
