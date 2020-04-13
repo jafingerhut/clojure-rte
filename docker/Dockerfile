@@ -1,4 +1,4 @@
-FROM lokedhs/clojure
+FROM lokedhs/sbck-quicklisp
 
 RUN apt-get update                              \
   && RUNLEVEL=1 DEBIAN_FRONTEND=noninteractive  \
