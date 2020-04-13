@@ -1,9 +1,12 @@
+image: clojure
+
 stages:
   - test
 
 unit-clojure:
   stage: test
-  image: clojure
   script: 
+    - apt-get update -y
+    - apt-get install -y csh
     - ./bin/auto-test-clojure-on-push.csh
 
