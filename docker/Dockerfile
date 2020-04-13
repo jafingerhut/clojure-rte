@@ -1,4 +1,4 @@
-FROM lokedhs/sbck-quicklisp
+FROM lokedhs/sbcl-quicklisp
 
 RUN apt-get update                              \
   && RUNLEVEL=1 DEBIAN_FRONTEND=noninteractive  \
