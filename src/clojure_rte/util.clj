@@ -19,7 +19,8 @@
 ;; OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
 ;; WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-(ns clojure-rte.util)
+(ns clojure-rte.util
+  (:require [clojure.pprint :refer [cl-format pprint]]))
 
 (defn with-first-match 
   "Find the first element in the given sequence, items,
@@ -126,11 +127,11 @@
  "Sort the given list of operands into deterministic order, making it possible
   to easily find identical elements, and to write test cases."
   [operands]
+  ;; (pprint operands)
+  ;; (println)
   (letfn [(cmp [a b]
             (cond
               (= a b)       0
-              (= a ())      1
-              (= b ())     -1
 
               (not (= (type a) (type b)))
               (compare (.getName (type a))
@@ -141,11 +142,12 @@
               (loop [a a
                      b b]
                 (cond
-                  (= a b)   0
-                  (= a ())   1
-                  (= b ())  -1
-                  (= (first a) (first b))   (recur (rest a) (rest b))
+                  (and (empty? a)
+                       (empty? b)) 0
+                  (empty? a) 1
+                  (empty? b) -1
 
+                  (= (first a) (first b))   (recur (rest a) (rest b))
                   :else     (cmp (first a) (first b))))
 
               (seq? a)        1

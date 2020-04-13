@@ -43,15 +43,15 @@
 
 (defn gen-rte [size types]
   (let [key (rand-nth [:type
-                   :? :+ :* :not
-                   :and :or 
-                   :cat :permute
-                   :sigma :empty-set :epsilon])] 
+                       :? :+ :* :not
+                       :and :or 
+                       :cat :permute
+                       :sigma :empty-set :epsilon])] 
     (case key
       (:type) (rand-nth types)
       (:sigma :empty-set :epsilon) key
       (:and :or :cat :permute) (cons key (map (fn [k] (gen-rte (dec size) types))
-                                                  (range size)))
+                                              (range size)))
       (:? :+ :* :not) (list key (gen-rte (dec size) types)))))
 
 (def ^:dynamic *test-types*
