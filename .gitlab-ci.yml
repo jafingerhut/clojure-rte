@@ -6,7 +6,5 @@ stages:
 unit-clojure:
   stage: test
   script: 
-    - apt-get update -y
-    - apt-get install -y csh
-    - ./bin/auto-test-clojure-on-push.csh
+    - lein test
 
