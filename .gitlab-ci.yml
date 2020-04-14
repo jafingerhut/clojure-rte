@@ -8,6 +8,6 @@ unit-clojure:
   script: 
     - lein test
 
-after_success:
+after_script:
 - lein cloverage --codecov
 - bash <(curl -s https://codecov.io/bash) -f target/coverage/codecov.json
