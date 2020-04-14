@@ -24,6 +24,7 @@
   :url "https://gitlab.lrde.epita.fr/jnewton/clojure-rte.git"
   :license {:name "MIT"
             :url "https://opensource.org/licenses/MIT"}
+  :plugins [      [lein-cloverage "1.1.2"]]
   :dependencies [[org.clojure/clojure "1.10.0"]
                  [lein-cloverage "1.1.2"]]
   :main ^:skip-aot clojure-rte.core
