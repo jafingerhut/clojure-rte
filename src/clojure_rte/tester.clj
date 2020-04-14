@@ -38,6 +38,6 @@
   (loop [num-tries num-tries]
     (if (< 0 num-tries)
       (let [data (arg-generator)]
-        (cl-format true "~d: trying ~A~%" num-tries data)
+        ;;(cl-format true "~d: trying ~A~%" num-tries data)
         (unary-test-fun data)
         (recur (dec num-tries))))))
