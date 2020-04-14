@@ -338,6 +338,11 @@ but not
 
   - `(member x y z ...)` is a type designator equivalent to `(or (= x) (= y) (= z) ...)`.
   
+## Code test coverage
+
+[![codecov](https://codecov.io/gh/jnewton/clojure-rte/branch/master/graph/badge.svg)]
+ (https://codecov.io/gh/jnewton/clojure-rte)
+
 ## Contributors
 
 [Jim Newton](https://www.lrde.epita.fr/wiki/User:Jnewton)
