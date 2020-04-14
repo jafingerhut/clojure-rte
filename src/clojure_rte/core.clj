@@ -62,21 +62,17 @@
   The map associates symbols with rte expansions.
   Any tag in this table may be used in place of a type name
   in an rte pattern."
-  {'integer? '(:or Integer
-                   Long
-                   clojure.lang.BigInt
-                   BigInteger
-                   Short    
-                   Byte)
-   'int? '(:or Long Integer Short Byte)
-   'rational? '(:or integer? ratio? decimal?)
+  {'int? '(:or Long Integer Short Byte)
+   'integer? '(:or int? clojure.lang.BigInt BigInteger)
    'ratio? 'clojure.lang.Ratio
-   'string? 'String
+   'decimal? 'BigDecimal
+   'rational? '(:or integer? ratio? decimal?)
    'number? 'Number
+   'float? '(:or Double Float)
+   'real? '(:or rational? number? decimal? float?)
+   'string? 'String
    'keyword? 'clojure.lang.Keyword
    'symbol? 'clojure.lang.Symbol
-   'decimal? 'BigDecimal
-   'float? '(:or Double Float)
    'seq? 'clojure.lang.ISeq
    })
       
