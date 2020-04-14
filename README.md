@@ -340,8 +340,8 @@ but not
   
 ## Code test coverage
 
-[![codecov](https://codecov.io/gh/jnewton/clojure-rte/branch/master/graph/badge.svg)]
- (https://codecov.io/gh/jnewton/clojure-rte)
+[![codecov](https://codecov.io/gl/jnewton/clojure-rte/branch/master/graph/badge.svg)]
+ (https://codecov.io/gl/jnewton/clojure-rte)
 
 ## Contributors
 
