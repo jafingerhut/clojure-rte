@@ -9,5 +9,7 @@ unit-clojure:
     - lein test
 
 after_script:
-- lein cloverage --codecov
-- bash <(curl -s https://codecov.io/bash) -f target/coverage/codecov.json
+  when: on_success
+  script:
+    - lein cloverage --codecov
+    - bash <(curl -s https://codecov.io/bash) -f target/coverage/codecov.json
