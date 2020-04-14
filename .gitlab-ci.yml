@@ -7,9 +7,12 @@ unit-clojure:
   stage: test
   script: 
     - lein test
+    - touch $CI_PROJECT_DIR/success
+  after_script:
+    - |
+      if [ -e success ]; then
+        lein cloverage --codecov
+        bash <(curl -s https://codecov.io/bash) -f target/coverage/codecov.json
+      fi
 
-after_script:
-  when: on_success
-  script:
-    - lein cloverage --codecov
-    - bash <(curl -s https://codecov.io/bash) -f target/coverage/codecov.json
+## work-arround for missing on_success feature https://gitlab.com/gitlab-org/gitlab-foss/-/issues/23054
