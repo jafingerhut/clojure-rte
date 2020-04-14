@@ -11,6 +11,7 @@ unit-clojure:
   after_script:
     - |
       if [ -e success ]; then
+        apt-get install curl
         lein cloverage --codecov
         bash <(curl -s https://codecov.io/bash) -f target/coverage/codecov.json
       fi
