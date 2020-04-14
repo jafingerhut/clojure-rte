@@ -32,6 +32,10 @@
 ;;    is substituted into an rte expression.
 ;;
 ;; * fully implement (satisfies)
+;;
+;; * implement early escape if we find outself in a non-coaccessible state
+;;   or if we find outself in a non-escapable final state.
+;;   e.g., (:* :sigma) should be constant time, not linear time.
 
 (ns clojure-rte.core
   (:require [clojure.set :refer [union]]
