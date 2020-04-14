@@ -6,12 +6,13 @@ stages:
 unit-clojure:
   stage: test
   script: 
+    - apt-get update -y 
+    - apt-get install -y curl
     - lein test
     - touch $CI_PROJECT_DIR/success
   after_script:
     - |
       if [ -e success ]; then
-        apt-get install curl
         lein cloverage --codecov
         bash <(curl -s https://codecov.io/bash) -f target/coverage/codecov.json
       fi
