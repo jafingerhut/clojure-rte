@@ -1,0 +1,10 @@
+image: clojure
+
+stages:
+  - test
+
+unit-clojure:
+  stage: test
+  script: 
+    - lein test
+
