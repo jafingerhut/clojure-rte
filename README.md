@@ -331,7 +331,7 @@ We see that indeed the empty sequence matches `pattern1` but does not match `pat
 There are several important extensions we would like to implement.
 
 
-2. Internal to the RTE code we have implemented a type designator
+1. Internal to the RTE code we have implemented a type designator
   notation (a DSL) inspired by that of Common Lisp.  In Common Lisp they are
   referred to as [type
   specifiers](https://www.cs.cmu.edu/Groups/AI/html/cltl/clm/node44.html).
