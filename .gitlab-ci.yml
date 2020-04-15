@@ -6,5 +6,15 @@ stages:
 unit-clojure:
   stage: test
   script: 
+    - apt-get update -y 
+    - apt-get install -y curl
     - lein test
+    - touch $CI_PROJECT_DIR/success
+  after_script:
+    - |
+      if [ -e success ]; then
+        lein cloverage --codecov
+        ##bash <(curl -s https://codecov.io/bash) -f target/coverage/codecov.json
+      fi
 
+## work-arround for missing on_success feature https://gitlab.com/gitlab-org/gitlab-foss/-/issues/23054
