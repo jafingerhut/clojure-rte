@@ -24,7 +24,7 @@
             [clojure.pprint :refer [cl-format]]
             [clojure-rte.cl-compat :refer [cl-cond]]
             [clojure-rte.util :refer [sort-operands remove-once call-with-collector visit-permutations]]
-            [clojure-rte.type :refer [disjoint? type-intersection]]
+            [clojure-rte.type :refer [disjoint? type-intersection typep]]
             [clojure-rte.core :refer :all]
             [clojure-rte.rte-tester :refer :all]))
 
@@ -421,4 +421,11 @@
              (is (rte-execute rte data) (format "n=%s" n))))
          (range 10))))
 
-
+(deftest t-rte-type
+  (testing "rte type"
+    (is (get-method typep 'rte) "test get-method")
+    (is (typep [1] '(rte Long)) "test 1")
+    (is (rte-match '(:* (rte Long)) [])  "test 2")
+    (is (rte-match '(:* (rte Long)) [[3]])  "test 3")
+    (is (rte-match '(:* (rte Long)) [[3] [4] [5]])  "test 4")
+    (is (not (rte-match '(:* (rte Long)) [[3 3] [4 4] [5 6]]))  "test 5")))

@@ -135,8 +135,8 @@
               (compare (.getName (type a))
                        (.getName (type b)))
 
-              (and (seq? a)
-                   (seq? b))
+              (and (sequential? a)
+                   (sequential? b))
               (loop [a a
                      b b]
                 (cond
@@ -148,8 +148,8 @@
                   (= (first a) (first b))   (recur (rest a) (rest b))
                   :else     (cmp (first a) (first b))))
 
-              (seq? a)        1
-              (seq? b)       -1
+              (sequential? a)        1
+              (sequential? b)       -1
 
               :else
               (compare a b)))]
