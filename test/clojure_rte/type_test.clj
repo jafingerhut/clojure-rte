@@ -102,7 +102,6 @@
   (testing "type-max"
     (is (= ::Animal (type-max [::Lion ::Animal])))))
 
-
 (deftest t-type-min
   (derive ::Canine ::Animal)
   (derive ::Wolf ::Canine)

@@ -102,7 +102,6 @@
            (and (not-any? (fn [a2] (contains? descendants-1 a2)) descendants-2)
                 (not-any? (fn [a1] (contains? descendants-2 a1)) descendants-1))))))
 
-
 (defn type-min 
   "Find an element of the given sequence which is a subtype
   of some other type and is not =.  not necessarily the global minimum."
@@ -204,4 +203,3 @@
                       (recurring (rest items) left right) ;;   Double & !Float, we can omit Float in right
                       (recurring (rest items) left (cons new-type right)))))))))]
     (recurring items () ())))
-

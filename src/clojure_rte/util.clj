@@ -65,7 +65,6 @@
       :else
       (recur (rest items) (cons (first items) acc)))))
 
-
 (defn call-with-collector
   "This function calls your given function which an argument which can be
    called to collect values.  The return value of call-with-collector is
@@ -103,7 +102,6 @@
                 (visit-with-tail (remove-once item remaining)
                                  (cons item tail)))))]
     (visit-with-tail items '())))
-
 
 (defn rte-constantly
   "Return a binary function, similar to constanty, but the binary

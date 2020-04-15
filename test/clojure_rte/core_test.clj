@@ -306,8 +306,6 @@
     (is (= (derivative ::Fox ::Wolf)
            :empty-set) "derivative disjoint types")
 
-
-
     ;; or
     
     (is (= (derivative '(:or ::Fox ::Lion) ::Fox)
@@ -324,7 +322,6 @@
            '(:cat ::Fox ::Fox)))
     (is (= (derivative '(:cat (:or ::Lion ::Fox) ::Fox ::Fox) ::Lion)
            '(:cat ::Fox ::Fox)))
-
 
     ))
 
@@ -423,7 +420,5 @@
 
              (is (rte-execute rte data) (format "n=%s" n))))
          (range 10))))
-
-
 
 
