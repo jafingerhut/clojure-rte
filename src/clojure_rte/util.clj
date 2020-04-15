@@ -123,12 +123,12 @@
   
   x)
 
+(def problematic-operands (atom ()))
+
 (defn sort-operands
  "Sort the given list of operands into deterministic order, making it possible
   to easily find identical elements, and to write test cases."
   [operands]
-  ;; (pprint operands)
-  ;; (println)
   (letfn [(cmp [a b]
             (cond
               (= a b)       0
@@ -155,7 +155,15 @@
 
               :else
               (compare a b)))]
-    (sort cmp operands)))
+    (try (sort cmp operands)
+         (catch Exception e
+           ;; were were getting a complaint from TIM sort.
+           ;; however the error message did not give the offending list.
+           ;; this code attempts to save the list in case TIM sort fails so we
+           ;; can debug it.
+           (do (swap! problematic-operands (fn [_] operands))
+               (printf "saving problematic operands in *problematic-operands*: %s" operands)
+               (throw e))))))
 
 (defn member
   "Like cl:member.  Determines whether the given is an element of the given sequence."
