@@ -24,7 +24,7 @@
             [clojure.pprint :refer [cl-format]]
             [clojure-rte.cl-compat :refer [cl-cond]]
             [clojure-rte.util :refer [sort-operands remove-once call-with-collector visit-permutations]]
-            [clojure-rte.type :refer [disjoint? type-intersection]]
+            [clojure-rte.type :refer [disjoint? type-intersection typep]]
             [clojure-rte.core :refer :all]
             [clojure-rte.rte-tester :refer :all]))
 
@@ -306,8 +306,6 @@
     (is (= (derivative ::Fox ::Wolf)
            :empty-set) "derivative disjoint types")
 
-
-
     ;; or
     
     (is (= (derivative '(:or ::Fox ::Lion) ::Fox)
@@ -324,7 +322,6 @@
            '(:cat ::Fox ::Fox)))
     (is (= (derivative '(:cat (:or ::Lion ::Fox) ::Fox ::Fox) ::Lion)
            '(:cat ::Fox ::Fox)))
-
 
     ))
 
@@ -424,6 +421,23 @@
              (is (rte-execute rte data) (format "n=%s" n))))
          (range 10))))
 
-
-
-
+(deftest t-rte-type
+  (testing "rte type"
+    (is (get-method typep 'rte) "test get-method")
+    (is (typep [1] '(rte Long)) "test 1")
+    (is (rte-match '(:* (rte Long)) [])  "test 2")
+    (is (rte-match '(:* (rte Long)) [[3]])  "test 3")
+    (is (rte-match '(:* (rte Long)) [[3] [4] [5]])  "test 4")
+    (is (not (rte-match '(:* (rte Long)) [[3 3] [4 4] [5 6]]))  "test 5")
+    (is (rte-match '(:* (rte (:* Long))) [[3] [4] [5]])  "test 6")
+    (is (rte-match '(:* (rte (:* Long))) [[3 3] [4] [5]])  "test 7")
+    (is (rte-match '(:* (rte (:* Long))) [[3 3] [] [5]])  "test 8")
+    (is (rte-match '(:* (rte (:* Long))) [[3 3] [] [5 5 5 5 5]])  "test 9")
+    
+    (is (rte-match '(:* (rte (:+ Long))) [[3] [4] [5]])  "test 6a")
+    (is (rte-match '(:* (rte (:+ Long))) [[3 3] [4] [5]])  "test 7a")
+    (is (not (rte-match '(:* (rte (:+ Long))) [[3 3] [] [5]]))  "test 8a")
+    (is (rte-match '(:* (rte (:+ Long))) [[3 3] [4 4 4] [5]])  "test 8b")
+    (is (not (rte-match '(:* (rte (:+ Long))) [[3 3] [] [5 5 5 5 5]]))  "test 9a")
+    (is     (rte-match '(:* (rte (:+ Long))) [[3 3] [4] [5 5 5 5 5]])  "test 9b")
+))

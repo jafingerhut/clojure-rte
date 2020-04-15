@@ -20,12 +20,12 @@
 ;; WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 (ns clojure-rte.type
-  (:require   [clojure.set :refer [union intersection]]
-              [clojure-rte.util :refer [call-with-collector]]
-              [clojure-rte.cl-compat :refer [cl-cond]]
+  (:require [clojure.set :refer [union intersection]]
+            [clojure-rte.util :refer [call-with-collector]]
+            [clojure-rte.cl-compat :refer [cl-cond cl-prog1]]
   ))
 
-(defn typep 
+(defmulti typep 
   "Like instance? except that the arguments are reversed, and the
   given type need not be a class.
   This function also handles CL style type designators such as
@@ -35,40 +35,90 @@
   (satisfies A B)
   (= obj)
   (member a b c)"
-  [a-value a-type]
+  (fn [a-value type-designator]
+    (if (sequential? type-designator)
+      (first type-designator)
+      type-designator)))
 
-  (cond 
-    (= :sigma a-type)
-    true
+(defmulti valid-type?
+  "Look at a type-designator and determine whether it is syntactically correct"
+  (fn [type-designator]
+    (if (sequential? type-designator)
+      (first type-designator)
+      type-designator)))
 
-    (= :empty-set a-type)
-    false
-    
-    (and (symbol? a-type)
-         (resolve a-type)
-         (class? (resolve a-type)))
+
+(defmethod typep :sigma [_ _]
+  true)
+
+(defmethod valid-type? :sigma [_]
+  true)
+
+(defmethod typep :empty-set [_ _]
+  false)
+
+(defmethod valid-type? :empty-set [_]
+  true)
+
+(defmethod typep :default [a-value a-type]
+  (if (and (symbol? a-type)
+           (resolve a-type)
+           (class? (resolve a-type)))
     (isa? (type a-value) (resolve a-type))
-  
-    (not (seq? a-type))
-    false
-
-    :else
-    (let [[name & others] a-type]
-      (case name
-        (not) (not (apply typep a-value others))
-        (and) (every? (fn [t1]
-                        (typep a-value t1)) others)
-        (or) (some (fn [t1]
-                     (typep a-value t1)) others)
-        (satisfies) ((resolve (first others)) a-value)
-        (=) (= (first others) a-value)
-        (member) (some #{a-value} others)
-        (throw (ex-info (format "(2) invalid type designator %s, %s not in %s"
-                                a-type name '(not and or satisfies = member))
-
+    (throw (ex-info (format "invalid type %s" a-type)
                     {:type :invalid-type-designator
-                     :type-designator a-type
-                     }))))))
+                     :a-type a-type
+                     :a-value a-value
+                     }))))
+
+(defmethod valid-type? :default [type-designator]
+  (and (symbol? type-designator)
+       (resolve type-designator)
+       (class? (resolve type-designator))))
+
+(defmethod typep 'not [a-value [a-type t]]
+  (not (typep a-value t)))
+
+(defmethod valid-type? 'not [[_ type-designator]]
+  (valid-type? type-designator))
+
+(defmethod typep 'and [a-value [a-type & others]]
+  (every? (fn [t1]
+            (typep a-value t1)) others))
+
+(defmethod valid-type? 'and [_ & others]
+  (every? valid-type? others))
+
+
+(defmethod typep 'or [a-value [a-type & others]]
+  (some (fn [t1]
+          (typep a-value t1)) others))
+
+(defmethod valid-type? 'or [_ & others]
+  (every? valid-type? others))
+
+(defmethod typep 'satisfies [a-value [a-type f]]
+  (if (fn? f)
+    (f a-value)
+    ((resolve f) a-value)))
+
+(defmethod valid-type? 'satisfies [[_ f]]
+  (or (fn? f)
+      (and (symbol? f)
+           (resolve f))))
+
+(defmethod typep '= [a-value [a-type value]]
+  (= value a-value))
+
+(defmethod valid-type? '= [[_ _]]
+  true)
+
+
+(defmethod typep 'member [a-value [a-type & others]]
+  (some #{a-value} others))
+
+(defmethod valid-type? 'member [[_ & _]]
+  true)
 
 (defn type-intersection 
   "Return the set of the subtypes of the two types, ie. the set of types
@@ -101,7 +151,6 @@
                descendants-2 (descendants t2)]
            (and (not-any? (fn [a2] (contains? descendants-1 a2)) descendants-2)
                 (not-any? (fn [a1] (contains? descendants-2 a1)) descendants-1))))))
-
 
 (defn type-min 
   "Find an element of the given sequence which is a subtype
@@ -204,4 +253,3 @@
                       (recurring (rest items) left right) ;;   Double & !Float, we can omit Float in right
                       (recurring (rest items) left (cons new-type right)))))))))]
     (recurring items () ())))
-

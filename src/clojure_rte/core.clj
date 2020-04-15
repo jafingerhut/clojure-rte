@@ -44,8 +44,7 @@
             [clojure-rte.util :refer [with-first-match remove-once call-with-collector
                                       visit-permutations rte-constantly rte-identity
                                       sort-operands member]]
-            [clojure-rte.type :refer [typep type-intersection disjoint?
-                                      map-type-partitions type-min type-max]]
+            [clojure-rte.type :as ty]
             )
   (:gen-class))
 
@@ -89,6 +88,7 @@
     tag)
    ((not (empty? (or (descendants tag)
                      (ancestors tag)))) tag)
+   ((ty/valid-type? tag) tag)
    (:else
     (println (format "warning unknown type %s" tag))
     tag))
@@ -255,11 +255,7 @@
                            :empty-set (rte-constantly false)
                            :epsilon (rte-constantly true)
                            :sigma   (rte-constantly false)
-                           :type (fn [operand functions]
-                                   ;; not not converts nil to false
-                                   (not (not (some (fn [x]
-                                                     (typep x operand))
-                                                   [() []]))))
+                           :type (rte-constantly false)
                            :* (rte-constantly true)
                            :cat (fn [operands functions]
                                   (every? nullable operands))
@@ -441,17 +437,17 @@
 
                                      ;; (:and of disjoint types) --> :empty-set
                                      ((let [atoms (filter (complement seq?) operands)
-                                            max (type-max atoms)
+                                            max (ty/type-max atoms)
                                             ]
                                         (when (some (fn [i1]
                                                       (some (fn [i2]
                                                               (and (not (= i1 i2))
-                                                                   (disjoint? i1 i2))) atoms)) atoms)
+                                                                   (ty/disjoint? i1 i2))) atoms)) atoms)
                                           :empty-set)))
                                      
                                      ;; (:and subtype supertype x y z) --> (:and subtype x y z)
                                      ((let [atoms (filter (complement seq?) operands)
-                                            max (type-max atoms)
+                                            max (ty/type-max atoms)
                                             ]
                                         (when max
                                           (cons :and (remove #{max} operands)))))
@@ -487,7 +483,7 @@
 
                                     ;; (:or subtype supertype x y z) --> (:and supertype x y z)
                                     ((let [atoms (filter (complement seq?) operands)
-                                           min (type-min atoms)
+                                           min (ty/type-min atoms)
                                            ]
                                        (when min
                                          (cons :or (remove #{min} operands)))))                                     
@@ -510,12 +506,12 @@
 
 (defn compute-compound-derivative
   "wrt may be a compound type designator such as (and A (not B)).
-  So co compute the derivative of B wrt (and A (not B)) we get :empty-set
+  So to compute the derivative of B wrt (and A (not B)) we get :empty-set
   because the types are disjoint."
   [expr wrt]
 
-  (assert (not (seq? expr)) (cl-format false "not expecting sequence expr= ~A" expr))
-  (assert (seq? wrt) (cl-format false "expecting sequence, not ~A" wrt))
+  ;;(assert (not (sequential? expr)) (cl-format false "not expecting sequence expr= ~A:" expr))
+  (assert (sequential? wrt) (cl-format false "expecting sequence, not ~A:" wrt))
   (assert (= 'and (first wrt)))
   (cond
     (some #{`(~'not ~expr)} (rest wrt))
@@ -556,11 +552,12 @@
                                 :sigma (fn [type functions]
                                          :epsilon)
                                 :type (fn [type functions]
-                                        (cond (and (seq? wrt)
+                                        ;;(cl-format true "computing derivative of ~A wrt ~A~%" type wrt)
+                                        (cond (and (sequential? wrt)
                                                    (= 'and (first wrt)))
                                               (compute-compound-derivative type wrt)
                                               
-                                              (disjoint? wrt type)
+                                              (ty/disjoint? wrt type)
                                               :empty-set
 
                                               (isa? wrt type)
@@ -604,13 +601,13 @@
   (letfn [(independent? [t1]
             (every? (fn [t2]
                       (or (= t1 t2)
-                          (disjoint? t1 t2))) type-set))]
+                          (ty/disjoint? t1 t2))) type-set))]
 
     (let [independent (filter independent? type-set)
           dependent (remove (set independent) type-set)]
       (concat independent (call-with-collector
                            (fn [collect]
-                             (map-type-partitions
+                             (ty/map-type-partitions
                               (seq dependent)
                               (fn [left right]
                                 (cond
@@ -713,11 +710,9 @@
             )]
     (recurring 0 [] ())))
 
-
-(defn rte-compile 
+(def rte-compile
   "Compile an rte pattern into a finite automaton."
-  [pattern]
-  (rte-to-dfa pattern))
+  (memoize rte-to-dfa))
 
 (defn rte-execute [dfa items]
   "Given a finite automaton generated by rte-to-dfa (or rte-compile), determine
@@ -730,7 +725,7 @@
       (let [[head & tail] items
             state-obj (dfa state)]
         (if-let [next-state (some (fn [[type next-state]]
-                                    (if (typep head type)
+                                    (if (ty/typep head type)
                                       next-state
                                       false))
                                   (:transitions state-obj))]
@@ -748,3 +743,10 @@
   rte-match contains a call to both rte-compile and rte-execute."
   [pattern items]
   (rte-execute (rte-compile pattern) items))
+
+(defmethod ty/typep 'rte [a-value [a-type pattern]]
+  (and (sequential? a-value)
+       (rte-match pattern a-value)))
+
+(defmethod ty/valid-type? 'rte [[_ pattern]]
+  (boolean (rte-compile pattern)))

@@ -65,7 +65,6 @@
       :else
       (recur (rest items) (cons (first items) acc)))))
 
-
 (defn call-with-collector
   "This function calls your given function which an argument which can be
    called to collect values.  The return value of call-with-collector is
@@ -104,7 +103,6 @@
                                  (cons item tail)))))]
     (visit-with-tail items '())))
 
-
 (defn rte-constantly
   "Return a binary function, similar to constanty, but the binary
    function ignors its second argument.  This function is useful as a
@@ -137,8 +135,8 @@
               (compare (.getName (type a))
                        (.getName (type b)))
 
-              (and (seq? a)
-                   (seq? b))
+              (and (sequential? a)
+                   (sequential? b))
               (loop [a a
                      b b]
                 (cond
@@ -150,8 +148,8 @@
                   (= (first a) (first b))   (recur (rest a) (rest b))
                   :else     (cmp (first a) (first b))))
 
-              (seq? a)        1
-              (seq? b)       -1
+              (sequential? a)        1
+              (sequential? b)       -1
 
               :else
               (compare a b)))]
