@@ -249,6 +249,35 @@ If you want to match a sequence like  `[:x 100 :y 200 :z 300]`  but not if any o
 )
 ```
 
+## Hierarchical Sequences
+
+
+
+The `rte` type designator may be used to indicate hierarchical sequences,  i.e., sequences some of whose elements are themselves sequences.  The type designator `(rte (:* integer?))` indicates the set of sequences whose elements are sequences of any length consisting of integers.
+
+The rte pattern `(:* (rte (:+ integer?)))` matches a sequence of 0 or more non-empty sequences
+whose elements are integers. 
+
+The pattern `(:* (:or (rte (:* String)) (rte (:* integer?))))` matches a sequence of sequences each of which contains only
+strings or only Integers, e.g.,
+
+```clojure
+(rte-match '(:* (:or (rte (:* String)) (rte (:* integer?))))
+  [[1 2 3]
+   ["hello" "world"]
+   [10 20 30 40 50]])
+==> true
+```
+but not
+```clojure
+(rte-match '(:* (:or (rte (:* String)) (rte (:* integer?))))
+  [[1 2 3]
+   ["hello" "world"]
+   [10 "20" 30 "40" 50]])
+==> false
+```
+
+
 ## Algebra of RTEs
 
 Given two RTEs it is possible to ask questions of habitation and
@@ -301,18 +330,6 @@ We see that indeed the empty sequence matches `pattern1` but does not match `pat
 
 There are several important extensions we would like to implement.
 
-1. The `:rte` keyword such as `(:rte (:* integer?))` which means a singleton sequence whose element is a sequence of integers.  This keyword is used to designate hierarchical structure.  `(:* (:rte (:* integer?)))` means a sequence of 0 or more sequences whose elements are integers. `(:* (:or (:rte (:* String)) (:rte (:* integer?))))` is a sequence of sequences each of which contains only strings or only Integers, e.g., 
-```clojure
-[[1 2 3]
- ["hello" "world"]
- [10 20 30 40 50]]
-```
-but not
-```clojure
-[[1 2 3]
- ["hello" "world"]
- [10 "20" 30 "40" 50]]
-```
 
 2. Internal to the RTE code we have implemented a type designator
   notation (a DSL) inspired by that of Common Lisp.  In Common Lisp they are
@@ -338,6 +355,9 @@ but not
 
   - `(member x y z ...)` is a type designator equivalent to `(or (= x) (= y) (= z) ...)`.
   
+  - `(rte pattern)` is a type designator which specifies the set of sequences which match the given rte pattern.  For example, the type `(rte (:cat Long String))` is the set of two element sequences whose first element is a `Long` and whose second element is a string.
+
+
 ## Code test coverage
 
 [![codecov](https://codecov.io/gl/jnewton/clojure-rte/branch/master/graph/badge.svg)]

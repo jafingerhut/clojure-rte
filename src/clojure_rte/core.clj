@@ -506,11 +506,11 @@
 
 (defn compute-compound-derivative
   "wrt may be a compound type designator such as (and A (not B)).
-  So co compute the derivative of B wrt (and A (not B)) we get :empty-set
+  So to compute the derivative of B wrt (and A (not B)) we get :empty-set
   because the types are disjoint."
   [expr wrt]
 
-  (assert (not (sequential? expr)) (cl-format false "not expecting sequence expr= ~A:" expr))
+  ;;(assert (not (sequential? expr)) (cl-format false "not expecting sequence expr= ~A:" expr))
   (assert (sequential? wrt) (cl-format false "expecting sequence, not ~A:" wrt))
   (assert (= 'and (first wrt)))
   (cond
@@ -552,7 +552,8 @@
                                 :sigma (fn [type functions]
                                          :epsilon)
                                 :type (fn [type functions]
-                                        (cond (and (seq? wrt)
+                                        ;;(cl-format true "computing derivative of ~A wrt ~A~%" type wrt)
+                                        (cond (and (sequential? wrt)
                                                    (= 'and (first wrt)))
                                               (compute-compound-derivative type wrt)
                                               
