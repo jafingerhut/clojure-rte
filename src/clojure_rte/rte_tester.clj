@@ -41,12 +41,18 @@
     :else
     ()))
 
-(defn gen-rte [size types]
-  (let [key (rand-nth [:type
-                       :? :+ :* :not
-                       :and :or 
-                       :cat :permute
-                       :sigma :empty-set :epsilon])] 
+(def ^:dynamic *rte-keywords*
+  [:type
+   :? :+ :* :not
+   :and :or 
+   :cat :permute
+   :sigma :empty-set :epsilon])
+
+(defn gen-rte
+  ([size types]
+   (let [key (rand-nth *rte-keywords*)] 
+     (gen-rte key size types)))
+  ([key size types]
     (case key
       (:type) (rand-nth types)
       (:sigma :empty-set :epsilon) key
@@ -59,10 +65,10 @@
 
 (defn test-rte-to-dfa [num-tries size]
   (tester/random-test num-tries rte-to-dfa
-               (fn [] (gen-rte size *test-types*))
-               rte-components))
+                      (fn [] (gen-rte size *test-types*))
+                      rte-components))
 
 (defn test-canonicalize-pattern [num-tries size]
   (tester/random-test num-tries canonicalize-pattern
-               (fn [] (gen-rte size *test-types*))
-               rte-components))
+                      (fn [] (gen-rte size *test-types*))
+                      rte-components))

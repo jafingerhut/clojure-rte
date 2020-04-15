@@ -75,9 +75,8 @@
   which are both a subtype of t1 and of t2.  If the types don't
   intersect, #{} is returned."
   [t1 t2]
-
-  (intersection (conj (descendants t1) t1)
-                (conj (descendants t2) t2)))
+  (intersection (conj (or (descendants t1) #{}) t1)
+                (conj (or (descendants t2) #{}) t2)))
 
 (defn disjoint? 
   "Predicate to determine whether the two types overlap."

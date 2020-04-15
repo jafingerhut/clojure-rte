@@ -19,31 +19,29 @@
 ;; OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
 ;; WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-(ns clojure-rte.cl-compat)
+(ns clojure-rte.rte-tester-test
+  (:require [clojure-rte.rte-tester :refer :all]
+            [clojure.test :refer :all]))
 
-(defn cl-prog1 [val & _]
-  val)
+(deftest t-test-canonicalize-pattern
+  (testing "test-canonicalize-pattern"
+    (test-canonicalize-pattern 10 4)))
 
-(defn cl-prog2 [_ val & _]
-  val)
+(deftest t-test-rte-to-dfa
+  (testing "test-rte-to-dfa"
+    (test-rte-to-dfa 10 4)))
 
-(defn cl-progn [& others]
-  (last others))
+(deftest t-rte-keywords
+  (testing "rte-keywords"
+    (for [k *rte-keywords*]
+      (gen-rte k 4 *test-types*))))
 
-(defmacro cl-cond
-  "Like CL:cond.  Each operand of the cl-cond is a list of length at least 1.
-   The same semantics as clojure cond, in that the return value is
-   determined by the first test which returns non-false.  The
-   important semantic difference is that an agument has 1, then the
-   specified form is both the test and the return value, and it is
-   evaluated at most once.
-   Implementation from:
-   https://stackoverflow.com/questions/4128993/consolidated-cond-arguments-in-clojure-cl-style"
-  ([] nil)
-  ([[if1 & then1] & others]
-   (when (or if1 then1 others)
-     (let [extra-clauses# (if others `(cl-cond ~@others))]
-       (if then1
-         `(if ~if1 (do ~@then1) ~extra-clauses#)
-         `(or ~if1 ~extra-clauses#))))))
+(deftest t-rte-components
+  (testing "rte-components"
+    (for [k *rte-keywords*]
+      (rte-components (gen-rte k 4 *test-types*)))))
 
+
+(deftest t-rte-to-dfa-random
+  (testing "rte-to-dfa random"
+    (test-rte-to-dfa 10 5)))

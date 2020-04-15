@@ -46,7 +46,6 @@
     (is (not (nullable '(:+ :empty-set))) 2)
     (is (nullable '(:? :epsilon)) 1)))
 
-
 (deftest t-first-types
   (derive ::Canine ::Animal)
   (derive ::Wolf ::Canine)
@@ -88,17 +87,6 @@
    (is (isa? ::Lion ::Animal))
    (is (not (isa? ::Lion ::Cat)))))
 
-(deftest t-sort-operands
-  (testing "sort-operands"
-    (is (= (sort-operands '(::Cat ::Lion))
-           '(::Cat ::Lion)))
-    (is (= (sort-operands '(::Lion ::Cat))
-           '(::Cat ::Lion)))
-    (is (= (sort-operands '((:not ::Cat) (:not ::Lion)))
-           '((:not ::Cat) (:not ::Lion))))
-    (is (= (sort-operands '((:not ::Lion) (:not ::Cat)))
-           '((:not ::Cat) (:not ::Lion))))))
-    
 (deftest t-canonicalize-pattern-subtypes
   (derive ::Canine ::Animal)
   (derive ::Wolf ::Canine)
@@ -339,81 +327,7 @@
 
 
     ))
-    
-(deftest t-disjoint?
-  (derive ::Canine ::Animal)
-  (derive ::Wolf ::Canine)
-  (derive ::Fox ::Canine)
-  (derive ::Dog ::Canine)
-  (derive ::Feline ::Animal)
-  (derive ::Cat ::Feline)
-  (derive ::Lion ::Feline)
-  (derive ::Cat-Lion ::Cat)
-  (derive ::Cat-Lion ::Lion)
-  (testing "disjoint?"
-    (is (not (disjoint? ::Fox ::Animal)))
-    (is (not (disjoint? ::Cat ::Lion)))
-    (is (disjoint? ::Wolf ::Fox))
-    (is (= (set (type-intersection ::Cat ::Lion))
-           #{::Cat-Lion}))))
 
-(deftest t-remove-once
-  (testing "remove-once"
-    (is (= (remove-once 4 '(1 2 3))
-           '(1 2 3)))
-    (is (= (remove-once 1 '())
-           ()))
-
-    (is (= (remove-once 1 '(1 2 3))
-           '(2 3)))
-
-    (is (= (remove-once 1 '(1 1 2 3))
-           '(1 2 3)))
-
-    (is (= (remove-once 1 '(1 2 1 3))
-           '(2 1 3)))
-
-    (is (= (remove-once 2 '(1 2 1 2 3 2))
-           '(1 1 2 3 2)))
-    ))
-
-(deftest t-call-with-collector
-  (testing "call-with-collector"
-    (is (= (call-with-collector (fn [collect]
-                                  (collect 1)
-                                  (collect 3)
-                                  (collect 2)))
-           '(2 3 1)))
-    (is (= (call-with-collector (fn [collect]
-                                  ))
-           ()))))
-
-(deftest t-visit-permuations
-  (testing "visit-permutations"
-    (is (= (set (call-with-collector
-                 (fn [collect]
-                   (visit-permutations collect '()))))
-           #{()}))
-    (is (= (set (call-with-collector
-                 (fn [collect]
-                   (visit-permutations collect '(1)))))
-           #{'(1)}))
-    (is (= (set (call-with-collector
-                 (fn [collect]
-                   (visit-permutations collect '(1 2)))))
-           (set '((1 2)
-                  (2 1)))))
-    (is (= (set (call-with-collector
-                 (fn [collect]
-                   (visit-permutations collect '(1 2 3)))))
-           (set '((1 2 3)
-                  (1 3 2)
-                  (2 1 3)
-                  (2 3 1)
-                  (3 1 2)
-                  (3 2 1)))))
-    ))
-    
 (deftest t-rte-to-dfa
   (derive ::Canine ::Animal)
   (derive ::Wolf ::Canine)
@@ -431,27 +345,6 @@
     ;;              (rte-to-dfa '(:permute ::Wolf (:? (:+ :empty-set)) (:+ (:* (:and)))))) "dfa 2")
     ))
 
-
-(deftest t-cl-cond
-  (testing "cl-cond"
-    (let [a 100 b 200]
-      (is (= 42 (cl-cond
-                 (a 42))) "cond 1")
-      (is (= 42 (cl-cond
-                 ((= a 1) 41)
-                 ((= a 100) 42))) "cond 2")
-      (is (not (cl-cond
-                 ((= a 1) 41)
-                 ((= a 200) 42))) "cond 2b")
-      (is (= 100 (cl-cond
-                  ((= a 1) 41)
-                  (a)
-                  (true -1))) "cond 3")
-
-      (is (= -2 (cl-cond
-                  ((= a 1) 41)
-                  (true -1 -2))) "cond 4")
-      )))
 
 (deftest t-rte-match
   (testing "rte-match"
@@ -531,156 +424,6 @@
              (is (rte-execute rte data) (format "n=%s" n))))
          (range 10))))
 
-(deftest t-rte-to-dfa-random
-  (testing "rte-to-dfa random"
-    (test-rte-to-dfa 10 5)))
 
-(deftest t-sort-operands []
-  (sort-operands '(:cat (:not (:* (:or :epsilon :sigma)))
-                        (:not (:cat :sigma (:* :sigma)))
-                        (:or :epsilon :sigma)
-                        :sigma
-                        :sigma
-                        (:* :sigma)
-                        :sigma
-                        (:or :epsilon :sigma)
-                        (:* :sigma)
-                        (:or (:and :sigma BigInteger) (:and :sigma Byte) (:and :sigma Integer) (:and :sigma Long) (:and :sigma Short) (:and :sigma clojure.lang.BigInt))
-                        :sigma
-                        (:* :sigma)
-                        :sigma
-                        :sigma))
-  (sort-operands '(:cat (:not (:* (:or :epsilon :sigma)))
-                        (:not (:cat :sigma (:* :sigma)))
-                        (:or :epsilon :sigma)
-                        :sigma
-                        :sigma
-                        (:* :sigma)
-                        :sigma
-                        (:or :epsilon :sigma)
-                        (:* :sigma)
-                        (:or (:and :sigma BigInteger) (:and :sigma Byte) (:and :sigma Integer) (:and :sigma Long) (:and :sigma Short) (:and :sigma clojure.lang.BigInt))
-                        :sigma
-                        :sigma
-                        (:* :sigma)
-                        :sigma))
-  (sort-operands '(:cat (:not (:* (:or :epsilon :sigma)))
-                        (:not (:cat :sigma (:* :sigma)))
-                        (:or :epsilon :sigma)
-                        :sigma
-                        :sigma
-                        (:* :sigma)
-                        :sigma
-                        :sigma
-                        (:* :sigma)
-                        :sigma
-                        (:or :epsilon :sigma)
-                        (:* :sigma)
-                        (:or (:and :sigma BigInteger) (:and :sigma Byte) (:and :sigma Integer) (:and :sigma Long) (:and :sigma Short) (:and :sigma clojure.lang.BigInt))
-                        :sigma))
-  (sort-operands '(:cat (:not (:* (:or :epsilon :sigma)))
-                        (:not (:cat :sigma (:* :sigma)))
-                        (:or :epsilon :sigma)
-                        :sigma
-                        :sigma
-                        (:* :sigma)
-                        :sigma
-                        (:* :sigma)
-                        :sigma
-                        (:or :epsilon :sigma)
-                        (:* :sigma)
-                        (:or (:and :sigma BigInteger) (:and :sigma Byte) (:and :sigma Integer) (:and :sigma Long) (:and :sigma Short) (:and :sigma clojure.lang.BigInt))
-                        :sigma
-                        :sigma))
-  (sort-operands '(:cat (:not (:* (:or :epsilon :sigma)))
-                        (:not (:cat :sigma (:* :sigma)))
-                        (:or :epsilon :sigma)
-                        :sigma
-                        :sigma
-                        :sigma
-                        :sigma
-                        (:* :sigma)
-                        :sigma
-                        (:or :epsilon :sigma)
-                        (:* :sigma)
-                        (:or (:and :sigma BigInteger) (:and :sigma Byte) (:and :sigma Integer) (:and :sigma Long) (:and :sigma Short) (:and :sigma clojure.lang.BigInt))
-                        :sigma
-                        (:* :sigma)))
-  
-  (sort-operands '(:cat (:not (:* (:or :epsilon :sigma)))
-                        (:not (:cat :sigma (:* :sigma)))
-                        (:or :epsilon :sigma)
-                        :sigma
-                        :sigma
-                        :sigma
-                        (:* :sigma)
-                        :sigma
-                        (:or :epsilon :sigma)
-                        (:* :sigma)
-                        (:or (:and :sigma BigInteger) (:and :sigma Byte) (:and :sigma Integer) (:and :sigma Long) (:and :sigma Short) (:and :sigma clojure.lang.BigInt))
-                        :sigma
-                        (:* :sigma)
-                        :sigma))
-  (sort-operands '(:cat (:not (:* (:or :epsilon :sigma)))
-                        (:not (:cat :sigma (:* :sigma)))
-                        (:or :epsilon :sigma)
 
-                        :sigma
-                        :sigma
-                        :sigma
-                        (:* :sigma)
-                        :sigma
-                        (:or :epsilon :sigma)
-                        (:* :sigma)
-                        (:or (:and :sigma BigInteger) (:and :sigma Byte) (:and :sigma Integer) (:and :sigma Long) (:and :sigma Short) (:and :sigma clojure.lang.BigInt))
-                        :sigma
-                        :sigma (:* :sigma)))
-  (sort-operands '(:cat (:not (:* (:or :epsilon :sigma))) (:not (:cat :sigma (:* :sigma)))
-                        (:or :epsilon :sigma) :sigma :sigma :sigma (:* :sigma)
-                        :sigma :sigma (:* :sigma) :sigma (:or :epsilon :sigma)
-                        (:* :sigma) (:or (:and :sigma BigInteger) (:and :sigma Byte)
-                                         (:and :sigma Integer) (:and :sigma Long)
-                                         (:and :sigma Short) (:and :sigma clojure.lang.BigInt))))
-  (sort-operands '(:cat (:not (:* (:or :epsilon :sigma))) (:not (:cat :sigma (:* :sigma)))
-                        (:or :epsilon :sigma) :sigma :sigma :sigma (:* :sigma) :sigma (:* :sigma)
-                        :sigma (:or :epsilon :sigma) (:* :sigma)
-                        (:or (:and :sigma BigInteger)
-                             (:and :sigma Byte) (:and :sigma Integer)
-                             (:and :sigma Long) (:and :sigma Short)
-                             (:and :sigma clojure.lang.BigInt)) :sigma))
-  (sort-operands '(:cat (:not (:* (:or :epsilon :sigma))) (:not (:cat :sigma (:* :sigma)))
-                        (:or :epsilon :sigma) :sigma :sigma :sigma :sigma (:* :sigma) :sigma (:* :sigma)
-                        :sigma (:or :epsilon :sigma) (:* :sigma)
-                        (:or (:and :sigma BigInteger)
-                             (:and :sigma Byte) (:and :sigma Integer)
-                             (:and :sigma Long) (:and :sigma Short) (:and :sigma clojure.lang.BigInt))))
-  (sort-operands '(:cat (:not (:* (:or :epsilon :sigma)))
-                        (:not (:cat :sigma (:* :sigma)))
-                        (:or :epsilon :sigma)
-                        :sigma
-                        :sigma
-                        (:* :sigma)
-                        :sigma
-                        (:or :epsilon :sigma)
-                        (:* :sigma)
-                        (:or (:and :sigma BigInteger) (:and :sigma Byte) (:and :sigma Integer)
-                             (:and :sigma Long) (:and :sigma Short) (:and :sigma clojure.lang.BigInt))
-                        :sigma :sigma
-                        (:* :sigma)
-                        :sigma))
-  (sort-operands '(:cat (:not (:* (:or :epsilon :sigma)))
-                        (:not (:cat :sigma (:* :sigma)))
-                        (:or :epsilon :sigma)
-                        :sigma
-                        :sigma
-                        (:* :sigma)
-                        :sigma
-                        (:or :epsilon :sigma)
-                        (:* :sigma)
-                        (:or (:and :sigma BigInteger) (:and :sigma Byte) (:and :sigma Integer)
-                             (:and :sigma Long) (:and :sigma Short) (:and :sigma clojure.lang.BigInt))
-                        :sigma
-                        :sigma
-                        :sigma
-                        (:* :sigma)))
-  )
+
