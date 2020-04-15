@@ -58,7 +58,7 @@ followed (in the same sequence) by one or more objects of type `String`.
 
 Which kinds of type designators can be used?  You may use 
 
-- Any type name which is accepted by the `isa?` function.
+- Any type name which is a symbol, `T` for which `(resolve T)` is accepted by the `isa?` function.
 - Any name which is registered in `*rte-known*`.
 
 The dynamic variable `*rte-known*` is intended for applications to
