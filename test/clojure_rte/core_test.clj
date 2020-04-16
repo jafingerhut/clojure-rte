@@ -421,23 +421,16 @@
              (is (rte-execute rte data) (format "n=%s" n))))
          (range 10))))
 
-(deftest t-rte-type
-  (testing "rte type"
-    (is (get-method typep 'rte) "test get-method")
-    (is (typep [1] '(rte Long)) "test 1")
-    (is (rte-match '(:* (rte Long)) [])  "test 2")
-    (is (rte-match '(:* (rte Long)) [[3]])  "test 3")
-    (is (rte-match '(:* (rte Long)) [[3] [4] [5]])  "test 4")
-    (is (not (rte-match '(:* (rte Long)) [[3 3] [4 4] [5 6]]))  "test 5")
-    (is (rte-match '(:* (rte (:* Long))) [[3] [4] [5]])  "test 6")
-    (is (rte-match '(:* (rte (:* Long))) [[3 3] [4] [5]])  "test 7")
-    (is (rte-match '(:* (rte (:* Long))) [[3 3] [] [5]])  "test 8")
-    (is (rte-match '(:* (rte (:* Long))) [[3 3] [] [5 5 5 5 5]])  "test 9")
-    
-    (is (rte-match '(:* (rte (:+ Long))) [[3] [4] [5]])  "test 6a")
-    (is (rte-match '(:* (rte (:+ Long))) [[3 3] [4] [5]])  "test 7a")
-    (is (not (rte-match '(:* (rte (:+ Long))) [[3 3] [] [5]]))  "test 8a")
-    (is (rte-match '(:* (rte (:+ Long))) [[3 3] [4 4 4] [5]])  "test 8b")
-    (is (not (rte-match '(:* (rte (:+ Long))) [[3 3] [] [5 5 5 5 5]]))  "test 9a")
-    (is     (rte-match '(:* (rte (:+ Long))) [[3 3] [4] [5 5 5 5 5]])  "test 9b")
+(deftest t-typep-rte
+  (testing "typep rte"
+    (is (typep [3 3.0 "hello" "world" 3 3.0]
+               '(rte (:cat (:+ (:cat Long Double String))
+                           (:+ (:cat String Long Double))))))))
+
+(deftest t-rte-trace
+  (testing "rte trace"
+    (is (rte-trace (rte-compile '(:* (rte Long))))  "test 2")
+    (is (rte-trace (rte-compile '(:* (rte (:* Long)))))  "test 6")
+    (is (rte-trace (rte-compile '(:cat (:+ (:cat Long Double String))
+                                       (:+ (:cat String Long Double)))))  "test 7")
 ))

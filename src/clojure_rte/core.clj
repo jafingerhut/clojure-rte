@@ -577,7 +577,6 @@
                                 :sigma (fn [type functions]
                                          :epsilon)
                                 :type (fn [type functions]
-                                        ;;(cl-format true "computing derivative of ~A wrt ~A~%" type wrt)
                                         (cond (and (sequential? wrt)
                                                    (= 'and (first wrt)))
                                               (compute-compound-derivative type wrt)
@@ -589,12 +588,11 @@
                                               :epsilon
                                               
                                               :else
-                                              (do
-                                                (throw (ex-info "providing smaller types"
-                                                                {:type :split-type
-                                                                 :sub-types [{:type `(~'and ~wrt ~expr)}
-                                                                             {:type `(~'and ~wrt (~'not ~expr))}]
-                                                                 })))
+                                              (throw (ex-info "providing smaller types"
+                                                              {:type :split-type
+                                                               :sub-types [{:type `(~'and ~wrt ~expr)}
+                                                                           {:type `(~'and ~wrt (~'not ~expr))}]
+                                                               }))
                                               ))
                                 :or (fn [operands functions]
                                       (cons :or (walk operands)))
