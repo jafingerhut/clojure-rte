@@ -220,7 +220,7 @@ Example -- any number of repetitions of integer anything String.
 not useful to the end user.  However, internally `(:? x)` expands to `(:or x :epsilon)`.
 
 * `(:not ...)` --- Takes exactly one operand.  Matches any sequence
-except ones which match the pattern.  This can be confusing. See the section [Hierarchical Sequences](Hierarchical Sequences) for details.
+except ones which match the pattern.  This can be confusing. See section [Hierarchical Sequences](#hierarchical-sequences) for details.
 
 Example -- `String` matches a singleton sequence whose element is a string.  So `(:not String)` matches any sequence except one of length 1 consisting of a string, including matching the empty sequence.
 
@@ -277,7 +277,7 @@ those of a designated type.  `(:cat (not String) Long)` (once supported by RTE) 
 sequence of length 2 whose second element is a `Long`, and whose first element is
 a member of the type `(not String)`, i.e., the set of all values which are not strings.
 
-See section [Not yet implemented](Not yet implemented) for more
+See section [Not yet implemented](#not-yet-implemented) for more
 details of the prosed type designator syntax.
 
 
