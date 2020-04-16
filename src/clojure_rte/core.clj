@@ -132,6 +132,13 @@
               ((:client functions) pattern functions))
    })
 
+(def supported-nontrivial-types
+  "Which types are currently supported?  This list denotes the
+  type names which appear as (something maybe-args), which are
+  supported by RTE.  The goal is to support all those supported
+  by typep, but that's not yet implemented."
+ '(rte))
+
 (defn traverse-pattern
   "Workhorse function for walking an rte pattern.
    This function is the master of understanding the syntax of an rte
@@ -170,7 +177,13 @@
                                         :cause :unary-keyword
                                         }))
                 ;; case-else
-                ((:type functions) pattern functions))))
+                (if (some #{(first pattern)} supported-nontrivial-types)
+                  ((:type functions) pattern functions)
+                  (throw (ex-info (format "0-ary type %s not yet implemented" pattern)
+                                  {:type :type-not-yet-implemented
+                                   :pattern pattern
+                                   :functions functions
+                                   }))))))
           (if-exactly-one-operand []
             (let [[token operand] pattern]
               (case token
@@ -205,7 +218,13 @@
                                         ~operand) functions)
 
                 ;;case-else
-                ((:type functions) pattern functions))))
+                (if (some #{(first pattern)} supported-nontrivial-types)
+                  ((:type functions) pattern functions)
+                  (throw (ex-info (format "unary type %s not yet implemented" pattern)
+                                  {:type :type-not-yet-implemented
+                                   :pattern pattern
+                                   :functions functions
+                                   }))))))
           (if-multiple-operands []
             (let [[token & operands] pattern]
               (case token
@@ -230,7 +249,13 @@
                                  }))
 
                 ;;case-else
-                ((:type functions) pattern functions))))]
+                (if (some #{(first pattern)} supported-nontrivial-types)
+                  ((:type functions) pattern functions)
+                  (throw (ex-info (format "variadic type %s not yet implemented" pattern)
+                                  {:type :type-not-yet-implemented
+                                   :pattern pattern
+                                   :functions functions
+                                   }))))))]
     (cond (not (seq? pattern))
           (if-atom)
 
