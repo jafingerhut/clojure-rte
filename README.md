@@ -404,6 +404,18 @@ There are several important extensions we would like to implement.
   
   - `(rte pattern)` is a type designator which specifies the set of sequences which match the given rte pattern.  For example, the type `(rte (:cat Long String))` is the set of two element sequences whose first element is a `Long` and whose second element is a string.
 
+2. We have made no attempts to minimize the DFA which is produced.
+For example the image shown in section [Debugging](#debugging) is no
+minimized.  States 2, 4 and 5 can be combined into a single state, and
+also states 1 and 3 can be combined.  If states 1 and 3 are combined
+the labels 0 -> 3 and 0 -> 1 can be unioned to the type `Long` which
+will improve run-time performance.
+
+```
+(or Long (and (not Long) (not String))) = Long
+```
+
+
 ## Code test coverage
 
 [![codecov](https://codecov.io/gl/jnewton/clojure-rte/branch/master/graph/badge.svg)]
@@ -439,5 +451,5 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 <!--  LocalWords:  Clojure LRDE GitLab gitlab https rte src img RTEs
  -->
-<!--  LocalWords:  DSL
+<!--  LocalWords:  DSL DFA unioned
  -->
