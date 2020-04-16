@@ -358,6 +358,21 @@ Another example.  `(:* (:cat keyword? :sigma))` matches a sequence of alternatin
 We see that indeed the empty sequence matches `pattern1` but does not match `pattern2`.
 
 
+## Debugging
+
+Once a dfa has been created with a call to `rte-compile` or `rte-to-dfa`, you may draw
+the corresponding graph using the `dfa-to-dot` function.
+
+```clojure
+(clojure-rte.dot/dfa-to-dot
+  (rte-compile '(:and (:cat :sigma :sigma) (:cat (:not String) Long)))
+  :title "Example"
+  :view true)
+```
+<img src="img/example-dfa.png" alt="Example Finite Automaton" width="300"/>
+
+
+
 ## Not yet implemented
 
 There are several important extensions we would like to implement.

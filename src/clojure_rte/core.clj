@@ -716,10 +716,17 @@
                             (trip 0)) triples)]
     (into [] (map (fn [deriv index]
                     {:index index
+                     :initial (= 0 index)
                      :accepting (nullable deriv)
                      :pattern deriv
-                     :transitions (map (fn [[src wrt dst]]
-                                         [wrt dst]) (grouped index))})
+                     :transitions (if (and (grouped index)
+                                           (apply = (map (fn [[src wrt dst]]
+                                                           dst) (grouped index))))
+                                    ;; if all transitions have same dst, then don't draw
+                                    ;; multiple transitions, just draw with with label = :sigma
+                                    (list [:sigma ((first (grouped index)) 2)])
+                                    (map (fn [[src wrt dst]]
+                                           [wrt dst]) (grouped index)))})
                   derivatives (range (count derivatives))))))
 
 (defn rte-trace
