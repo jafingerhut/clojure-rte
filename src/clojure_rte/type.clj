@@ -216,6 +216,9 @@
             (cl-cond
              ((some #{:sigma} right)
               )
+             ((and (some #{:sigma} left)
+                   right)
+              (recurring items (remove #{:sigma} left) right))
              ((and left
                    (some (fn [t2]
                            (disjoint? t2 (first left))) (rest left)))
