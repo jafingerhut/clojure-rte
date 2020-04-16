@@ -160,7 +160,7 @@
            ;; this code attempts to save the list in case TIM sort fails so we
            ;; can debug it.
            (do (swap! problematic-operands (fn [_] operands))
-               (printf "saving problematic operands in *problematic-operands*: %s" operands)
+               (printf "saving problematic operands in *problematic-operands*: %s" (seq operands))
                (throw e))))))
 
 (defn member
