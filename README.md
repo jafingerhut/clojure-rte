@@ -220,7 +220,7 @@ Example -- any number of repetitions of integer anything String.
 not useful to the end user.  However, internally `(:? x)` expands to `(:or x :epsilon)`.
 
 * `(:not ...)` --- Takes exactly one operand.  Matches any sequence
-except ones which match the pattern.  This can be confusing.
+except ones which match the pattern.  This can be confusing. See the section [Hierarchical Sequences](Hierarchical Sequences) for details.
 
 Example -- `String` matches a singleton sequence whose element is a string.  So `(:not String)` matches any sequence except one of length 1 consisting of a string, including matching the empty sequence.
 
@@ -229,10 +229,6 @@ Example -- `String` matches a singleton sequence whose element is a string.  So 
 (rte-match '(:not String] ["hello"]) ;; false
 (rte-match '(:not String] ["hello" "world"]) ;; true
 ```
-
-If you want to match a sequence like  `[:x 100 :y 200 :z 300]`  but not if any of the values after the keyword is a String, use the following.
-`(rte-match '(:* (:cat Keyword (:and :sigma (:not String)))) ...)`, because `(:and :sigma (:not String))` will match any singleton sequence whose element is NOT a string.
-
 
 ## Examples
 
@@ -248,6 +244,42 @@ If you want to match a sequence like  `[:x 100 :y 200 :z 300]`  but not if any o
   (rte-execute '(:x 1 :y 2 :z 42 "Hello" "World")) ;; --> false
 )
 ```
+
+## Confusion with negative semantics
+
+As mentioned above the semantics of `:not` can be confusing and unintuitive.
+
+The pattern `(:and :sigma (:not String))` 
+matches a singleton sequence whose element is not a string; however,
+`(:not String)` will match any sequence except a singleton whose element
+is a string.  This becomes confusing in concatenations.
+
+The pattern `(:cat (:not String) Long)` will refuse match 
+`["hello" 4]` which is probably what the user intended.  But it will match 
+`[1 2 3 4 5]`.  Why?  because `[1 2 3 4]` matches `(:not String)`, and `[5]`
+matches `Long`.
+
+If you really intended to to exclude `["hello" 4]` and also exclude `[1 2 3 4 5]`,
+the rte pattern needs more information.  For example, you might limit the seqence
+to sequences of two entries.  `(:and (:cat :sigma :sigma) (:cat (:not String) Long))`
+which will refuse to match `[1 2 3 4 5]`, but will match `[1.2 3]`, because
+`[1.2]` is not a singeton sequence of String.
+
+If you want to match a sequence like `[:x 100 :y 200 :z 300]` but not
+if any of the values after the keyword is a String, you may use the following.
+`(rte-match '(:* (:cat Keyword (:and :sigma (:not String)))) ...)`,
+because `(:and :sigma (:not String))` will match any singleton
+sequence whose element is NOT a string.
+
+A feature which is not yet implemented will alleviate some of this confusion.
+The *type designator* `(not ...)` will represent tye set of all values except
+those of a designated type.  `(:cat (not String) Long)` (once supported by RTE) will match
+sequence of length 2 whose second element is a `Long`, and whose first element is
+a member of the type `(not String)`, i.e., the set of all values which are not strings.
+
+See section [Not yet implemented](Not yet implemented) for more
+details of the prosed type designator syntax.
+
 
 ## Hierarchical Sequences
 
@@ -356,7 +388,6 @@ There are several important extensions we would like to implement.
   - `(member x y z ...)` is a type designator equivalent to `(or (= x) (= y) (= z) ...)`.
   
   - `(rte pattern)` is a type designator which specifies the set of sequences which match the given rte pattern.  For example, the type `(rte (:cat Long String))` is the set of two element sequences whose first element is a `Long` and whose second element is a string.
-
 
 ## Code test coverage
 
