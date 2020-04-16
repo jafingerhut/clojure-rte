@@ -369,7 +369,7 @@ the corresponding graph using the `dfa-to-dot` function.
   :title "Example"
   :view true)
 ```
-<img src="img/example-dfa.png" alt="Example Finite Automaton" width="300"/>
+<img src="img/example-dfa.png" alt="Example Finite Automaton" width="600"/>
 
 
 
