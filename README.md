@@ -251,12 +251,12 @@ As mentioned above the semantics of `:not` can be confusing and unintuitive.
 
 The pattern `(:and :sigma (:not String))` 
 matches a singleton sequence whose element is not a string; however,
-`(:not String)` will match any sequence except a singleton whose element
+`(:not String)` will match any sequence except a singleton sequence whose element
 is a string.  This becomes confusing in concatenations.
 
 The pattern `(:cat (:not String) Long)` will refuse match 
-`["hello" 4]` which is probably what the user intended.  But it will match 
-`[1 2 3 4 5]`.  Why?  because `[1 2 3 4]` matches `(:not String)`, and `[5]`
+`["hello" 4]` which is probably what the user intended.  But it will also match 
+`[1 2 3 4 5]`.  Why?  Because `[1 2 3 4]` matches `(:not String)`, and `[5]`
 matches `Long`.
 
 If you really intended to exclude `["hello" 4]` and also exclude `[1 2 3 4 5]`,
