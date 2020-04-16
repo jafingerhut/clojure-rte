@@ -134,7 +134,7 @@ Example
   )
 ```
 
-* `(:exp (n ...))` --- This has a syntax different than the rest.  `:exp` takes exactly one argument which is a parenthesized pair, indicating the number of repititons, and a pattern.
+* `(:exp (n ...))` --- This has a syntax different than the rest.  `:exp` takes exactly one argument which is a parenthesized pair, indicating the number of occurances, and a pattern.
 
 Example --- to match a sequence 0 to 5 Integers,
 
@@ -259,11 +259,11 @@ The pattern `(:cat (:not String) Long)` will refuse match
 `[1 2 3 4 5]`.  Why?  because `[1 2 3 4]` matches `(:not String)`, and `[5]`
 matches `Long`.
 
-If you really intended to to exclude `["hello" 4]` and also exclude `[1 2 3 4 5]`,
-the rte pattern needs more information.  For example, you might limit the seqence
+If you really intended to exclude `["hello" 4]` and also exclude `[1 2 3 4 5]`,
+the rte pattern needs more information.  For example, you might limit the sequence
 to sequences of two entries.  `(:and (:cat :sigma :sigma) (:cat (:not String) Long))`
 which will refuse to match `[1 2 3 4 5]`, but will match `[1.2 3]`, because
-`[1.2]` is not a singeton sequence of String.
+`[1.2]` is not a singleton sequence of String.
 
 If you want to match a sequence like `[:x 100 :y 200 :z 300]` but not
 if any of the values after the keyword is a String, you may use the following.
@@ -272,13 +272,13 @@ because `(:and :sigma (:not String))` will match any singleton
 sequence whose element is NOT a string.
 
 A feature which is not yet implemented will alleviate some of this confusion.
-The *type designator* `(not ...)` will represent tye set of all values except
+The *type designator* `(not ...)` will represent the set of all values except
 those of a designated type.  `(:cat (not String) Long)` (once supported by RTE) will match
 sequence of length 2 whose second element is a `Long`, and whose first element is
 a member of the type `(not String)`, i.e., the set of all values which are not strings.
 
 See section [Not yet implemented](#not-yet-implemented) for more
-details of the prosed type designator syntax.
+details of the proposed type designator syntax.
 
 
 ## Hierarchical Sequences
@@ -345,7 +345,7 @@ For example to find a sequence which contains 1 or more `integer?` but does not 
 ==> [Byte]
 ```
 
-Another example.  `(:* (:cat keyword? :sigma))` matches a sequence of alternating `Keyword` anything pairs such as `[:x 100 :y "hello"]`. `(:cat (:* :sigma) keyword? (:* :sigma))` matches any sequence which contains at least one `Keyword` somewhere.   So does there exist a sequence which matches the first but not the secone?
+Another example.  `(:* (:cat keyword? :sigma))` matches a sequence of alternating `Keyword` anything pairs such as `[:x 100 :y "hello"]`. `(:cat (:* :sigma) keyword? (:* :sigma))` matches any sequence which contains at least one `Keyword` somewhere.   So does there exist a sequence which matches the first but not the second?
 
 ```clojure
 (let [pattern1 '(:* (:cat keyword? :sigma))
