@@ -407,7 +407,7 @@
 (deftest t-mdtd
   (testing "mdtd"
     (is (= (set (mdtd #{:sigma java.lang.Exception clojure.lang.ExceptionInfo}))
-           #{`(~'and :sigma (~'not ~java.lang.Exception))
+           #{`(~'not ~java.lang.Exception)
              `(~'and ~java.lang.Exception (~'not ~clojure.lang.ExceptionInfo))
              clojure.lang.ExceptionInfo}))))
 
