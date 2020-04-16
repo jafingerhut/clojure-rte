@@ -185,7 +185,35 @@
                           (:* :sigma)))
     ))
 
+(deftest t-sort-operands-4
+  (testing "sort length"
+    (is (= (sort-operands (list (list 1 2 3) (list 1 2 3 4)))
+           (list (list 1 2 3) (list 1 2 3 4))))
+    (is (= (sort-operands (list (list 1 2 3 4) (list 1 2 3)))
+           (list (list 1 2 3) (list 1 2 3 4))))))
+    
 
+(deftest t-sort-operands-3
+  (testing "sort-operands 3"
+    (let [a-cons `(1 2 3) ;; clojure.lang.Cons
+          b-cons `(1 2 3 4) ;; clojure.lang.Cons
+          e-cons (seq `(1 2 3 4)) ;; clojure.lang.Cons
+          c-cons (seq (map identity '(1 2 3))) ;; clojure.lang.Cons
+
+          d-cons (seq (map identity [1 2 3])) ;; clojure.lang.ChunkedCons
+
+          a-list (list 1 2 3) ;; clojure.lang.PersistentList
+          b-list '(1 2 3 4) ;; clojure.lang.PersistentList
+          a-vec [1 2 3] ;; clojure.lang.PersistentVector
+
+          a-lazy (map identity (list 1 2 4)) ;; clojure.lang.LazySeq
+          b-lazy (map identity [1 2 4]) ;; clojure.lang.LazySeq
+          data (list a-cons  
+                     c-cons d-cons 
+                     a-list a-vec b-cons e-cons b-list 
+                     a-lazy b-lazy)]
+      (is (= (sort-operands data)
+             data)))))
 
 (deftest t-visit-permuations
   (testing "visit-permutations"

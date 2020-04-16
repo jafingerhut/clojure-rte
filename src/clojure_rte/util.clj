@@ -129,27 +129,27 @@
   [operands]
   (letfn [(cmp [a b]
             (cond
-              (= a b)       0
-
-              (not (= (type a) (type b)))
-              (compare (.getName (type a))
-                       (.getName (type b)))
-
               (and (sequential? a)
                    (sequential? b))
-              (loop [a a
-                     b b]
+              (loop [aa a
+                     bb b]
                 (cond
-                  (and (empty? a)
-                       (empty? b)) 0
-                  (empty? a) 1
-                  (empty? b) -1
+                  (and (empty? aa)
+                       (empty? bb)) (compare (.getName (type a))
+                                             (.getName (type b)))
+                  (empty? aa) -1
+                  (empty? bb) 1
 
-                  (= (first a) (first b))   (recur (rest a) (rest b))
-                  :else     (cmp (first a) (first b))))
+                  (= (first aa) (first bb))   (recur (rest aa) (rest bb))
+                  :else     (cmp (first aa) (first bb))))
 
-              (sequential? a)        1
-              (sequential? b)       -1
+              (= a b) (compare (.getName (type a))
+                               (.getName (type b)))
+
+              (not (= (.getName (type a))
+                      (.getName (type b))))
+              (compare (.getName (type a))
+                       (.getName (type b)))
 
               :else
               (compare a b)))]
