@@ -408,11 +408,11 @@ There are several important extensions we would like to implement.
 For example the image shown in section [Debugging](#debugging) is no
 minimized.  States 2, 4 and 5 can be combined into a single state, and
 also states 1 and 3 can be combined.  If states 1 and 3 are combined
-the labels 0 -> 3 and 0 -> 1 can be unioned to the type `Long` which
+the labels 0 -> 3 and 0 -> 1 can be unioned to the type `(not String)` which
 will improve run-time performance.
 
 ```
-(or Long (and (not Long) (not String))) = Long
+(or Long (and (not Long) (not String))) = (not String)
 ```
 
 
