@@ -415,6 +415,41 @@ will improve run-time performance.
 (or Long (and (not Long) (not String))) = (not String)
 ```
 
+3. Implement the `:rte` keyword of the form `(:rte sym)` where `sym`
+is a symbol previously registered with a call to the macro `defrte`.
+`defrte` associates a symbol with an rte pattern, which is substituted
+in place of `(:rte sym)`, perhaps in pre-optimized form.  The semantics
+of `(:rte sym)` vs `(rte sym)` will be confusing and must be well
+documented.  `(rte pattern)` designates a subtype of sequence whose
+content matches the designated pattern, which `(:rte sym)` specifies
+zero or more elements of the sequence being traversed.  
+
+`(:cat (rte x) (rte y))` matches a two element sequence whose elements
+are sequences *a* and *b*, where *a* matches the pattern *x* and *b*
+matches the pattern *y*.
+
+`(:cat (:rte x) (:rte y))` matches a sequence of two concatenated
+sequence *a* and *b*, where *a* matches the pattern *x* and *b*
+matches the pattern *y*.  E.g., 
+
+```clojure
+(defrte ::x (:+ Long))
+(defrte ::y (:+ Double))
+
+(let [pat (rte-compile '(:cat (:rte ::x) (:rte ::y)))]
+  ;; the same as (rte-compile '(:cat (:+ Long) (:+ Double)))
+  (rte-match pat [1 2 3 1.2 3.4 5.6 7.8]) ;; true
+  (rte-match pat [[1 2 3] [1.2 3.4 5.6 7.8]]) ;; false
+)
+
+(let [pat (rte-compile '(:cat (rte (:+ Long) (:+ Double))))]
+  (rte-match pat [1 2 3 1.2 3.4 5.6 7.8]) ;; false
+  (rte-match pat [[1 2 3] [1.2 3.4 5.6 7.8]]) ;; true
+)
+```
+
+It will also be possible to bind a dynamic variable,
+`*rte-known-patterns*` to locally specify a key for use in `:rte`.
 
 ## Code test coverage
 
