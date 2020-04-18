@@ -318,8 +318,8 @@ If you have several patterns which you want to name either for reuse
 or readability, use the macro `with-rte`.
 
 ```clojure
-(with-rte [::a (:permute Long Long String)
-           ::b (:permute Double Double String)
+(with-rte [::a (:permute Long Long String) ;; not quoted
+           ::b (:permute Double Double String) ;; not quoted
            ]
   (let [rte (rte-compile '(:cat ::a ::a ::b ::b))]
     (rte-execute rte [2 2 "hello"
@@ -358,6 +358,11 @@ matches the pattern *y*.  E.g.,
   (rte-execute pat [[1 2 3] [1.2 3.4 5.6 7.8]]) ;; true
 )
 ```
+
+If you want to call `with-rte` programmatically, there is a lower
+level function `call-with-rte` which may be easier to use for that
+purpose.
+
 
 ## Algebra of RTEs
 
