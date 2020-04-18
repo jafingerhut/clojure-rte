@@ -20,16 +20,8 @@
 ;; WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 ;; TODO
-;; *  need a way to match a single object which itself is an rte type
-;;    thus matching hierarchical structure
-;;
 ;; *  since there is no (not ...) type in clojure, the (:not ) rte must
 ;;    be especially handled in the automaton construction.
-;;
-;; *  need a way to declare rte "variables".   and a way to distinguish
-;;    a hierarchical rte, i.e., an element of a sequence which itself
-;;    is a sequence matching an rte, vs simply a variable whose value
-;;    is substituted into an rte expression.
 ;;
 ;; * fully implement (satisfies)
 ;;
@@ -75,6 +67,30 @@
    'seq? 'clojure.lang.ISeq
    })
       
+(defn call-with-rte
+  "Call the given 0-ary function with 0 or more rte keys bound to rte patterns.
+   with-rte is a macro API to this function.
+   E.g.,
+   (call-with-rte [::a '(:permute Long Long String)
+                   ::b '(:permute Double Double String)]
+     (fn []
+      (rte-match '(:cat ::a ::b) [1 \"hello\" 2
+                                  \"world\" 1.0 2.0])))"
+  [bindings thunk]
+  (binding [*rte-known* (apply assoc *rte-known* bindings)]
+    (thunk)))
+      
+(defmacro with-rte
+  "Evaluate the given body in a dynamic extend where 0 or more keys bound to
+   un-quoted rte patterns.
+   E.g.,
+   (with-rte [::a (:permute Long Long String)
+              ::b (:permute Double Double String)]
+     (rte-match '(:cat ::a ::b) [1 \"hello\" 2
+                                \"world\" 1.0 2.0])))"
+  [bindings & body]
+  `(call-with-rte '~bindings (fn [] ~@body)))
+
 (defn resolve-rte-tag
   "Look up a tag in *rte-known*, or return the given tag
    if not found"
@@ -90,7 +106,7 @@
                      (ancestors tag)))) tag)
    ((ty/valid-type? tag) tag)
    (:else
-    (println (format "warning unknown type %s" tag))
+    (println (format "resolve-rte-tag: warning unknown type %s" tag))
     tag))
 )
 

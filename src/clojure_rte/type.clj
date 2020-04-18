@@ -65,7 +65,7 @@
            (resolve a-type)
            (class? (resolve a-type)))
     (isa? (type a-value) (resolve a-type))
-    (throw (ex-info (format "invalid type %s" a-type)
+    (throw (ex-info (format "typep: invalid type %s" a-type)
                     {:type :invalid-type-designator
                      :a-type a-type
                      :a-value a-value
@@ -112,7 +112,6 @@
 
 (defmethod valid-type? '= [[_ _]]
   true)
-
 
 (defmethod typep 'member [a-value [a-type & others]]
   (some #{a-value} others))

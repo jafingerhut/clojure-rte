@@ -434,3 +434,51 @@
     (is (rte-trace (rte-compile '(:cat (:+ (:cat Long Double String))
                                        (:+ (:cat String Long Double)))))  "test 7")
 ))
+
+(deftest t-with-rte-1
+  (with-rte [::a (:permute Long Long String)]
+    (is (resolve-rte-tag ::a)))
+  )
+
+(deftest t-with-rte-2
+  (with-rte [::a (:permute Long Long String)]
+    (is (resolve-rte-tag ::a))
+    (rte-compile '(:cat ::a ::a))))
+
+(deftest t-with-rte-3
+  (with-rte [::a (:permute Long Long String)]
+    (is (resolve-rte-tag ::a))
+    (let [rte (rte-compile '(:cat ::a ::a))]
+      (is (rte-execute rte [2 2 "hello"
+                            4 4 "world"]) "case 1")))
+  )
+
+(deftest t-with-rte
+  (with-rte [::a (:permute Long Long String)]
+    (is (resolve-rte-tag ::a))
+    (let [rte (rte-compile '(:cat ::a ::a))]
+      (is (rte-execute rte [2 2 "hello"
+                            4 4 "world"]) "case 1")
+      (is (rte-execute rte [2 "hello" 2
+                            4 4 "world"]) "case 2")
+      (is (rte-execute rte [2 "hello" 2
+                            "world" 4 4]) "case 3")
+      (is (not (rte-execute rte [2 "hello" 2 2 2
+                                 "world" 4 4])) "case 4")
+      (is (not (rte-execute rte [2 "hello" "hello"
+                                 "world" 4 4])) "case 5")))
+  )
+
+(deftest r-with-rte-4
+  (with-rte [::x (:+ Long)
+             ::y (:+ Double)]
+
+    (let [pat (rte-compile '(:cat ::x  ::y))]
+      ;; the same as (rte-compile '(:cat (:+ Long) (:+ Double)))
+      (is (rte-execute pat [1 2 3 1.2 3.4 5.6 7.8]))
+      (is (not (rte-execute pat [[1 2 3] [1.2 3.4 5.6 7.8]])))
+      ))
+
+  (let [pat (rte-compile '(:cat (rte (:+ Long)) (rte (:+ Double))))]
+    (is (not (rte-execute pat [1 2 3 1.2 3.4 5.6 7.8])))
+    (is (rte-execute pat [[1 2 3] [1.2 3.4 5.6 7.8]]))))

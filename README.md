@@ -283,15 +283,18 @@ details of the proposed type designator syntax.
 
 ## Hierarchical Sequences
 
+The `rte` type designator may be used to indicate hierarchical
+sequences, i.e., sequences some of whose elements are themselves
+sequences.  The type designator `(rte (:* integer?))` indicates the
+set of sequences whose elements are sequences of any length consisting
+of integers.
 
+The rte pattern `(:* (rte (:+ integer?)))` matches a sequence of 0 or
+more non-empty sequences whose elements are integers.
 
-The `rte` type designator may be used to indicate hierarchical sequences,  i.e., sequences some of whose elements are themselves sequences.  The type designator `(rte (:* integer?))` indicates the set of sequences whose elements are sequences of any length consisting of integers.
-
-The rte pattern `(:* (rte (:+ integer?)))` matches a sequence of 0 or more non-empty sequences
-whose elements are integers. 
-
-The pattern `(:* (:or (rte (:* String)) (rte (:* integer?))))` matches a sequence of sequences each of which contains only
-strings or only Integers, e.g.,
+The pattern `(:* (:or (rte (:* String)) (rte (:* integer?))))` matches
+a sequence of sequences each of which contains only strings or only
+Integers, e.g.,
 
 ```clojure
 (rte-match '(:* (:or (rte (:* String)) (rte (:* integer?))))
@@ -309,6 +312,52 @@ but not
 ==> false
 ```
 
+## Abbreviating patterns
+
+If you have several patterns which you want to name either for reuse
+or readability, use the macro `with-rte`.
+
+```clojure
+(with-rte [::a (:permute Long Long String)
+           ::b (:permute Double Double String)
+           ]
+  (let [rte (rte-compile '(:cat ::a ::a ::b ::b))]
+    (rte-execute rte [2 2 "hello"
+                      2 "hello" 2
+                      4.0 4.0 "world"
+                      "world" 4.1 4.2]) ;; true
+  ))
+```
+
+The semantics
+of `(with-rte [...] ...)` vs `(rte ...)` may be confusing.
+`(rte pattern)` designates a subtype of sequence whose
+content matches the designated pattern.  On the other hand
+`(with-rte [...] ...)` specifies sub-patterns which are interpolated into another pattern.
+
+`(:cat (rte x) (rte y))` matches a two element sequence whose elements
+are sequences *a* and *b*, where *a* matches the pattern *x* and *b*
+matches the pattern *y*.
+
+`(with-rte [::x ... ::y ...] (rte-match '(:cat :: ::y) ...))` matches a sequence of two concatenated
+sequence *a* and *b*, where *a* matches the pattern *x* and *b*
+matches the pattern *y*.  E.g., 
+
+```clojure
+(with-rte [::x (:+ Long)
+           ::y (:+ Double)]
+
+  (let [pat (rte-compile '(:cat ::x  ::y))]
+    ;; the same as (rte-compile '(:cat (:+ Long) (:+ Double)))
+    (rte-execute pat [1 2 3 1.2 3.4 5.6 7.8]) ;; true
+    (rte-execute pat [[1 2 3] [1.2 3.4 5.6 7.8]]) ;; false
+  ))
+
+(let [pat (rte-compile '(:cat (rte (:+ Long)) (rte (:+ Double))))]
+  (rte-execute pat [1 2 3 1.2 3.4 5.6 7.8]) ;; false
+  (rte-execute pat [[1 2 3] [1.2 3.4 5.6 7.8]]) ;; true
+)
+```
 
 ## Algebra of RTEs
 
@@ -345,7 +394,11 @@ For example to find a sequence which contains 1 or more `integer?` but does not 
 ==> [Byte]
 ```
 
-Another example.  `(:* (:cat keyword? :sigma))` matches a sequence of alternating `Keyword` anything pairs such as `[:x 100 :y "hello"]`. `(:cat (:* :sigma) keyword? (:* :sigma))` matches any sequence which contains at least one `Keyword` somewhere.   So does there exist a sequence which matches the first but not the second?
+Another example.  `(:* (:cat keyword? :sigma))` matches a sequence of
+alternating `Keyword` anything pairs such as 
+`[:x 100 :y "hello"]`. `(:cat (:* :sigma) keyword? (:* :sigma))` matches any
+sequence which contains at least one `Keyword` somewhere.  So does
+there exist a sequence which matches the first but not the second?
 
 ```clojure
 (let [pattern1 '(:* (:cat keyword? :sigma))
@@ -415,41 +468,6 @@ will improve run-time performance.
 (or Long (and (not Long) (not String))) = (not String)
 ```
 
-3. Implement the `:rte` keyword of the form `(:rte sym)` where `sym`
-is a symbol previously registered with a call to the macro `defrte`.
-`defrte` associates a symbol with an rte pattern, which is substituted
-in place of `(:rte sym)`, perhaps in pre-optimized form.  The semantics
-of `(:rte sym)` vs `(rte sym)` will be confusing and must be well
-documented.  `(rte pattern)` designates a subtype of sequence whose
-content matches the designated pattern, which `(:rte sym)` specifies
-zero or more elements of the sequence being traversed.  
-
-`(:cat (rte x) (rte y))` matches a two element sequence whose elements
-are sequences *a* and *b*, where *a* matches the pattern *x* and *b*
-matches the pattern *y*.
-
-`(:cat (:rte x) (:rte y))` matches a sequence of two concatenated
-sequence *a* and *b*, where *a* matches the pattern *x* and *b*
-matches the pattern *y*.  E.g., 
-
-```clojure
-(defrte ::x (:+ Long))
-(defrte ::y (:+ Double))
-
-(let [pat (rte-compile '(:cat (:rte ::x) (:rte ::y)))]
-  ;; the same as (rte-compile '(:cat (:+ Long) (:+ Double)))
-  (rte-match pat [1 2 3 1.2 3.4 5.6 7.8]) ;; true
-  (rte-match pat [[1 2 3] [1.2 3.4 5.6 7.8]]) ;; false
-)
-
-(let [pat (rte-compile '(:cat (rte (:+ Long) (:+ Double))))]
-  (rte-match pat [1 2 3 1.2 3.4 5.6 7.8]) ;; false
-  (rte-match pat [[1 2 3] [1.2 3.4 5.6 7.8]]) ;; true
-)
-```
-
-It will also be possible to bind a dynamic variable,
-`*rte-known-patterns*` to locally specify a key for use in `:rte`.
 
 ## Code test coverage
 
