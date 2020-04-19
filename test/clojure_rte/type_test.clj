@@ -113,7 +113,8 @@
                                    (map-type-partitions ['Long 'Integer 'Object]
                                                         (fn [left right]
                                                           (collect [left right]))))))
-           #{[() '(Object Integer Long)]
-             ['(Object) ()]
+           #{[() '(Object)]
              ['(Integer) ()]
-             ['(Long) ()]}))))
+             ['(Long) ()]
+             ['(Object) '(Integer Long)]
+             ['(Object) ()]}))))

@@ -615,12 +615,14 @@
                                               (ty/disjoint? wrt type)
                                               :empty-set
 
-                                              (isa? wrt type)
+                                              (ty/subclass? wrt type)
                                               :epsilon
                                               
                                               :else
                                               (throw (ex-info "providing smaller types"
                                                               {:type :split-type
+                                                               :wrt wrt
+                                                               :expr expr
                                                                :sub-types [{:type `(~'and ~wrt ~expr)}
                                                                            {:type `(~'and ~wrt (~'not ~expr))}]
                                                                }))

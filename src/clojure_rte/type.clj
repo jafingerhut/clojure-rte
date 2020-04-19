@@ -184,7 +184,10 @@
                   (case ((key @disjoint-hooks) t1 t2)
                     (true) (reduced true)
                     (false) (reduced false)
-                    nil))
+                    (case ((key @disjoint-hooks) t2 t1)
+                      (true) (reduced true)
+                      (false) (reduced false)
+                      nil)))
                 :initial
                 (cons :primary (remove #{:primary} (keys @disjoint-hooks))))
     (true) true
@@ -198,15 +201,18 @@
  (fn [t1 t2]
    :dont-know))
 
-(letfn [(class-designator? [t]
-          (and (symbol? t)
-               (resolve t)
-               (class? (resolve t))))
-        (not? [t]
+(defn class-designator? [t]
+  (and (symbol? t)
+       (resolve t)
+       (class? (resolve t))))
+
+(defn subclass? [sub-designator super-designator]
+  ;; it is assumed that the arguments have already been valided by class-designator?
+  (isa? (resolve sub-designator) (resolve super-designator)))
+
+(letfn [(not? [t]
           (and (sequential? t)
                (= 'not (first t))))
-        (isa [sub super]
-          (isa? (resolve sub) (resolve super)))
         (class-type [t]
           (let [c (resolve t)
                 r (refl/type-reflect c)
@@ -243,15 +249,15 @@
          ((:final :final)
           (:final :interface)
           (:final :abstract))
-         (not (isa t1 t2))
+         (not (subclass? t1 t2))
 
          ((:interface :final)
           (:abstract :final))
-         (not (isa t2 t1))
+         (not (subclass? t2 t1))
 
          ((:abstract :abstract))
-         (not (or (isa t1 t2)
-                  (isa t2 t1))))
+         (not (or (subclass? t1 t2)
+                  (subclass? t2 t1))))
 
        :dont-know)))
 
@@ -263,15 +269,11 @@
             (= t2 (second t1)))
        true
        
-       (and (not? t2)
-            (= t1 (second t2)))
-       true
-       
        ;; if t1 < t2, then t1 disjoint from (not t2)
        (and (class-designator? t1)
             (not? t2)
             (class-designator? (second t2))
-            (isa t1 (second t2)))
+            (subclass? t1 (second t2)))
        true
 
        :else
@@ -282,20 +284,28 @@
   of some other type and is not =.  not necessarily the global minimum."
   [atoms]
   (some (fn [sub]
-          (some (fn [super]
-                  (and (not (= sub super))
-                       (isa? sub super)
-                       sub)) atoms)) atoms))
+          (when (class-designator? sub)
+            (let [csub (resolve sub)]
+              (some (fn [super]
+                      (when (class-designator? super)
+                        (let [csuper (resolve super)]
+                          (and (not (= csub csuper))
+                               (isa? csub csuper)
+                               sub)))) atoms)))) atoms))
 
 (defn type-max 
   "Find an element of the given sequence which is a supertype
   of some other type and is not =.  not necessarily the global maximum"
   [atoms]
   (some (fn [sub]
-          (some (fn [super]
-                  (and (not (= sub super))
-                       (isa? sub super)
-                       super)) atoms)) atoms))
+          (when (class-designator? sub)
+            (let [csub (resolve sub)]
+              (some (fn [super]
+                      (when (class-designator? super)
+                        (let [csuper (resolve super)]
+                          (and (not (= csub csuper))
+                               (isa? csub csuper)
+                               super)))) atoms)))) atoms))
 
 (defn map-type-partitions 
   "Iterate through all the ways to partition types between a right and left set.
@@ -309,9 +319,13 @@
                           (fn [collect]
                             (doseq [t1 types
                                     t2 types]
-                              (if (and (not (= t1 t2))
-                                       (isa? t1 t2))
-                                (collect t2)))))]
+                              (when (and (class-designator? t1)
+                                         (class-designator? t2))
+                                (let [c1 (resolve t1)
+                                      c2 (resolve t2)]
+                                  (if (and (not (= c1 c2))
+                                           (isa? c1 c2))
+                                    (collect t2)))))))]
               (for [x types
                     :when (not (some #{x} supers))]
                 x)))
@@ -322,9 +336,13 @@
                           (fn [collect]
                             (doseq [t1 types
                                     t2 types]
-                              (if (and (not (= t1 t2))
-                                       (isa? t2 t1))
-                                (collect t2)))))]
+                              (when (and (class-designator? t1)
+                                         (class-designator? t2))
+                                (let [c1 (resolve t1)
+                                      c2 (resolve t2)]
+                                  (if (and (not (= c1 c2))
+                                           (isa? c2 c1))
+                                    (collect t2)))))))]
               (for [x types
                     :when (not (some #{x} supers))]
                 x)))
@@ -348,17 +366,17 @@
                    (some (fn [t2]
                            (disjoint? t2 (first left))) (rest left)))
               )
-             ((and left right
+             ((and (not (empty? left)) (not (empty? right))
                    ;; exists t2 in right such that t1 < t2
                    ;; then t1 & !t2 = nil
-                   (some (fn [t2] (isa? (first left) t2))  right))
+                   (some (fn [t2] (subclass? (first left) t2))  right))
               ;; prune
               )
 
-             ((and left right
+             ((and (not (empty? left)) (not (empty? right))
                    ;; exists t2 in right such that t1 < t2
                    ;; then t1 & !t2 = nil
-                   (some (fn [t1] (isa? t1 (first right)))  left))
+                   (some (fn [t1] (subclass? t1 (first right)))  left))
               ;; prune
               )
 
