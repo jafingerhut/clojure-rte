@@ -76,7 +76,11 @@
     (is (disjoint? 'clojure.lang.PersistentList 'java.lang.Number))
 
     
+    (is (disjoint? 'Long '(not Long)))
+    (is (disjoint? '(not Long) 'Long))
+
     (is (disjoint? 'Long '(not java.io.Serializable)))
+    (is (disjoint? '(not java.io.Serializable) 'Long))
 
     ))
 
@@ -92,66 +96,15 @@
     (is (typep 3 '(member 1 2 3 4)))
     (is (typep 3 '(satisfies integer?)))))
 
-(deftest t-type-intersection
-  (derive ::Canine ::Animal)
-  (derive ::Wolf ::Canine)
-  (derive ::Fox ::Canine)
-  (derive ::Dog ::Canine)
-  (derive ::Feline ::Animal)
-  (derive ::Cat ::Feline)
-  (derive ::Lion ::Feline)
-  (derive ::Cat-Lion ::Cat)
-  (derive ::Cat-Lion ::Lion)
-
-  (testing "type-intersection"
-
-    (is (= #{::Cat-Lion}  (type-intersection ::Cat ::Lion)))
-    (is (= #{::Cat-Lion}  (type-intersection ::Lion ::Cat)))
-    (is (= #{}  (type-intersection ::Wolf ::Fox)))
-    (is (= #{::Wolf}  (type-intersection ::Wolf ::Animal)))
-    (is (= #{::Wolf}  (type-intersection ::Animal ::Wolf)))))
-
-(deftest t-type-min
-  (derive ::Canine ::Animal)
-  (derive ::Wolf ::Canine)
-  (derive ::Fox ::Canine)
-  (derive ::Dog ::Canine)
-  (derive ::Feline ::Animal)
-  (derive ::Cat ::Feline)
-  (derive ::Lion ::Feline)
-  (derive ::Cat-Lion ::Cat)
-  (derive ::Cat-Lion ::Lion)
-
-  (testing "type-min"
-    (= ::Lion (type-min [::Lion ::Animal]))))
-
 (deftest t-type-max
-  (derive ::Canine ::Animal)
-  (derive ::Wolf ::Canine)
-  (derive ::Fox ::Canine)
-  (derive ::Dog ::Canine)
-  (derive ::Feline ::Animal)
-  (derive ::Cat ::Feline)
-  (derive ::Lion ::Feline)
-  (derive ::Cat-Lion ::Cat)
-  (derive ::Cat-Lion ::Lion)
-
   (testing "type-max"
-    (is (= ::Animal (type-max [::Lion ::Animal])))))
+    (is (= 'Number (type-max '(Number Integer))))
+    (is (= 'Number (type-max '(Integer Number))))))
 
 (deftest t-type-min
-  (derive ::Canine ::Animal)
-  (derive ::Wolf ::Canine)
-  (derive ::Fox ::Canine)
-  (derive ::Dog ::Canine)
-  (derive ::Feline ::Animal)
-  (derive ::Cat ::Feline)
-  (derive ::Lion ::Feline)
-  (derive ::Cat-Lion ::Cat)
-  (derive ::Cat-Lion ::Lion)
-
   (testing "type-min"
-    (is (= ::Lion (type-min [::Lion ::Animal])))))
+    (is (= 'Integer (type-min '(Number Integer))))
+    (is (= 'Integer (type-min '(Integer Number))))))
 
 (deftest t-map-type-partitions
   (testing "map-type-partitions"

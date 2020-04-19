@@ -47,15 +47,6 @@
     (is (nullable '(:? :epsilon)) 1)))
 
 (deftest t-first-types
-  (derive ::Canine ::Animal)
-  (derive ::Wolf ::Canine)
-  (derive ::Fox ::Canine)
-  (derive ::Dog ::Canine)
-  (derive ::Feline ::Animal)
-  (derive ::Cat ::Feline)
-  (derive ::Lion ::Feline)
-  (derive ::Cat-Lion ::Cat)
-  (derive ::Cat-Lion ::Lion)
 
   (testing "first-types"
     (is (= #{'a} (first-types 'a)))
@@ -88,50 +79,18 @@
    (is (not (isa? ::Lion ::Cat)))))
 
 (deftest t-canonicalize-pattern-subtypes
-  (derive ::Canine ::Animal)
-  (derive ::Wolf ::Canine)
-  (derive ::Fox ::Canine)
-  (derive ::Dog ::Canine)
-  (derive ::Feline ::Animal)
-  (derive ::Cat ::Feline)
-  (derive ::Lion ::Feline)
-  (derive ::Cat-Lion ::Cat)
-  (derive ::Cat-Lion ::Lion)
-
   (testing "canonicalize-pattern with subtypes"
+    (is (= 'Number (canonicalize-pattern '(:or Integer Number))) "Number")
+    (is (= :sigma (canonicalize-pattern '(:or Number (:not Number)))) "sigma")
 
-    (is (= ::Animal (canonicalize-pattern '(:or ::Fox ::Animal))) "animal")
-    (is (= :sigma (canonicalize-pattern '(:or ::Fox (:not ::Fox)))) "sigma")
-
-    (is (= ::Fox (canonicalize-pattern '(:and ::Fox ::Animal))) "fox")
-    (is (= :empty-set (canonicalize-pattern '(:and ::Fox (:not ::Fox)))) "empty-set 1")
+    (is (= 'Integer (canonicalize-pattern '(:and Integer Number))) "Integer")
+    (is (= :empty-set (canonicalize-pattern '(:and Number (:not Number)))) "empty-set 1")
 
     ;; intersection of disjoint types
-    (is (= :empty-set (canonicalize-pattern '(:and ::Fox ::Lion))) "empty-set 2")
+    (is (= :empty-set (canonicalize-pattern '(:and String Integer))) "empty-set 2")
     ))
 
-
 (deftest t-canonicalize-pattern
-  (derive ::Canine ::Animal)
-  (derive ::Wolf ::Canine)
-  (derive ::Fox ::Canine)
-  (derive ::Dog ::Canine)
-  (derive ::Feline ::Animal)
-  (derive ::Cat ::Feline)
-  (derive ::Lion ::Feline)
-  (derive ::Cat-Lion ::Cat)
-  (derive ::Cat-Lion ::Lion)
-
-  (derive ::Fish ::Animal)
-  (derive ::Shark-a ::Fish)
-  (derive ::Shark-b ::Fish)
-  (derive ::Shark-c ::Fish)
-  (derive ::Shark-d ::Fish)
-  (derive ::Shark ::Shark-a)
-  (derive ::Shark ::Shark-b)
-  (derive ::Shark ::Shark-c)
-  (derive ::Shark ::Shark-d)
-
 
   (testing "canonicalize-pattern"
     ;; syntax errors
@@ -142,12 +101,12 @@
     (is (thrown? clojure.lang.ExceptionInfo (canonicalize-pattern '(:rte))))
 
     ;; type
-    (is (= ::Lion (canonicalize-pattern-once ::Lion)) "canonicalize :type")
+    (is (= 'Number (canonicalize-pattern-once 'Number)) "canonicalize :type")
 
     ;; :*
-    (is (= (canonicalize-pattern-once '(:* (:* ::Fox)))
-           '(:* ::Fox)) "a** -> a*")
-    (is (= '(:* ::Lion) (canonicalize-pattern-once '(:* ::Lion))) "canonicalize :type *")
+    (is (= (canonicalize-pattern-once '(:* (:* Number)))
+           '(:* Number)) "a** -> a*")
+    (is (= '(:* Number) (canonicalize-pattern-once '(:* Number))) "canonicalize :type *")
     (is (= :epsilon (canonicalize-pattern-once '(:* :epsilon))) ":epsilon* -> :epsilon")
     (is (= :epsilon (canonicalize-pattern-once '(:* :empty-set))) ":empty-set* -> :epsilon")
     (is (= '(:* :sigma) (canonicalize-pattern-once '(:* :sigma))) ":sigma* -> :sigma*")
@@ -156,28 +115,28 @@
 
     ;; :cat
     (is (= (canonicalize-pattern '(:cat)) :epsilon))
-    (is (= ::Lion (canonicalize-pattern-once '(:cat ::Lion))) "unary :cat")
-    (is (= '(:cat ::Lion ::Lion) (canonicalize-pattern-once '(:cat ::Lion ::Lion))) "binary :cat")
-    (is (= '(:cat ::Lion ::Lion ::Lion) (canonicalize-pattern-once '(:cat ::Lion ::Lion ::Lion))) "3-ary :cat")
-    (is (= ::Lion (canonicalize-pattern-once '(:cat (:cat ::Lion)))) "recursive cat")
-    (is (= '(:cat ::Lion ::Lion) (canonicalize-pattern-once '(:cat (:cat ::Lion) (:cat ::Lion)))) "recursive cat")
-    (is (= '(:cat ::Lion ::Lion) (canonicalize-pattern-once '(:cat ::Lion (:cat ::Lion)))) "recursive cat 2")
-    (is (= '(:cat ::Lion ::Lion) (canonicalize-pattern-once '(:cat (:cat ::Lion) ::Lion))) "recursive cat 3")
-    (is (= '(:cat ::Lion ::Lion ::Lion) (canonicalize-pattern-once '(:cat (:cat ::Lion) (:cat ::Lion) (:cat ::Lion)))) "recursive cat")
-    (is (= ::Cat-Lion
-           (canonicalize-pattern '(:cat :epsilon ::Cat-Lion)))
+    (is (= 'Number (canonicalize-pattern-once '(:cat Number))) "unary :cat")
+    (is (= '(:cat Number Number) (canonicalize-pattern-once '(:cat Number Number))) "binary :cat")
+    (is (= '(:cat Number Number Number) (canonicalize-pattern-once '(:cat Number Number Number))) "3-ary :cat")
+    (is (= 'Number (canonicalize-pattern-once '(:cat (:cat Number)))) "recursive cat")
+    (is (= '(:cat Number Number) (canonicalize-pattern-once '(:cat (:cat Number) (:cat Number)))) "recursive cat")
+    (is (= '(:cat Number Number) (canonicalize-pattern-once '(:cat Number (:cat Number)))) "recursive cat 2")
+    (is (= '(:cat Number Number) (canonicalize-pattern-once '(:cat (:cat Number) Number))) "recursive cat 3")
+    (is (= '(:cat Number Number Number) (canonicalize-pattern-once '(:cat (:cat Number) (:cat Number) (:cat Number)))) "recursive cat")
+    (is (= 'Long
+           (canonicalize-pattern '(:cat :epsilon Long)))
         "cat epsilon x")
-    (is (= ::Cat-Lion
-           (canonicalize-pattern '(:cat ::Cat-Lion :epsilon)))
+    (is (= 'Long
+           (canonicalize-pattern '(:cat Long :epsilon)))
         "cat x epsilon")
     (is (= :empty-set
-           (canonicalize-pattern '(:cat :empty-set ::Cat-Lion)))
+           (canonicalize-pattern '(:cat :empty-set Long)))
         "cat epsilon x")
     (is (= :empty-set
-           (canonicalize-pattern '(:cat ::Cat-Lion :empty-set)))
+           (canonicalize-pattern '(:cat Long :empty-set)))
         "cat x epsilon")
-    (is (= (canonicalize-pattern '(:cat ::Fox (:* :sigma) (:* :sigma) ::Cat))
-           '(:cat ::Fox (:* :sigma) ::Cat)) "cat sigma* sigma*")
+    (is (= (canonicalize-pattern '(:cat Number (:* :sigma) (:* :sigma) String))
+           '(:cat Number (:* :sigma) String)) "cat sigma* sigma*")
 
     ;; :not
     (is (= :epsilon (canonicalize-pattern-once '(:not :sigma))) "not sigma")
@@ -186,90 +145,82 @@
            (canonicalize-pattern-once '(:not :epsilon))) "not epsilon")
     (is (= '(:* :sigma)
            (canonicalize-pattern-once '(:not :empty-set))) "not empty-set")
-    (is (= '(:not ::Lion)
-           (canonicalize-pattern-once '(:not ::Lion))) "not type")
-    (is (= ::Lion
-           (canonicalize-pattern-once '(:not (:not ::Lion)))) "not no type")
-    (is (= '(:not ::Lion)
-           (canonicalize-pattern-once '(:not (:not (:not ::Lion))))) "not not not type")
+    (is (= '(:not Number)
+           (canonicalize-pattern-once '(:not Number))) "not type")
+    (is (= 'Number
+           (canonicalize-pattern-once '(:not (:not Number)))) "not no type")
+    (is (= '(:not Number)
+           (canonicalize-pattern-once '(:not (:not (:not Number))))) "not not not type")
     ;; :not :and
-    (is (= (canonicalize-pattern-once '(:not (:and ::Cat ::Lion)))
-           (canonicalize-pattern-once '(:not (:and ::Lion ::Cat)))) "not and 1")
-    (is (= '(:or (:not ::Cat) (:not ::Lion))
-           (canonicalize-pattern-once '(:not (:and ::Lion ::Cat)))) "not and 2") ;;  (:not (:and A B)) --> (:or (:not A) (:not B))
-    (is (= '(:or (:not ::Cat) (:not ::Lion))
-           (canonicalize-pattern-once '(:not (:and ::Cat ::Lion)))) "not and 3")
+    (is (= (canonicalize-pattern-once '(:not (:and java.io.Serializable java.lang.Comparable)))
+           (canonicalize-pattern-once '(:not (:and java.lang.Comparable java.io.Serializable)))) "not and 1")
+    (is (= '(:or (:not java.io.Serializable) (:not java.lang.Comparable))
+           (canonicalize-pattern-once '(:not (:and java.lang.Comparable java.io.Serializable)))) "not and 2") ;;  (:not (:and A B)) --> (:or (:not A) (:not B))
+    (is (= '(:or (:not java.io.Serializable) (:not java.lang.Comparable))
+           (canonicalize-pattern-once '(:not (:and java.io.Serializable java.lang.Comparable)))) "not and 3")
 
     ;; :not :or
-    (is (= (canonicalize-pattern '(:not (:or ::Cat ::Lion)))
-           (canonicalize-pattern '(:not (:or ::Lion ::Cat)))) "not or 1")
-    (is (= '(:and (:not ::Cat)
-                  (:not ::Lion))
-           (canonicalize-pattern '(:not (:or ::Lion ::Cat)))) "not or 2") ;;  (:not (:and A B)) --> (:or (:not A) (:not B))
-    (is (= '(:and (:not ::Cat)
-                  (:not ::Lion))
-           (canonicalize-pattern-once '(:not (:or ::Cat ::Lion)))) "not or 3")
+    (is (= (canonicalize-pattern '(:not (:or java.io.Serializable java.lang.Comparable)))
+           (canonicalize-pattern '(:not (:or java.lang.Comparable java.io.Serializable)))) "not or 1")
+    (is (= '(:and (:not java.io.Serializable)
+                  (:not java.lang.Comparable))
+           (canonicalize-pattern '(:not (:or java.lang.Comparable java.io.Serializable)))) "not or 2") ;;  (:not (:and A B)) --> (:or (:not A) (:not B))
+    (is (= '(:and (:not java.io.Serializable)
+                  (:not java.lang.Comparable))
+           (canonicalize-pattern-once '(:not (:or java.io.Serializable java.lang.Comparable)))) "not or 3")
 
-    (is (= '(:not ::Cat)
-           (canonicalize-pattern '(:not (:or ::Cat ::Cat)))) "not or 4")
+    (is (= '(:not java.io.Serializable)
+           (canonicalize-pattern '(:not (:or java.io.Serializable java.io.Serializable)))) "not or 4")
 
     ;; and
     (is (= (canonicalize-pattern '(:and)) :sigma))    
-    (is (= ::Cat
-           (canonicalize-pattern '(:and ::Cat ::Cat))) "and remove duplicate 1")
-    (is (= '(:and ::Cat ::Lion)
-           (canonicalize-pattern-once '(:and ::Cat ::Lion ::Cat ::Lion))) "and remove duplicate 2")
+    (is (= 'java.io.Serializable
+           (canonicalize-pattern '(:and java.io.Serializable
+                                        java.io.Serializable))) "and remove duplicate 1")
+    (is (= '(:and java.io.Serializable java.lang.Comparable)
+           (canonicalize-pattern-once '(:and java.io.Serializable java.lang.Comparable java.io.Serializable java.lang.Comparable))) "and remove duplicate 2")
 
-    (is (= '(:or (:and ::Shark-a ::Shark-b ::Shark-d)
-                 (:and ::Shark-b ::Shark-c ::Shark-d))
-    (canonicalize-pattern '(:and (:or ::Shark-a ::Shark-c) ::Shark-d ::Shark-b))) "and-distribute")
+    (is (= '(:or (:and java.io.Serializable java.lang.Comparable java.lang.constant.ConstantDesc)
+                 (:and java.lang.Comparable java.lang.constant.Constable java.lang.constant.ConstantDesc))
+    (canonicalize-pattern '(:and (:or java.io.Serializable java.lang.constant.Constable) java.lang.constant.ConstantDesc java.lang.Comparable))) "and-distribute")
 
     (is (= :empty-set
-           (canonicalize-pattern '(:and  ::Cat :empty-set ::Lion))) "and empty-set")
-    (is (= '(:and ::Cat ::Lion)
-           (canonicalize-pattern '(:and  ::Cat (:* :sigma) ::Lion))) "and sigma*")
+           (canonicalize-pattern '(:and  java.io.Serializable :empty-set java.lang.Comparable))) "and empty-set")
+    (is (= '(:and java.io.Serializable java.lang.Comparable)
+           (canonicalize-pattern '(:and  java.io.Serializable (:* :sigma) java.lang.Comparable))) "and sigma*")
 
     ;; or
     (is (= (canonicalize-pattern '(:or)) :empty-set))
-    (is (= ::Cat
-           (canonicalize-pattern '(:or ::Cat ::Cat))) "or remove duplicate 1")
-    (is (= '(:or ::Cat ::Lion)
-           (canonicalize-pattern '(:or ::Lion ::Cat ::Lion ::Cat ::Lion))) "or remove duplicate 2")
-    (is (= '(:or  ::Cat ::Lion)
-           (canonicalize-pattern '(:or  ::Cat :empty-set ::Lion))) "or empty-set")
+    (is (= 'java.io.Serializable
+           (canonicalize-pattern '(:or java.io.Serializable java.io.Serializable))) "or remove duplicate 1 b")
+    (is (= '(:or java.io.Serializable java.lang.Comparable)
+           (canonicalize-pattern '(:or java.lang.Comparable java.io.Serializable java.lang.Comparable java.io.Serializable java.lang.Comparable))) "or remove duplicate 2 b")
+    (is (= '(:or  java.io.Serializable java.lang.Comparable)
+           (canonicalize-pattern '(:or  java.io.Serializable :empty-set java.lang.Comparable))) "or empty-set")
     (is (= '(:* :sigma)
-           (canonicalize-pattern '(:or  ::Cat (:* :sigma) ::Lion))) "or sigma*")
+           (canonicalize-pattern '(:or  java.io.Serializable (:* :sigma) java.lang.Comparable))) "or sigma*")
 
     ;; permute
     (is (= (canonicalize-pattern '(:permute)) :epsilon) "permute 0 arg")
 
-    (is (= (canonicalize-pattern '(:permute ::Lion))
-           ::Lion) "permute 1 arg")
-    (is (= (canonicalize-pattern '(:permute ::Lion ::Cat))
-           (canonicalize-pattern '(:or (:cat ::Lion ::Cat)
-                                       (:cat ::Cat ::Lion)))) "permute 2 args")
-    (is (= (canonicalize-pattern '(:permute ::Lion ::Cat ::Fox))
-           (canonicalize-pattern '(:or (:cat ::Lion ::Cat ::Fox)
-                                       (:cat ::Lion ::Fox ::Cat)
-                                       (:cat ::Cat ::Lion ::Fox)
-                                       (:cat ::Cat ::Fox ::Lion)
-                                       (:cat ::Fox ::Cat ::Lion)
-                                       (:cat ::Fox ::Lion ::Cat)))) "permute 3 args")
+    (is (= (canonicalize-pattern '(:permute java.lang.Comparable))
+           'java.lang.Comparable) "permute 1 arg")
+    (is (= (canonicalize-pattern '(:permute java.lang.Comparable java.io.Serializable))
+           (canonicalize-pattern '(:or (:cat java.lang.Comparable java.io.Serializable)
+                                       (:cat java.io.Serializable java.lang.Comparable)))) "permute 2 args")
+    (is (= (canonicalize-pattern '(:permute java.lang.Comparable java.io.Serializable java.lang.constant.Constable ))
+           (canonicalize-pattern '(:or (:cat java.lang.Comparable java.io.Serializable java.lang.constant.Constable )
+                                       (:cat java.lang.Comparable java.lang.constant.Constable  java.io.Serializable)
+                                       (:cat java.io.Serializable java.lang.Comparable java.lang.constant.Constable )
+                                       (:cat java.io.Serializable java.lang.constant.Constable  java.lang.Comparable)
+                                       (:cat java.lang.constant.Constable  java.io.Serializable java.lang.Comparable)
+                                       (:cat java.lang.constant.Constable java.lang.Comparable java.io.Serializable)))) "permute 3 args")
     
     ))
 
 (deftest t-derivative
-  (derive ::Canine ::Animal)
-  (derive ::Wolf ::Canine)
-  (derive ::Fox ::Canine)
-  (derive ::Dog ::Canine)
-  (derive ::Feline ::Animal)
-  (derive ::Cat ::Feline)
-  (derive ::Lion ::Feline)
-  (derive ::Cat-Lion ::Cat)
-  (derive ::Cat-Lion ::Lion)
   (testing "derivative"
-    (is (= (derivative :empty-set ::Lion)
+    (is (= (derivative :empty-set java.lang.Comparable)
            :empty-set) "derivative empty-set w.r.t A")
 
     ;; :sigma
@@ -278,12 +229,12 @@
     (is (= (derivative :sigma :epsilon)
            :sigma) "derivative sigma wrt epsilon")
     (is (= :epsilon
-           (derivative :sigma ::Lion)) "derivative sigma wrt A")
+           (derivative :sigma java.lang.Comparable)) "derivative sigma wrt A")
 
     ;; :epsilon
     (is (= (derivative :epsilon :epsilon)
            :epsilon))
-    (is (= (derivative :epsilon ::Lion)
+    (is (= (derivative :epsilon java.lang.Comparable)
            :empty-set))
     (is (= (derivative :epsilon :empty-set)
            :empty-set))
@@ -293,7 +244,7 @@
     ;; :empty-set
     (is (= (derivative :empty-set :epsilon)
            :empty-set))
-    (is (= (derivative :empty-set ::Lion)
+    (is (= (derivative :empty-set java.lang.Comparable)
            :empty-set))
     (is (= (derivative :empty-set :empty-set)
            :empty-set))
@@ -301,40 +252,35 @@
            :empty-set))
 
     ;; type
-    (is (= (derivative ::Lion ::Lion)
+    (is (= (derivative java.lang.Comparable java.lang.Comparable)
            :epsilon))
-    (is (= (derivative ::Fox ::Wolf)
+    (is (= (derivative 'Number 'String)
            :empty-set) "derivative disjoint types")
 
     ;; or
     
-    (is (= (derivative '(:or ::Fox ::Lion) ::Fox)
+    (is (= (derivative '(:or java.io.Serializable java.lang.Comparable)
+                       'java.io.Serializable)
            :epsilon))
 
     ;; cat
-    (is (= (derivative '(:cat (:or ::Fox ::Lion) ::Cat-Lion) ::Fox)
-           ::Cat-Lion) "derivative cat with reduction")
+    (is (= (derivative '(:cat (:or java.io.Serializable java.lang.Comparable) Long)
+                       'java.io.Serializable)
+           'Long) "derivative cat with reduction")
 
-    (is (= (derivative '(:cat ::Fox ::Fox ::Fox) ::Fox)
-           '(:cat ::Fox ::Fox)))
+    (is (= (derivative '(:cat Number Number Number)
+                       'Number)
+           '(:cat Number Number)) "line 237")
 
-    (is (= (derivative '(:cat (:or ::Lion ::Fox) ::Fox ::Fox) ::Fox)
-           '(:cat ::Fox ::Fox)))
-    (is (= (derivative '(:cat (:or ::Lion ::Fox) ::Fox ::Fox) ::Lion)
-           '(:cat ::Fox ::Fox)))
-
+    (is (= (derivative '(:cat (:or java.io.Serializable Number) Number Number)
+                       'Number)
+           '(:cat Number Number))  "line 277")
+    (is (= (derivative '(:cat (:or String Number) Number Number)
+                       'String)
+           '(:cat Number Number))  "line 280")
     ))
 
 (deftest t-rte-to-dfa
-  (derive ::Canine ::Animal)
-  (derive ::Wolf ::Canine)
-  (derive ::Fox ::Canine)
-  (derive ::Dog ::Canine)
-  (derive ::Feline ::Animal)
-  (derive ::Cat ::Feline)
-  (derive ::Lion ::Feline)
-  (derive ::Cat-Lion ::Cat)
-  (derive ::Cat-Lion ::Lion)
 
   (testing "rte-to-dfa"
     (is (rte-to-dfa '(:cat :epsilon (:+ (:* :epsilon)) :sigma)) "dfa 1")
