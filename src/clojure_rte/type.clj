@@ -23,6 +23,7 @@
   (:require [clojure.set :refer [union intersection]]
             [clojure-rte.util :refer [call-with-collector]]
             [clojure-rte.cl-compat :refer [cl-cond cl-prog1]]
+            [clojure.reflect :as refl]
   ))
 
 (defmulti typep 
@@ -127,29 +128,91 @@
   (intersection (conj (or (descendants t1) #{}) t1)
                 (conj (or (descendants t2) #{}) t2)))
 
-(defn disjoint? 
+(defn disjoint?
   "Predicate to determine whether the two types overlap."
   [t1 t2]
-  (cond
-    (= :empty-set t1)
-    true
+  (letfn [(class-designator? [t]
+            (and (symbol? t)
+                 (resolve t)
+                 (class? (resolve t))))
+          (isa [sub super]
+            (isa? (resolve sub) (resolve super)))
+          (derived? [t]
+            (and (or (keyword? t)
+                     (qualified-symbol? t))
+                 (or (ancestors t)
+                     (descendants t))))            
+          (class-type [t]
+            (let [c (resolve t)
+                 r (refl/type-reflect c)
+                 flags (:flags r)]
+              (cond
+                (= c Object)
+                :abstract
+                (contains? flags :interface)
+                :interface
+                (contains? flags :final)
+                :final
+                (contains? flags :abstract)
+                :abstract
+                (= flags #{:public})
+                :final
+                
+                :else
+                (throw (ex-info (format "disjoint? type %s flags %s not yet implemented" t flags)
+                                {:type :invalid-type-flags
+                                 :a-type t
+                                 :flags flags})))))]
 
-    (= :empty-set t2)
-    true
-    
-    (= :sigma t1)
-    false
+    (cond
+      (= :empty-set t1)
+      true
+      
+      (= :empty-set t2)
+      true
+      
+      (= :sigma t1)
+      false
+      
+      (= :sigma t2)
+      false
+      
+      (isa? t1 t2)
+      false
 
-    (= :sigma t2)
-    false
+      (isa? t2 t1)
+      false
+      
+      (and (derived? t1)
+           (derived? t2))
+      (empty? (type-intersection t1 t2))
 
-    :else
-    (and (not (isa? t1 t2))
-         (not (isa? t2 t1))
-         (let [descendants-1 (descendants t1)
-               descendants-2 (descendants t2)]
-           (and (not-any? (fn [a2] (contains? descendants-1 a2)) descendants-2)
-                (not-any? (fn [a1] (contains? descendants-2 a1)) descendants-1))))))
+      (and (class-designator? t1)
+           (class-designator? t2))
+      (case [(class-type t1) (class-type t2)]
+        ((:interface :interface)
+         (:interface :abstract)
+         (:abstract :interface))
+        false ;; not disjoint
+        
+        ((:final :final)
+         (:final :interface)
+         (:final :abstract))
+        (not (isa t1 t2))
+
+        ((:interface :final)
+         (:abstract :final))
+        (not (isa t2 t1))
+
+        ((:abstract :abstract))
+        (not (or (isa t1 t2)
+                 (isa t2 t1))))
+
+      :else
+      (throw (ex-info (format "disjoint? cannot decide %s vs %s" t1 t2)
+                      {:type :not-yet-implemented
+                       :type-designators [t1 t2]}))
+      )))
 
 (defn type-min 
   "Find an element of the given sequence which is a subtype

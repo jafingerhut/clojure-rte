@@ -25,7 +25,7 @@
   (:require [clojure-rte.type :refer :all]
             [clojure-rte.util :refer [call-with-collector]]
             [clojure.test :refer :all]))
-    
+
 (deftest t-disjoint?
   (derive ::Canine ::Animal)
   (derive ::Wolf ::Canine)
@@ -42,6 +42,40 @@
     (is (disjoint? ::Wolf ::Fox))
     (is (= (set (type-intersection ::Cat ::Lion))
            #{::Cat-Lion}))))
+
+
+(deftest t-disjoint-2
+  (testing "disjoint 2"
+    (is (disjoint? 'Integer 'String)) ; final vs final
+    (is (disjoint? 'String 'Integer)) ; final vs final
+
+    ;; interface vs interface - never disjoint
+    (is (not (disjoint? 'java.lang.constant.Constable 'java.lang.constant.ConstantDesc)))
+    (is (not (disjoint? 'java.lang.constant.ConstantDesc 'java.lang.constant.Constable)))
+
+    ;; final vs interface not a superclass
+    (is (disjoint? 'Integer 'java.lang.CharSequence))
+    (is (disjoint? 'java.lang.CharSequence 'Integer))
+
+    ;; final vs interface is superclass
+    (is (not (disjoint? 'Integer 'java.lang.constant.Constable)))
+    (is (not (disjoint? 'java.lang.constant.Constable 'Integer)))
+
+    ;; abstract vs abstract
+    (is (disjoint? 'Number 'clojure.lang.ASeq))
+    (is (disjoint? 'clojure.lang.ASeq 'Number))
+
+    ;; abstract vs interface
+    (is (not (disjoint? 'clojure.lang.IHashEq 'clojure.lang.ASeq)))
+    (is (not (disjoint? 'clojure.lang.ASeq 'clojure.lang.IHashEq)))
+
+
+    ;;clojure.lang.PersistentList java.lang.Object  java.lang.Number
+    (is (not (disjoint? 'clojure.lang.PersistentList 'java.lang.Object  )))
+    (is (not (disjoint? 'java.lang.Object  'java.lang.Number)))
+    (is (disjoint? 'clojure.lang.PersistentList 'java.lang.Number))
+
+    ))
 
 (deftest t-typep
   (testing "typep"
