@@ -75,6 +75,9 @@
     (is (not (disjoint? 'java.lang.Object  'java.lang.Number)))
     (is (disjoint? 'clojure.lang.PersistentList 'java.lang.Number))
 
+    
+    (is (disjoint? 'Long '(not java.io.Serializable)))
+
     ))
 
 (deftest t-typep

@@ -128,91 +128,154 @@
   (intersection (conj (or (descendants t1) #{}) t1)
                 (conj (or (descendants t2) #{}) t2)))
 
+(def disjoint-hooks (atom {}))
+(defn new-disjoint-hook [key hook-fn]
+  (swap! disjoint-hooks (fn [_]
+                          (assoc @disjoint-hooks key hook-fn)))
+  (keys @disjoint-hooks))
+
+(new-disjoint-hook
+ :primary
+ (letfn [(derived? [t]
+           (and (or (keyword? t)
+                    (qualified-symbol? t))
+                (or (ancestors t)
+                    (descendants t))))]
+   (fn [t1 t2]
+     (cond
+       (= :empty-set t1)
+       true
+       
+       (= :empty-set t2)
+       true
+
+       (= t1 t2)
+       false
+
+       (= :epsilon t1)
+       false
+       
+       (= :epsilon t2)
+       false
+       
+       (= :sigma t1)
+       false
+       
+       (= :sigma t2)
+       false
+       
+       (isa? t1 t2)
+       false
+       
+       (isa? t2 t1)
+       false
+
+       (and (derived? t1)
+            (derived? t2))
+       (empty? (type-intersection t1 t2))
+       
+       :else
+       :dont-know))))
+
 (defn disjoint?
   "Predicate to determine whether the two types overlap."
   [t1 t2]
-  (letfn [(class-designator? [t]
-            (and (symbol? t)
-                 (resolve t)
-                 (class? (resolve t))))
-          (isa [sub super]
-            (isa? (resolve sub) (resolve super)))
-          (derived? [t]
-            (and (or (keyword? t)
-                     (qualified-symbol? t))
-                 (or (ancestors t)
-                     (descendants t))))            
-          (class-type [t]
-            (let [c (resolve t)
-                 r (refl/type-reflect c)
-                 flags (:flags r)]
-              (cond
-                (= c Object)
-                :abstract
-                (contains? flags :interface)
-                :interface
-                (contains? flags :final)
-                :final
-                (contains? flags :abstract)
-                :abstract
-                (= flags #{:public})
-                :final
-                
-                :else
-                (throw (ex-info (format "disjoint? type %s flags %s not yet implemented" t flags)
-                                {:type :invalid-type-flags
-                                 :a-type t
-                                 :flags flags})))))]
+  (case (reduce (fn [_ key]
+                  (case ((key @disjoint-hooks) t1 t2)
+                    (true) (reduced true)
+                    (false) (reduced false)
+                    nil))
+                :initial
+                (cons :primary (remove #{:primary} (keys @disjoint-hooks))))
+    (true) true
+    (false) false
+    (throw (ex-info (format "disjoint? cannot decide %s vs %s" t1 t2)
+                    {:type :not-yet-implemented
+                     :type-designators [t1 t2]}))))
 
-    (cond
-      (= :empty-set t1)
-      true
-      
-      (= :empty-set t2)
-      true
-      
-      (= :sigma t1)
-      false
-      
-      (= :sigma t2)
-      false
-      
-      (isa? t1 t2)
-      false
+(new-disjoint-hook
+ :derived
+ (fn [t1 t2]
+   :dont-know))
 
-      (isa? t2 t1)
-      false
-      
-      (and (derived? t1)
-           (derived? t2))
-      (empty? (type-intersection t1 t2))
+(letfn [(class-designator? [t]
+          (and (symbol? t)
+               (resolve t)
+               (class? (resolve t))))
+        (not? [t]
+          (and (sequential? t)
+               (= 'not (first t))))
+        (isa [sub super]
+          (isa? (resolve sub) (resolve super)))
+        (class-type [t]
+          (let [c (resolve t)
+                r (refl/type-reflect c)
+                flags (:flags r)]
+            (cond
+              (= c Object)
+              :abstract
+              (contains? flags :interface)
+              :interface
+              (contains? flags :final)
+              :final
+              (contains? flags :abstract)
+              :abstract
+              (= flags #{:public})
+              :final
+              
+              :else
+              (throw (ex-info (format "disjoint? type %s flags %s not yet implemented" t flags)
+                              {:type :invalid-type-flags
+                               :a-type t
+                               :flags flags})))))]
 
-      (and (class-designator? t1)
-           (class-designator? t2))
-      (case [(class-type t1) (class-type t2)]
-        ((:interface :interface)
-         (:interface :abstract)
-         (:abstract :interface))
-        false ;; not disjoint
-        
-        ((:final :final)
-         (:final :interface)
-         (:final :abstract))
-        (not (isa t1 t2))
+  (new-disjoint-hook
+   :classes
+   (fn [t1 t2]
+     (if (and (class-designator? t1)
+              (class-designator? t2))
+       (case [(class-type t1) (class-type t2)]
+         ((:interface :interface)
+          (:interface :abstract)
+          (:abstract :interface))
+         false ;; not disjoint
+         
+         ((:final :final)
+          (:final :interface)
+          (:final :abstract))
+         (not (isa t1 t2))
 
-        ((:interface :final)
-         (:abstract :final))
-        (not (isa t2 t1))
+         ((:interface :final)
+          (:abstract :final))
+         (not (isa t2 t1))
 
-        ((:abstract :abstract))
-        (not (or (isa t1 t2)
-                 (isa t2 t1))))
+         ((:abstract :abstract))
+         (not (or (isa t1 t2)
+                  (isa t2 t1))))
 
-      :else
-      (throw (ex-info (format "disjoint? cannot decide %s vs %s" t1 t2)
-                      {:type :not-yet-implemented
-                       :type-designators [t1 t2]}))
-      )))
+       :dont-know)))
+
+  (new-disjoint-hook
+   :not
+   (fn [t1 t2]
+     (cond
+       (and (not? t1)
+            (= t2 (second t1)))
+       true
+       
+       (and (not? t2)
+            (= t1 (second t2)))
+       true
+       
+       ;; if t1 < t2, then t1 disjoint from (not t2)
+       (and (class-designator? t1)
+            (not? t2)
+            (class-designator? (second t2))
+            (isa t1 (second t2)))
+       true
+
+       :else
+       :dont-know))))
 
 (defn type-min 
   "Find an element of the given sequence which is a subtype
