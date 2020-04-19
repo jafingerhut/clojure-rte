@@ -28,6 +28,21 @@
 ;; * implement early escape if we find outself in a non-coaccessible state
 ;;   or if we find outself in a non-escapable final state.
 ;;   e.g., (:* :sigma) should be constant time, not linear time.
+;;
+;; * allow (= ...) type to be used in an RTE.
+;;   E.g., (rte-match '(:* (:or (= true) (= false))) [true true false false false])
+;;
+;; * test multiple (rte ) types used together,   rte-trace of pattern containing (rte) type
+;;
+;; * optimize (rte ) types used together, with intersection and and-not operations.
+;;
+;; * there are many functions in clojure core such as
+;;      (defn double?
+;;        "Return true if x is a Double"
+;;        {:added "1.9"}
+;;        [x] (instance? Double x))
+;;   I would like to parse these and build entries in *rte-known* programmatically
+;; 
 
 (ns clojure-rte.core
   (:require [clojure.set :refer [union]]
