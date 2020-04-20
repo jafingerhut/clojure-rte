@@ -19,8 +19,6 @@
 ;; OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
 ;; WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-
-
 (ns clojure-rte.type-test
   (:require [clojure-rte.type :refer :all]
             [clojure-rte.util :refer [call-with-collector]]
@@ -108,6 +106,12 @@
 
 (deftest t-map-type-partitions
   (testing "map-type-partitions"
+    (is (not (contains? (set
+                         (call-with-collector (fn [collect]
+                                                (map-type-partitions ['Long 'Integer 'Object]
+                                                                     (fn [left right]
+                                                                       (collect [left right]))))))
+                        ['(Object) ()])) "should not contain 1")
     (is (= (set
             (call-with-collector (fn [collect]
                                    (map-type-partitions ['Long 'Integer 'Object]
@@ -116,5 +120,6 @@
            #{[() '(Object)]
              ['(Integer) ()]
              ['(Long) ()]
-             ['(Object) '(Integer Long)]
-             ['(Object) ()]}))))
+             ['(Object) '(Integer Long)]})
+        "expected content"
+)))
