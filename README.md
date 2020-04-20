@@ -10,16 +10,24 @@ expression pattern is represented internally (after compilation with
 
 <img src="img/symbolic-finite-automaton.png" alt="Symbolic Finite Automaton" width="300"/>
 
-This means that the
-time complexity of matching a sequence, `rte-execute`, against a
-pattern is `O(n)` where `n` is the length of the sequence.  I.e., the
-time to perform the match is not a function of the complexity of the
-pattern; it is only a function of the sequence length.  On the
-contrary, the time to compile the pattern depends on the complexity of
-the pattern, and may be exponential in worst case.  For this reason,
-the programmer is encouraged to arrange that expressions be compiled
-either once, and used many times, or if possible to compile the
-expressions at compile-time/load-time via:
+This means that the time complexity of matching a sequence,
+`rte-execute`, against a pattern is `O(n)` where `n` is the length of
+the sequence.  I.e., the time to perform the match is not a function of the
+complexity of the pattern; it is only a function of the sequence
+length.  On the contrary, the time to compile the pattern depends on
+the complexity of the pattern, and may be exponential in worst case.
+For this reason, the programmer is encouraged to arrange that
+expressions be compiled either once, and used many times, or if
+possible to compile the expressions at compile-time/load-time via:
+
+In some cases the sequence can be determined to match
+the pattern without examining the entire sequence.  For example if the
+pattern is, `(:cat Long (:* Double))`, then as soon as the first item
+fails to be a `Long`, we need not examine the rest of the sequence
+because we know it failed to match. Likewise if the pattern is `(:cat
+Long (:* :sigma))`, then after verifying that the first element is a
+`Long`, we need not examine the remaining elements because we know it
+has matched.
 
 ```clojure
 (def *my-rte* (rte-compile ...))

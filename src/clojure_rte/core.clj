@@ -25,10 +25,6 @@
 ;;
 ;; * fully implement (satisfies)
 ;;
-;; * implement early escape if we find outself in a non-coaccessible state
-;;   or if we find outself in a non-escapable final state.
-;;   e.g., (:* :sigma) should be constant time, not linear time.
-;;
 ;; * allow (= ...) type to be used in an RTE.
 ;;   E.g., (rte-match '(:* (:or (= true) (= false))) [true true false false false])
 ;;
@@ -746,18 +742,20 @@
         grouped (group-by (fn [trip]
                             (trip 0)) triples)]
     (into [] (map (fn [deriv index]
-                    {:index index
-                     :initial (= 0 index)
-                     :accepting (nullable deriv)
-                     :pattern deriv
-                     :transitions (if (and (grouped index)
-                                           (apply = (map (fn [[src wrt dst]]
-                                                           dst) (grouped index))))
-                                    ;; if all transitions have same dst, then don't draw
-                                    ;; multiple transitions, just draw with with label = :sigma
-                                    (list [:sigma ((first (grouped index)) 2)])
-                                    (map (fn [[src wrt dst]]
-                                           [wrt dst]) (grouped index)))})
+                    (let [transitions (if (and (grouped index)
+                                               (apply = (map (fn [[src wrt dst]]
+                                                               dst) (grouped index))))
+                                        ;; if all transitions have same dst, then don't draw
+                                        ;; multiple transitions, just draw with with label = :sigma
+                                        (list [:sigma ((first (grouped index)) 2)])
+                                        (map (fn [[src wrt dst]]
+                                               [wrt dst]) (grouped index)))]
+                      {:index index
+                       :initial (= 0 index)
+                       :accepting (nullable deriv)
+                       :pattern deriv
+                       :sync-state (and (some #{[:sigma index]} transitions) true)
+                       :transitions transitions}))
                   derivatives (range (count derivatives))))))
 
 (def rte-compile
@@ -783,15 +781,26 @@
 
   (letfn [(consume [state-index item]
             (let [state-obj (dfa state-index)]
-              (if-let [next-state-index (some (fn [[type next-state-index]]
-                                                (if (ty/typep item type)
-                                                  next-state-index
-                                                  false))
-                                              (:transitions state-obj))]
-                next-state-index
-                (reduced false))))]
+              (cl-cond
+               ((:sync-state state-obj)
+                (reduced (:accepting state-obj)))
+               ((some (fn [[type next-state-index]]
+                        (if (ty/typep item type)
+                          next-state-index
+                          false))
+                      (:transitions state-obj)))
+               (:else (reduced false)))))]
     (let [final-state (reduce consume 0 items)]
-      (when final-state
+      ;; final-state may be integer disgnating the state which was
+      ;;  reached on iterating successfully through the input
+      ;;  sequence, items.  Or final-state may true or false, if the
+      ;;  iteration finished without iterating through the entire
+      ;;  sequence.  Two such cases, we found ourselves in a
+      ;;  sync-state, or we encountered a item for which no transition
+      ;;  was possible.
+      (case final-state 
+        (true) true
+        (false) false
         (:accepting (dfa final-state))))))
 
 (defn rte-match 
