@@ -168,7 +168,7 @@
   [target items]
   (some #{target} items))
 
-(defn partition-by 
+(defn partition-by-pred 
   "Apply the predicate to every element of the sequence and return a vector of two
   values, each of which is a vector, the left vector is the set of the items
   in the original sequence for which the predicate returned a Boolean true value,
@@ -176,4 +176,4 @@
   [pred items]
   (let [g (group-by (fn [i]
                       (boolean (pred i))) items)]
-    [(g false) (g true)]))
+    [(g true) (g false)]))

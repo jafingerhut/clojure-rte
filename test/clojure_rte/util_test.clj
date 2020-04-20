@@ -23,6 +23,12 @@
   (:require [clojure-rte.util :refer :all]
             [clojure.test :refer :all]))
 
+(deftest t-partition-by-pred
+  (testing "partition-by-pred"
+    (let [[odd even] (partition-by-pred odd? (range 100))]
+      (is (every? odd? odd))
+      (is (every? even? even)))))
+
 (deftest t-sort-operands-1
   (testing "sort-operands"
     (is (= (sort-operands '(::Cat ::Lion))

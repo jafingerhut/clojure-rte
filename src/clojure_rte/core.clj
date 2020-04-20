@@ -46,6 +46,7 @@
             [clojure-rte.cl-compat :refer [cl-cond cl-prog1 cl-prog2 cl-progn]]
             [clojure-rte.util :refer [with-first-match remove-once call-with-collector
                                       visit-permutations rte-constantly rte-identity
+                                      partition-by-pred
                                       sort-operands member]]
             [clojure-rte.type :as ty]
             )
@@ -685,8 +686,8 @@
 
               (> (+ (count-if rte? left)
                     (count-if rte? right)) 1)
-              (let [[left-rtes left] (partition-by rte? left)
-                    [right-rtes right] (partition-by rte? right)
+              (let [[left-rtes left] (partition-by-pred rte? left)
+                    [right-rtes right] (partition-by-pred rte? right)
                     left-patterns (map second left-rtes)
                     right-patterns (map second right-rtes)]
                 (cond (empty? left-rtes)

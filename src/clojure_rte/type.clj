@@ -216,6 +216,10 @@
                         (disjoint? t1 t)) (rest t2)))
            true
 
+           (and (and? t1)
+                (some #{t2} (rest t1)))
+           false
+
            :else
            :dont-know))))
 
@@ -337,12 +341,23 @@
             (= t2 (second t1)))
        true
        
+       (and (not? t1)
+            (disjoint? (second t1) t2))
+       false
+
        ;; if t1 < t2, then t1 disjoint from (not t2)
        (and ;;(class-designator? t1)
             (not? t2)
             ;;(class-designator? (second t2))
             (subtype? t1 (second t2)))
        true
+
+       (and (class-designator? t1)
+            (not? t2)
+            (class-designator? (second t2))
+            (not (= (resolve (second t2)) (resolve t1)))
+            (isa? (resolve (second t2)) (resolve t1)))
+       false
 
        :else
        :dont-know))))
