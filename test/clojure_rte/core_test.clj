@@ -424,16 +424,34 @@
                                  "world" 4 4])) "case 5")))
   )
 
-(deftest r-with-rte-4
-  (with-rte [::x (:+ Long)
-             ::y (:+ Double)]
+(deftest t-with-rte-4
+  (testing "with-rte 4"
+    (with-rte [::x (:+ Long)
+               ::y (:+ Double)]
 
-    (let [pat (rte-compile '(:cat ::x  ::y))]
-      ;; the same as (rte-compile '(:cat (:+ Long) (:+ Double)))
-      (is (rte-execute pat [1 2 3 1.2 3.4 5.6 7.8]))
-      (is (not (rte-execute pat [[1 2 3] [1.2 3.4 5.6 7.8]])))
-      ))
+      (let [pat (rte-compile '(:cat ::x  ::y))]
+        ;; the same as (rte-compile '(:cat (:+ Long) (:+ Double)))
+        (is (rte-execute pat [1 2 3 1.2 3.4 5.6 7.8]))
+        (is (not (rte-execute pat [[1 2 3] [1.2 3.4 5.6 7.8]])))
+        ))
 
-  (let [pat (rte-compile '(:cat (rte (:+ Long)) (rte (:+ Double))))]
-    (is (not (rte-execute pat [1 2 3 1.2 3.4 5.6 7.8])))
-    (is (rte-execute pat [[1 2 3] [1.2 3.4 5.6 7.8]]))))
+    (let [pat (rte-compile '(:cat (rte (:+ Long)) (rte (:+ Double))))]
+      (is (not (rte-execute pat [1 2 3 1.2 3.4 5.6 7.8])))
+      (is (rte-execute pat [[1 2 3] [1.2 3.4 5.6 7.8]])))))
+
+(deftest t-inhabited
+  (testing "inhabited?"
+    (is (inhabited? (rte-to-dfa '(:and (:* Long) (:* Double)))))
+    (is (vacuous? (rte-to-dfa '(:and (:+ Long) (:+ Double)))))))
+
+(deftest t-rte-with-rte
+  (testing "recursive rte"
+    (is (not (disjoint? '(rte (:* Number))
+                        '(rte (:* Double)))))
+    (is (not (disjoint? '(rte (:* Number))
+                        '(rte (:* String)))))
+    (is (disjoint? '(rte (:+ Number)) 
+                   '(rte (:+ String))))
+    (is (rte-compile '(:or (rte (:* Number)) 
+                           (rte (:cat Double Number))
+                           (rte (:* Double)))))))
