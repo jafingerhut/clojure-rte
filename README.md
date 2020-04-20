@@ -10,6 +10,9 @@ expression pattern is represented internally (after compilation with
 
 <img src="img/symbolic-finite-automaton.png" alt="Symbolic Finite Automaton" width="300"/>
 
+
+
+
 This means that the time complexity of matching a sequence,
 `rte-execute`, against a pattern is `O(n)` where `n` is the length of
 the sequence.  I.e., the time to perform the match is not a function of the
@@ -20,18 +23,18 @@ For this reason, the programmer is encouraged to arrange that
 expressions be compiled either once, and used many times, or if
 possible to compile the expressions at compile-time/load-time via:
 
-In some cases the sequence can be determined to match
-the pattern without examining the entire sequence.  For example if the
-pattern is, `(:cat Long (:* Double))`, then as soon as the first item
-fails to be a `Long`, we need not examine the rest of the sequence
-because we know it failed to match. Likewise if the pattern is `(:cat
-Long (:* :sigma))`, then after verifying that the first element is a
-`Long`, we need not examine the remaining elements because we know it
-has matched.
+In some cases the sequence can be determined to match the pattern
+without examining the entire sequence.  For example if the pattern is,
+`(:cat Long (:* Double))`, then as soon as the first item fails to be
+a `Long`, we need not examine the rest of the sequence because we know
+it failed to match. Likewise if the pattern is `(:cat Long (:*
+:sigma))`, then after verifying that the first element is a `Long`, we
+need not examine the remaining elements because we know it has
+matched.
 
-```clojure
-(def *my-rte* (rte-compile ...))
-```
+If the given sequence is a lazy sequence with side-effects, in some
+cases the side effects may be circumvented.  The caller cannot be
+assured that the side-effects will be achieved.
 
 ## Installation
 
@@ -422,6 +425,79 @@ there exist a sequence which matches the first but not the second?
 ```
 
 We see that indeed the empty sequence matches `pattern1` but does not match `pattern2`.
+
+## API
+
+### (`rte-compile` rte-pattern)
+Compiles an rte pattern into an internal representation representing a
+DFA (deterministic finite automaton).  The representation is designed
+to be human readable for debugging purposes, but its structure is not
+intended as an API.  I.e., the structure might change in future
+releases.
+
+The return value of this function is memoized.  Thus if the same rte
+pattern is encountered again the previously compiled dfa is returned
+as an `O(1)` operation.
+
+The return value of `rte-compile` may be used as first argument of `rte-execute`.
+
+Note about performance.  You may force an rte to be compiled at
+program load/compile time by defining at top level using `def`.
+
+```clojure
+(def my-rte (rte-compile ...)) ;; compile rte at load time
+```
+
+In the following case the RTE will be compiled at run-time, the first
+time the code is evaluated.
+
+```clojure
+(defn foo [args ...]
+  (let [rte (rte-compile '(:cat (:* Long) (:* Double) (:* String)))]
+    ...
+    ... (rte-execute rte ...)
+    ...
+    ))
+```
+
+
+### (`rte-execute` rte items)
+
+Returns Boolean value.
+
+Match a given sequence against a pre-compiled RTE pattern.
+
+```clojure
+(let [rte (rte-compile '(:cat (:* String) (:* Long) (:* Double)))]
+  (rte-execute rte ["hello" "world" 1 2 3]) ;; true
+  (rte-execute rte ["hello" "world" 1.0 2.0 3.0]) ;; true
+  (rte-execute rte ["hello" "world" 1.0 2.0 3]) ;; false
+  )
+==> true
+```
+
+
+### (`rte-match` pattern items)
+
+Returns Boolean value.
+
+Match a given sequence against a RTE pattern which has not yet been compiled.
+
+```clojure
+(rte-match '(:cat (:* String) (:* Double)) ["hello" "world" 1 2 3])
+==> true
+```
+
+
+### (`with-rte` bindings & body)
+See section [Abbreviating patterns](#abbreviating-patterns) for more information
+
+### (`rte-trace` rte)
+
+See section [Algebra of RTEs](#algebra-of-rtes) for more information.
+
+
+
 
 
 ## Debugging
