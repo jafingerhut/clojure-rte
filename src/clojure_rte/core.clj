@@ -565,17 +565,21 @@
   ;;(assert (not (sequential? expr)) (cl-format false "not expecting sequence expr= ~A:" expr))
   (assert (sequential? wrt) (cl-format false "expecting sequence, not ~A:" wrt))
   (assert (= 'and (first wrt)))
-  (cond
-    (some #{`(~'not ~expr)} (rest wrt))
-    :empty-set
+  (let [[_ & and-args] wrt]
+    (cond
+      (some #{`(~'not ~expr)} and-args)
+      :empty-set
 
-    :else
-    (throw (ex-info (format "not yet implemented: derivative of %s wrt %s"
-                            expr wrt)
-                    {:error-type :rte-not-yet-implemented
-                     :pattern expr
-                     :wrt wrt
-                     }))))    
+      (some #{expr} and-args)
+      :epsilon
+
+      :else
+      (throw (ex-info (format "not yet implemented: derivative of %s wrt %s"
+                              expr wrt)
+                      {:error-type :rte-not-yet-implemented
+                       :pattern expr
+                       :wrt wrt
+                       })))))
 
 (defn derivative 
   "Compute the Brzozowski rational expression derivative of the given
