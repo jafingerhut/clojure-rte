@@ -201,7 +201,7 @@
                  :+
                  :exp
                  :rte) (throw (ex-info (format "invalid pattern %s, expecting exactly one operand" pattern)
-                                       {:type :rte-syntax-error
+                                       {:error-type :rte-syntax-error
                                         :keyword keyword
                                         :pattern pattern
                                         :functions functions
@@ -211,7 +211,7 @@
                 (if (some #{(first pattern)} supported-nontrivial-types)
                   ((:type functions) pattern functions)
                   (throw (ex-info (format "0-ary type %s not yet implemented" pattern)
-                                  {:type :type-not-yet-implemented
+                                  {:error-type :type-not-yet-implemented
                                    :pattern pattern
                                    :functions functions
                                    }))))))
@@ -220,7 +220,7 @@
               (case token
                 (:rte)
                 (throw (ex-info (format "not yet implemented: derivative of %s" pattern)
-                                {:type :rte-not-yet-implemented
+                                {:error-type :rte-not-yet-implemented
                                  :keyword keyword
                                  :pattern pattern
                                  :functions functions
@@ -252,7 +252,7 @@
                 (if (some #{(first pattern)} supported-nontrivial-types)
                   ((:type functions) pattern functions)
                   (throw (ex-info (format "unary type %s not yet implemented" pattern)
-                                  {:type :type-not-yet-implemented
+                                  {:error-type :type-not-yet-implemented
                                    :pattern pattern
                                    :functions functions
                                    }))))))
@@ -272,7 +272,7 @@
 
                 (:not :* :+ :? :rte :exp)
                 (throw (ex-info (format "invalid pattern %s, expecting exactly one operand" pattern)
-                                {:type :rte-syntax-error
+                                {:error-type :rte-syntax-error
                                  :keyword keyword
                                  :pattern pattern
                                  :functions functions
@@ -283,7 +283,7 @@
                 (if (some #{(first pattern)} supported-nontrivial-types)
                   ((:type functions) pattern functions)
                   (throw (ex-info (format "variadic type %s not yet implemented" pattern)
-                                  {:type :type-not-yet-implemented
+                                  {:error-type :type-not-yet-implemented
                                    :pattern pattern
                                    :functions functions
                                    }))))))]
@@ -576,7 +576,7 @@
     :else
     (throw (ex-info (format "not yet implemented: derivative of %s wrt %s"
                             expr wrt)
-                    {:type :rte-not-yet-implemented
+                    {:error-type :rte-not-yet-implemented
                      :pattern expr
                      :wrt wrt
                      }))))    

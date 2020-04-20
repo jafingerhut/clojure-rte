@@ -67,7 +67,7 @@
            (class? (resolve a-type)))
     (isa? (type a-value) (resolve a-type))
     (throw (ex-info (format "typep: invalid type %s" a-type)
-                    {:type :invalid-type-designator
+                    {:error-type :invalid-type-designator
                      :a-type a-type
                      :a-value a-value
                      }))))
@@ -193,7 +193,7 @@
     (true) true
     (false) false
     (throw (ex-info (format "disjoint? cannot decide %s vs %s" t1 t2)
-                    {:type :not-yet-implemented
+                    {:error-type :not-yet-implemented
                      :type-designators [t1 t2]}))))
 
 (new-disjoint-hook
@@ -231,7 +231,7 @@
               
               :else
               (throw (ex-info (format "disjoint? type %s flags %s not yet implemented" t flags)
-                              {:type :invalid-type-flags
+                              {:error-type :invalid-type-flags
                                :a-type t
                                :flags flags})))))]
 
