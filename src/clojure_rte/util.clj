@@ -167,3 +167,13 @@
   "Like cl:member.  Determines whether the given is an element of the given sequence."
   [target items]
   (some #{target} items))
+
+(defn partition-by 
+  "Apply the predicate to every element of the sequence and return a vector of two
+  values, each of which is a vector, the left vector is the set of the items
+  in the original sequence for which the predicate returned a Boolean true value,
+  the right vector are the other values from the given sequence."  
+  [pred items]
+  (let [g (group-by (fn [i]
+                      (boolean (pred i))) items)]
+    [(g false) (g true)]))

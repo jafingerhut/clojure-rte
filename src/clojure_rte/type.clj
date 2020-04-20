@@ -201,9 +201,23 @@
                 (cons :primary (remove #{:primary} (keys @disjoint-hooks))))
     (true) true
     (false) false
-    (throw (ex-info (format "disjoint? cannot decide %s vs %s" t1 t2)
-                    {:error-type :not-yet-implemented
-                     :type-designators [t1 t2]}))))
+    (do
+      (cl-format true "disjoint? cannot decide ~A vs ~A -- assuming not disjoint~%" t1 t2)
+      false)))
+
+(new-disjoint-hook
+ :and
+ (letfn [(and? [t]
+           (and (sequential? t)
+                (= 'and (first t))))]
+   (fn [t1 t2]
+     (cond (and (and? t2)
+                (some (fn [t]
+                        (disjoint? t1 t)) (rest t2)))
+           true
+
+           :else
+           :dont-know))))
 
 (new-disjoint-hook
  :derived
@@ -255,6 +269,9 @@
 (letfn [(not? [t]
           (and (sequential? t)
                (= 'not (first t))))
+        (and? [t]
+          (and (sequential? t)
+               (= 'and (first t))))
         (class-type [t]
           (let [c (resolve t)
                 r (refl/type-reflect c)
@@ -276,6 +293,15 @@
                               {:error-type :invalid-type-flags
                                :a-type t
                                :flags flags})))))]
+
+  (new-subtype-hook
+   :and
+   (fn [t1 t2]
+     (if (and (and? t1)
+              (some #{t2} (rest t1)))
+       false
+       :dont-know)))
+
 
   (new-disjoint-hook
    :classes
@@ -312,9 +338,9 @@
        true
        
        ;; if t1 < t2, then t1 disjoint from (not t2)
-       (and (class-designator? t1)
+       (and ;;(class-designator? t1)
             (not? t2)
-            (class-designator? (second t2))
+            ;;(class-designator? (second t2))
             (subtype? t1 (second t2)))
        true
 
@@ -349,7 +375,7 @@
                                (isa? csub csuper)
                                super)))) atoms)))) atoms))
 
-(defn map-type-partitions 
+(defn map-type-partitions
   "Iterate through all the ways to partition types between a right and left set.
   Some care is made to prune branches which are provably empty."
   [items binary-fun]

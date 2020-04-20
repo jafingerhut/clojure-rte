@@ -608,9 +608,7 @@
                                 :sigma (fn [type functions]
                                          :epsilon)
                                 :type (fn [type functions]
-                                        (cond (and (sequential? wrt)
-                                                   (= 'and (first wrt)))
-                                              (compute-compound-derivative type wrt)
+                                        (cond 
                                               
                                               (ty/disjoint? wrt type)
                                               :empty-set
@@ -618,6 +616,11 @@
                                               (ty/subtype? wrt type)
                                               :epsilon
                                               
+                                              (and (sequential? wrt)
+                                                   (= 'and (first wrt)))
+                                              (compute-compound-derivative type wrt)
+                                              
+
                                               :else
                                               (throw (ex-info (format "cannot compute derivative of overlapping types because %s is not a subtype of %s" wrt type)
                                                               {:error-type :derivative-undefined
@@ -657,7 +660,59 @@
   (letfn [(independent? [t1]
             (every? (fn [t2]
                       (or (= t1 t2)
-                          (ty/disjoint? t1 t2))) type-set))]
+                          (ty/disjoint? t1 t2))) type-set))
+          (rte? [t]
+            (and (sequential? t)
+                 (= 'rte (first t))))
+          (count-if [pred items]
+            (reduce (fn [acc item]
+                      (if (pred item)
+                        (inc acc)
+                        acc)) 0 items))
+          (collect-left-right [collect left right]
+            (cond
+              (and (empty? right)
+                   (= 1 (count left)))
+              (collect (first left))
+
+              (and (empty? left)
+                   (= 1 (count right)))
+              (collect (list 'not (first right)))
+
+              (and (empty? right)
+                   (empty? left))
+              :sigma
+
+              (> (+ (count-if rte? left)
+                    (count-if rte? right)) 1)
+              (let [[left-rtes left] (partition-by rte? left)
+                    [right-rtes right] (partition-by rte? right)
+                    left-patterns (map second left-rtes)
+                    right-patterns (map second right-rtes)]
+                (cond (empty? left-rtes)
+                      (let [new-rte (canonicalize-pattern `(:or ~@right-patterns))]
+                        (collect-left-right collect
+                                            left
+                                            (cons (list 'rte new-rte) right)))
+
+                      (empty? right-rtes)
+                      (let [new-rte (canonicalize-pattern `(:and ~@left-patterns))]
+                        (collect-left-right collect
+                                            (cons (list 'rte new-rte) left)
+                                            right))
+
+                      :else
+                      (let [new-rte (canonicalize-pattern
+                                     `(:and ~@left-patterns
+                                            (:not (:or ~@right-patterns))))]
+                        (collect-left-right collect
+                                            (cons (list 'rte new-rte) left)
+                                            right))))
+
+              :else
+              (let [right (map (fn [x]
+                                 (list 'not x)) right)]
+                (collect `(~'and ~@left ~@right)))))]
 
     (let [independent (filter independent? type-set)
           dependent (remove (set independent) type-set)]
@@ -666,23 +721,7 @@
                              (ty/map-type-partitions
                               (seq dependent)
                               (fn [left right]
-                                (cond
-                                  (and (empty? right)
-                                       (= 1 (count left)))
-                                  (collect (first left))
-
-                                  (and (empty? left)
-                                       (= 1 (count right)))
-                                  (collect (list 'not (first right)))
-
-                                  (and (empty? right)
-                                       (empty? left))
-                                  :sigma
-
-                                  :else
-                                  (let [right (map (fn [x]
-                                                     (list 'not x)) right)]
-                                    (collect `(~'and ~@left ~@right))))))))))))
+                                (collect-left-right collect left right)))))))))
 
 (defn find-all-derivatives 
   "Start with the given rte pattern, and compute its derivative with
@@ -785,10 +824,10 @@
 (defn vacuous? [dfa]
   (not (inhabited? dfa)))
 
-(defn rte-execute [dfa items]
+(defn rte-execute 
   "Given a finite automaton generated by rte-to-dfa (or rte-compile), determine
    whether the given sequence, items, matches the regular type expression."
-
+  [dfa items]
   (letfn [(consume [state-index item]
             (let [state-obj (dfa state-index)]
               (cl-cond
@@ -835,7 +874,10 @@
 
 (letfn [(rte? [t]
           (and (sequential? t)
-               (= 'rte (first t))))]
+               (= 'rte (first t))))
+        (not? [t]
+          (and (sequential? t)
+               (= 'not (first t))))]
   
   (ty/new-disjoint-hook
    :rte
@@ -844,8 +886,14 @@
                 (rte? t2))
            (let [[_ pat1] t1
                  [_ pat2] t2]
-             
              (vacuous? (rte-compile `(:and ~pat1 ~pat2))))
+
+           (and (rte? t1)
+                (not? t2)
+                (rte? (second t2)))
+           (let [[_ pat1] t1
+                 [_ [_ pat2]] t2]
+             (vacuous? (rte-compile `(:and ~pat1 (:not ~pat2)))))
 
            (and (rte? t1)
                 (ty/class-designator? t2)
@@ -857,6 +905,18 @@
                 (ty/class-designator? t2)
                 (not (isa? (resolve t2) clojure.lang.Sequential)))
            true
+
+           (and (not? t1)
+                (rte? (second t1))
+                (ty/class-designator? t2)
+                (not (isa? (resolve t2) clojure.lang.Sequential)))
+           false
+
+           (and (rte? t1)
+                (not? t2)
+                (ty/class-designator? (second t2))
+                (not (isa? (resolve (second t2)) clojure.lang.Sequential)))
+           false
 
            :else :dont-know)))
 
@@ -884,4 +944,9 @@
                 (not (isa? (resolve sub-designator) clojure.lang.Sequential)))
            false
 
+           (and (rte? sub-designator)
+                (ty/class-designator? super-designator)
+                (not (isa? (resolve super-designator) clojure.lang.Sequential)))
+           false
+           
            :else :dont-know))))
