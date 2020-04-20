@@ -837,24 +837,51 @@
           (and (sequential? t)
                (= 'rte (first t))))]
   
-  
   (ty/new-disjoint-hook
    :rte
    (fn [t1 t2]
-     (if (and (rte? t1)
-              (rte? t2))
-       (let [[_ pat1] t1
-             [_ pat2] t2]
-         
-         (vacuous? (rte-compile `(:and ~pat1 ~pat2))))
-       :dont-know)))
+     (cond (and (rte? t1)
+                (rte? t2))
+           (let [[_ pat1] t1
+                 [_ pat2] t2]
+             
+             (vacuous? (rte-compile `(:and ~pat1 ~pat2))))
+
+           (and (rte? t1)
+                (ty/class-designator? t2)
+                (isa? (resolve t2) java.lang.CharSequence))
+           (let [[_ pat1] t1]
+             (vacuous? (rte-compile `(:and ~pat1 (:* java.lang.Character)))))
+
+           (and (rte? t1)
+                (ty/class-designator? t2)
+                (not (isa? (resolve t2) clojure.lang.Sequential)))
+           true
+
+           :else :dont-know)))
 
   (ty/new-subtype-hook
    :rte
    (fn [sub-designator super-designator]
-     (if (and (rte? sub-designator)
-              (rte? super-designator))
-       (let [[_ pat-sub] sub-designator
-             [_ pat-super] super-designator]
-         (vacuous? (rte-compile `(:and ~pat-sub (:not ~pat-super)))))
-       :dont-know))))
+     (cond (and (rte? sub-designator)
+                (rte? super-designator))
+           (let [[_ pat-sub] sub-designator
+                 [_ pat-super] super-designator]
+             (vacuous? (rte-compile `(:and ~pat-sub (:not ~pat-super)))))
+
+           (and (rte? super-designator)
+                (ty/class-designator? sub-designator)
+                (isa? (resolve sub-designator) java.lang.CharSequence))
+           (ty/subtype? '(rte (:* java.lang.Character)) super-designator)
+
+           (and (rte? sub-designator)
+                (ty/class-designator? super-designator)
+                (isa? (resolve super-designator) java.lang.CharSequence))
+           (ty/subtype? sub-designator '(rte (:* java.lang.Character)))
+
+           (and (rte? super-designator)
+                (ty/class-designator? sub-designator)
+                (not (isa? (resolve sub-designator) clojure.lang.Sequential)))
+           false
+
+           :else :dont-know))))

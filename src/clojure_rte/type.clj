@@ -21,6 +21,7 @@
 
 (ns clojure-rte.type
   (:require [clojure.set :refer [union intersection]]
+            [clojure.pprint :refer [cl-format]]
             [clojure-rte.util :refer [call-with-collector]]
             [clojure-rte.cl-compat :refer [cl-cond cl-prog1]]
             [clojure.reflect :as refl]
