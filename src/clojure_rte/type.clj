@@ -129,7 +129,15 @@
                 (conj (or (descendants t2) #{}) t2)))
 
 (def disjoint-hooks (atom {}))
-(defn new-disjoint-hook [key hook-fn]
+(defn new-disjoint-hook 
+  "Establish (or override) a named hook for use in disjoint?
+  This is necessary because clojure multmethods do not support
+  call-next-method.  We need several _methods_ to be called until
+  one fails to return :dont-know.
+  (new-disjoint-hook ...) establishes a new hook, which must designate
+  a binary function which returns true, false, or :dont-know."
+  ;; TODO - also specify relative key for use in topological sort, to determine the order the hooks should run.
+  [key hook-fn]
   (swap! disjoint-hooks (fn [_]
                           (assoc @disjoint-hooks key hook-fn)))
   (keys @disjoint-hooks))
@@ -206,10 +214,14 @@
        (resolve t)
        (class? (resolve t))))
 
-
 (def subtype-hooks (atom {}))
 (defn new-subtype-hook 
-  "Establish (or override) a named hook"
+  "Establish (or override) a named hook for use in subtype?
+  This is necessary because clojure multmethods do not support
+  call-next-method.  We need several _methods_ to be called until
+  one fails to return :dont-know.
+  (new-disjoint-hook ...) establishes a new hook, which must designate
+  a binary function which returns true, false, or :dont-know."
   ;; TODO - also specify relative key for use in topological sort, to determine the order the hooks should run.
   [key hook-fn]
   (swap! subtype-hooks (fn [_]
