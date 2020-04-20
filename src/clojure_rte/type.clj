@@ -206,9 +206,38 @@
        (resolve t)
        (class? (resolve t))))
 
-(defn subclass? [sub-designator super-designator]
+
+(def subtype-hooks (atom {}))
+(defn new-subtype-hook 
+  "Establish (or override) a named hook"
+  ;; TODO - also specify relative key for use in topological sort, to determine the order the hooks should run.
+  [key hook-fn]
+  (swap! subtype-hooks (fn [_]
+                          (assoc @subtype-hooks key hook-fn)))
+  (keys @subtype-hooks))
+
+(defn subtype? [sub-designator super-designator]
   ;; it is assumed that the arguments have already been valided by class-designator?
-  (isa? (resolve sub-designator) (resolve super-designator)))
+  (case (reduce (fn [_ key]
+                  (case ((key @subtype-hooks) sub-designator super-designator)
+                    (true) (reduced true)
+                    (false) (reduced false)
+                    nil))
+                :initial
+                (cons :primary (remove #{:primary} (keys @subtype-hooks))))
+    (true) true
+    (false) false
+    (throw (ex-info (format "subtype? cannot decide %s vs %s" sub-designator super-designator)
+                    {:error-type :not-yet-implemented
+                     :type-designators [sub-designator super-designator]}))))
+
+(new-subtype-hook
+ :primary
+ (fn [sub-designator super-designator]
+   (if (and (class-designator? sub-designator)
+            (class-designator? super-designator))
+     (isa? (resolve sub-designator) (resolve super-designator))
+     :dont-know)))
 
 (letfn [(not? [t]
           (and (sequential? t)
@@ -249,15 +278,15 @@
          ((:final :final)
           (:final :interface)
           (:final :abstract))
-         (not (subclass? t1 t2))
+         (not (subtype? t1 t2))
 
          ((:interface :final)
           (:abstract :final))
-         (not (subclass? t2 t1))
+         (not (subtype? t2 t1))
 
          ((:abstract :abstract))
-         (not (or (subclass? t1 t2)
-                  (subclass? t2 t1))))
+         (not (or (subtype? t1 t2)
+                  (subtype? t2 t1))))
 
        :dont-know)))
 
@@ -273,7 +302,7 @@
        (and (class-designator? t1)
             (not? t2)
             (class-designator? (second t2))
-            (subclass? t1 (second t2)))
+            (subtype? t1 (second t2)))
        true
 
        :else
@@ -311,7 +340,6 @@
   "Iterate through all the ways to partition types between a right and left set.
   Some care is made to prune branches which are provably empty."
   [items binary-fun]
-  
   (letfn [(remove-supertypes [types]
             ;; Given a list of symbols designating types, return a new list
             ;; excluding those which are supertypes of others in the list.
@@ -369,14 +397,14 @@
              ((and (not (empty? left)) (not (empty? right))
                    ;; exists t2 in right such that t1 < t2
                    ;; then t1 & !t2 = nil
-                   (some (fn [t2] (subclass? (first left) t2))  right))
+                   (some (fn [t2] (subtype? (first left) t2))  right))
               ;; prune
               )
 
              ((and (not (empty? left)) (not (empty? right))
                    ;; exists t2 in right such that t1 < t2
                    ;; then t1 & !t2 = nil
-                   (some (fn [t1] (subclass? t1 (first right)))  left))
+                   (some (fn [t1] (subtype? t1 (first right)))  left))
               ;; prune
               )
 
