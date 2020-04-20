@@ -259,14 +259,23 @@
 
     ;; or
     
-    (is (= (derivative '(:or java.io.Serializable java.lang.Comparable)
-                       'java.io.Serializable)
+    (is (= (derivative '(:or Double String)
+                       'Double)
            :epsilon))
 
     ;; cat
-    (is (= (derivative '(:cat (:or java.io.Serializable java.lang.Comparable) Long)
-                       'java.io.Serializable)
-           'Long) "derivative cat with reduction")
+    (is (thrown? clojure.lang.ExceptionInfo
+                 (derivative '(:cat (:or java.io.Serializable java.lang.Comparable) Long)
+                             'java.io.Serializable))
+        "derivative wrt overlpping type not possible")
+    
+    (is (= (derivative '(:cat (:or Double String) Long)
+                       'Double)
+           'Long) "derivative cat with reduction 1")
+
+    (is (= (derivative '(:cat (:or Double String) Long)
+                       'String)
+           'Long) "derivative cat with reduction 2")
 
     (is (= (derivative '(:cat Number Number Number)
                        'Number)

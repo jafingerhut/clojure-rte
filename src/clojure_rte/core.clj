@@ -619,8 +619,8 @@
                                               :epsilon
                                               
                                               :else
-                                              (throw (ex-info "providing smaller types"
-                                                              {:type :split-type
+                                              (throw (ex-info (format "cannot compute derivative of overlapping types because %s is not a subtype of %s" wrt type)
+                                                              {:error-type :derivative-undefined
                                                                :wrt wrt
                                                                :expr expr
                                                                :sub-types [{:type `(~'and ~wrt ~expr)}
