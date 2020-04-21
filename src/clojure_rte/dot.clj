@@ -21,6 +21,7 @@
 
 (ns clojure-rte.dot
   (:require [clojure.pprint :refer [cl-format]]
+            [clojure.string]
             [clojure.java.shell :refer [sh]]))
 
 (def ^:dynamic *dot-path*
@@ -50,7 +51,7 @@
     view (let [png-file-name (str *dot-tmp-dir* "/" title ".png")]
            (sh *dot-path* "-Tpng" "-o" png-file-name
                :in (dfa-to-dot dfa :title title :view false))
-           (if (= "Mac OS X" (System/getProperty "os.name"))
+           (when (= "Mac OS X" (System/getProperty "os.name"))
              (sh "open" png-file-name)))
     :else
     (with-out-str

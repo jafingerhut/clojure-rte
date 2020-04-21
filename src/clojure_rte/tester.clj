@@ -31,7 +31,7 @@
          (do
            (cl-format true "e=~A~%" e)
            (or (some (fn [component]
-                       (simplify unary component)) (gen-components error-case))
+                       (simplify unary component gen-components)) (gen-components error-case))
                error-case)))))
 
 (defn random-test [num-tries unary-test-fun arg-generator gen-components]

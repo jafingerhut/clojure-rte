@@ -117,7 +117,7 @@
    binary and always ignors its second argument.  This function is
    useful as a callback function used to extend *traversal-functions*,
    as each such callback function must be a binary function."
-  [x y]
+  [x _y]
   
   x)
 
@@ -159,9 +159,9 @@
            ;; however the error message did not give the offending list.
            ;; this code attempts to save the list in case TIM sort fails so we
            ;; can debug it.
-           (do (swap! problematic-operands (fn [_] operands))
-               (printf "saving problematic operands in *problematic-operands*: %s" (seq operands))
-               (throw e))))))
+           (swap! problematic-operands (fn [_] operands))
+           (printf "saving problematic operands in *problematic-operands*: %s" (seq operands))
+           (throw e)))))
 
 (defn member
   "Like cl:member.  Determines whether the given is an element of the given sequence."

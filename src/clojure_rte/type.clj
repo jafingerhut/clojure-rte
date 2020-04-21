@@ -78,13 +78,13 @@
        (resolve type-designator)
        (class? (resolve type-designator))))
 
-(defmethod typep 'not [a-value [a-type t]]
+(defmethod typep 'not [a-value [_a-type t]]
   (not (typep a-value t)))
 
 (defmethod valid-type? 'not [[_ type-designator]]
   (valid-type? type-designator))
 
-(defmethod typep 'and [a-value [a-type & others]]
+(defmethod typep 'and [a-value [_a-type & others]]
   (every? (fn [t1]
             (typep a-value t1)) others))
 
@@ -92,14 +92,14 @@
   (every? valid-type? others))
 
 
-(defmethod typep 'or [a-value [a-type & others]]
+(defmethod typep 'or [a-value [_a-type & others]]
   (some (fn [t1]
           (typep a-value t1)) others))
 
 (defmethod valid-type? 'or [_ & others]
   (every? valid-type? others))
 
-(defmethod typep 'satisfies [a-value [a-type f]]
+(defmethod typep 'satisfies [a-value [_a-type f]]
   (if (fn? f)
     (f a-value)
     ((resolve f) a-value)))
@@ -225,7 +225,7 @@
 
 (new-disjoint-hook
  :derived
- (fn [t1 t2]
+ (fn [_t1 _t2]
    :dont-know))
 
 (defn class-designator? [t]
@@ -405,8 +405,8 @@
                                          (class-designator? t2))
                                 (let [c1 (resolve t1)
                                       c2 (resolve t2)]
-                                  (if (and (not (= c1 c2))
-                                           (isa? c1 c2))
+                                  (when (and (not (= c1 c2))
+                                             (isa? c1 c2))
                                     (collect t2)))))))]
               (for [x types
                     :when (not (some #{x} supers))]
@@ -422,8 +422,8 @@
                                          (class-designator? t2))
                                 (let [c1 (resolve t1)
                                       c2 (resolve t2)]
-                                  (if (and (not (= c1 c2))
-                                           (isa? c2 c1))
+                                  (when (and (not (= c1 c2))
+                                             (isa? c2 c1))
                                     (collect t2)))))))]
               (for [x types
                     :when (not (some #{x} supers))]
@@ -448,14 +448,14 @@
                    (some (fn [t2]
                            (disjoint? t2 (first left))) (rest left)))
               )
-             ((and (not (empty? left)) (not (empty? right))
+             ((and (not-empty left) (not-empty right)
                    ;; exists t2 in right such that t1 < t2
                    ;; then t1 & !t2 = nil
                    (some (fn [t2] (subtype? (first left) t2))  right))
               ;; prune
               )
 
-             ((and (not (empty? left)) (not (empty? right))
+             ((and (not-empty left) (not-empty right)
                    ;; exists t2 in right such that t1 < t2
                    ;; then t1 & !t2 = nil
                    (some (fn [t1] (subtype? t1 (first right)))  left))
@@ -473,8 +473,8 @@
              (:else
               (let [new-type (first items)]
                 (case new-type
-                  (nil)
-                  (:sigma)
+                  (nil) (recurring (rest items) left right)
+                  (:sigma) (recurring (rest items) (cons new-type left) right)
                   (do
                     (recurring (rest items) (cons new-type left) (remove (fn [t2] (disjoint? t2 new-type)) right))
                     (if (some (fn [t2] (disjoint? new-type t2)) left)

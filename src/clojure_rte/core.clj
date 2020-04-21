@@ -43,8 +43,8 @@
 (ns clojure-rte.core
   (:require [clojure.set :refer [union]]
             [clojure.pprint :refer [cl-format]]
-            [clojure-rte.cl-compat :refer [cl-cond cl-prog1 cl-prog2 cl-progn]]
-            [clojure-rte.util :refer [with-first-match remove-once call-with-collector
+            [clojure-rte.cl-compat :refer [cl-cond]]
+            [clojure-rte.util :refer [with-first-match call-with-collector
                                       visit-permutations rte-constantly rte-identity
                                       partition-by-pred
                                       sort-operands member]]
@@ -54,7 +54,7 @@
 
 (defn -main
   "I don't do a whole lot ... yet."
-  [& args]
+  [& _args]
   (println "Hello, World!"))
 
 (declare traverse-pattern)
@@ -114,8 +114,8 @@
          (resolve tag)
          (class? (resolve tag)))
     tag)
-   ((not (empty? (or (descendants tag)
-                     (ancestors tag)))) tag)
+   ((not-empty (or (descendants tag)
+                   (ancestors tag))) tag)
    ((ty/valid-type? tag) tag)
    (:else
     (println (format "resolve-rte-tag: warning unknown type %s" tag))
@@ -310,13 +310,13 @@
                            :sigma   (rte-constantly false)
                            :type (rte-constantly false)
                            :* (rte-constantly true)
-                           :cat (fn [operands functions]
+                           :cat (fn [operands _functions]
                                   (every? nullable operands))
-                           :and (fn [operands functions]
+                           :and (fn [operands _functions]
                                   (every? nullable operands))
-                           :or (fn [operands functions]
+                           :or (fn [operands _functions]
                                  (some nullable operands))
-                           :not (fn [operand functions]
+                           :not (fn [operand _functions]
                                   (not (nullable operand))))))
 
 (defn first-types 
@@ -324,7 +324,7 @@
   passed to isa?) which specify the possible set of first value values
   in any sequence satisfying this rational type expression."
   [expr]
-  (letfn [(mr [operands functions]
+  (letfn [(mr [operands _functions]
             (reduce (fn [acc next]
                       (union acc (first-types next))) #{} operands))]
   (traverse-pattern expr
@@ -332,20 +332,20 @@
                            :epsilon (rte-constantly #{})
                            :empty-set (rte-constantly #{})
                            :sigma (rte-constantly #{:sigma})
-                           :type (fn [operand functions]
+                           :type (fn [operand _functions]
                                    #{operand})
                            :or mr
                            :and mr
-                           :not (fn [operand functions]
+                           :not (fn [operand _functions]
                                   (first-types operand))
-                           :cat (fn [[head & tail] functions]
+                           :cat (fn [[head & tail] _functions]
                                   (cond (nullable head)
                                         (union (first-types head)
                                                (first-types (cons :cat tail)))
 
                                         :else
                                         (first-types head)))
-                           :* (fn [operand functions]
+                           :* (fn [operand _functions]
                                 (first-types operand))))))
 
 (defn seq-matcher
@@ -355,7 +355,7 @@
   [target]
   (fn [obj]
     (and (seq? obj)
-         (not (empty? obj))
+         (not-empty obj)
          (= target (first obj)))))
 
 (def cat? 
@@ -385,12 +385,12 @@
   [re]
   (traverse-pattern re
                     (assoc *traversal-functions*
-                           :type (fn [tag functions]
+                           :type (fn [tag _functions]
                                    (resolve-rte-tag tag))
                            :empty-set rte-identity
                            :epsilon rte-identity
                            :sigma rte-identity
-                           :* (fn [operand functions]
+                           :* (fn [operand _functions]
                                 (let [operand (canonicalize-pattern operand)]
                                   (case operand
                                     :epsilon    :epsilon ;; (:* :epsilon) --> :epsilon
@@ -398,7 +398,7 @@
                                     (if (*? operand)
                                       operand ;; (:* (:* something)) --> (:* something)
                                       (list :* (canonicalize-pattern operand))))))
-                           :cat (fn [operands functions]
+                           :cat (fn [operands _functions]
                                   (let [operands (map canonicalize-pattern operands)]
                                     (assert (< 1 (count operands))
                                             (format "traverse-pattern should have already eliminated this case: re=%s count=%s operands=%s" re (count operands) operands))
@@ -429,7 +429,7 @@
 
                                       (:else
                                        (cons :cat operands)))))
-                           :not (fn [operand functions]
+                           :not (fn [operand _functions]
                                   (let [operand (canonicalize-pattern operand)]
                                     (case operand
                                       (:sigma) :epsilon
@@ -456,7 +456,7 @@
                                         ;; so we need to take care of this when when build the automaton
                                         (list :not operand))
                                       )))
-                           :and (fn [operands functions]
+                           :and (fn [operands _functions]
                                   (assert (< 1 (count operands))
                                           (format "traverse-pattern should have already eliminated this case: re=%s count=%s operands=%s" re (count operands) operands))
                                   (let [operands (dedupe (sort-operands (map canonicalize-pattern operands)))]
@@ -490,7 +490,6 @@
 
                                      ;; (:and of disjoint types) --> :empty-set
                                      ((let [atoms (filter (complement seq?) operands)
-                                            max (ty/type-max atoms)
                                             ]
                                         (when (some (fn [i1]
                                                       (some (fn [i2]
@@ -509,7 +508,7 @@
                                       (cons :and operands))
 
                                      )))
-                           :or (fn [operands functions]
+                           :or (fn [operands _functions]
                                  (assert (< 1 (count operands))
                                          (format "traverse-pattern should have already eliminated this case: re=%s count=%s operands=%s" re (count operands) operands))
                                  (let [operands (dedupe (sort-operands (map canonicalize-pattern operands)))]
@@ -539,7 +538,7 @@
                                            min (ty/type-min atoms)
                                            ]
                                        (when min
-                                         (cons :or (remove #{min} operands)))))                                     
+                                         (cons :or (remove #{min} operands)))))
 
                                     (:else
                                      (cons :or operands))
@@ -606,9 +605,9 @@
                          (assoc *traversal-functions*
                                 :epsilon (rte-constantly :empty-set)
                                 :empty-set (rte-constantly :empty-set)     
-                                :sigma (fn [type functions]
+                                :sigma (fn [_type _functions]
                                          :epsilon)
-                                :type (fn [type functions]
+                                :type (fn [type _functions]
                                         (cond 
                                               
                                               (ty/disjoint? wrt type)
@@ -631,13 +630,13 @@
                                                                            {:type `(~'and ~wrt (~'not ~expr))}]
                                                                }))
                                               ))
-                                :or (fn [operands functions]
+                                :or (fn [operands _functions]
                                       (cons :or (walk operands)))
-                                :and (fn [operands functions]
+                                :and (fn [operands _functions]
                                        (cons :and (walk operands)))
-                                :not (fn [operand functions]
+                                :not (fn [operand _functions]
                                        (cons :not (walk (list operand))))
-                                :cat (fn [[head & tail] functions]
+                                :cat (fn [[head & tail] _functions]
                                        (letfn [(term1 []
                                                  `(:cat ~(derivative head wrt)
                                                         ~@tail))
@@ -648,7 +647,7 @@
                                            `(:or ~(term1) ~(term2))
                                            :else
                                            (term1))))
-                                :* (fn [operand functions]
+                                :* (fn [operand _functions]
                                      `(:cat ~(derivative operand wrt) (:* ~operand)))))))))
 
 (defn mdtd 
@@ -787,12 +786,12 @@
                             (trip 0)) triples)]
     (into [] (map (fn [deriv index]
                     (let [transitions (if (and (grouped index)
-                                               (apply = (map (fn [[src wrt dst]]
+                                               (apply = (map (fn [[_src _wrt dst]]
                                                                dst) (grouped index))))
                                         ;; if all transitions have same dst, then don't draw
                                         ;; multiple transitions, just draw with with label = :sigma
                                         (list [:sigma ((first (grouped index)) 2)])
-                                        (map (fn [[src wrt dst]]
+                                        (map (fn [[_src wrt dst]]
                                                [wrt dst]) (grouped index)))]
                       {:index index
                        :initial (= 0 index)
@@ -865,7 +864,7 @@
   [pattern items]
   (rte-execute (rte-compile pattern) items))
 
-(defmethod ty/typep 'rte [a-value [a-type pattern]]
+(defmethod ty/typep 'rte [a-value [_a-type pattern]]
   (and (sequential? a-value)
        (rte-match pattern a-value)))
 
