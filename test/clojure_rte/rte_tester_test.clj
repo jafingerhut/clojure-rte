@@ -25,11 +25,7 @@
 
 (deftest t-test-canonicalize-pattern
   (testing "test-canonicalize-pattern"
-    (test-canonicalize-pattern 10 4)))
-
-(deftest t-test-rte-to-dfa
-  (testing "test-rte-to-dfa"
-    (test-rte-to-dfa 10 4)))
+    (test-canonicalize-pattern 10 4 false)))
 
 (deftest t-rte-keywords
   (testing "rte-keywords"
@@ -41,7 +37,6 @@
     (for [k *rte-keywords*]
       (rte-components (gen-rte k 4 *test-types*)))))
 
-
 (deftest t-rte-to-dfa-random
   (testing "rte-to-dfa random"
-    (test-rte-to-dfa 10 5)))
+    (test-rte-to-dfa 30 5 false)))

@@ -63,12 +63,13 @@
 (def ^:dynamic *test-types*
   '(integer? int? rational? ratio? string? keyword? symbol? decimal? float? seq?))
 
-(defn test-rte-to-dfa [num-tries size]
+(defn test-rte-to-dfa [num-tries size verbose]
   (tester/random-test num-tries rte-to-dfa
                       (fn [] (gen-rte size *test-types*))
-                      rte-components))
+                      rte-components
+                      verbose))
 
-(defn test-canonicalize-pattern [num-tries size]
+(defn test-canonicalize-pattern [num-tries size verbose]
   (tester/random-test num-tries canonicalize-pattern
                       (fn [] (gen-rte size *test-types*))
-                      rte-components))
+                      rte-components verbose))

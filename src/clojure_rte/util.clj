@@ -146,6 +146,12 @@
               (= a b) (compare (.getName (type a))
                                (.getName (type b)))
 
+              (sequential? a)
+              -1
+
+              (sequential? b)
+              1
+              
               (not (= (.getName (type a))
                       (.getName (type b))))
               (compare (.getName (type a))
@@ -160,7 +166,11 @@
            ;; this code attempts to save the list in case TIM sort fails so we
            ;; can debug it.
            (swap! problematic-operands (fn [_] operands))
-           (printf "saving problematic operands in *problematic-operands*: %s" (seq operands))
+           (printf "saving problematic operands in *problematic-operands*\n")
+           (println [:type (type operands)
+                     :types (seq (map type operands))
+                     :operands operands                     
+                     :seq (seq operands)])
            (throw e)))))
 
 (defn member

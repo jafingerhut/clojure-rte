@@ -34,10 +34,11 @@
                        (simplify unary component gen-components)) (gen-components error-case))
                error-case)))))
 
-(defn random-test [num-tries unary-test-fun arg-generator gen-components]
-  (loop [num-tries num-tries]
-    (if (< 0 num-tries)
+(defn random-test [num-tries unary-test-fun arg-generator gen-components verbose]
+  (loop [n num-tries]
+    (if (< 0 n)
       (let [data (arg-generator)]
-        ;;(cl-format true "~d: trying ~A~%" num-tries data)
+        (when verbose
+          (cl-format true "~d/~d: trying ~A~%" n num-tries data))
         (unary-test-fun data)
-        (recur (dec num-tries))))))
+        (recur (dec n))))))
