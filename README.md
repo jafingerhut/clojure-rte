@@ -186,7 +186,11 @@ Example  ---  Takes 0 or more operands.  Either 0 or more integers, or 1 or more
 
 * `(:permute ...)` ---  Takes 0 or more operands.  Matches a sequence in any order.
 
-Example --- two integers and a string in any order.  WARNING, the number of permutations explodes as n!.  Using `:permute` of a large number of operations will make the compilation extremely slow, and perhaps exhaust virtual memory.
+Example --- two integers and a string in any order.  
+
+WARNING, the number of permutations explodes as n!.  Using `:permute`
+of a large number of operations will make the compilation extremely
+slow, and perhaps exhaust virtual memory.
 
 ```clojure
 (let [rte (rte-compile '(:permute integer? integer? String))]
