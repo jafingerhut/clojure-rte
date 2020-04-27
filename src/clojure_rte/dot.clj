@@ -54,24 +54,33 @@
            (when (= "Mac OS X" (System/getProperty "os.name"))
              (sh "open" png-file-name)))
     :else
-    (with-out-str
-      (cl-format *out* "digraph G {~%")
-      (when title
-        (cl-format *out* "// ~a~%" title))
-      (cl-format *out* "  rankdir=LR;~%")
-      (cl-format *out* "  graph [labeljust=l,nojustify=true];~%")
-      (cl-format *out* "  node [fontname=Arial, fontsize=25];~%")
-      (cl-format *out* "  edge [fontname=Helvetica, fontsize=20];~%")
+    (let [transition-labels (distinct (mapcat (fn [q]
+                                                (map first (:transitions q)))
+                                              dfa))
+          abbrevs (zipmap transition-labels (range (count transition-labels)))
+          indexes (clojure.set/map-invert abbrevs)]
+      (with-out-str
+        (cl-format *out* "digraph G {~%")
+        (when title
+          (cl-format *out* "// ~a~%" title))
+        (cl-format *out* "  rankdir=LR;~%")
+        (cl-format *out* "  fontname=courier;~%")
+        (cl-format *out* "  label=\"~a\\l\"~%"
+                   (clojure.string/join "" (map (fn [index]
+                                                  (cl-format false "\\lt~a=~a" index (indexes index)))
+                                                (range (count (keys indexes))))))
+        (cl-format *out* "  graph [labeljust=l,nojustify=true];~%")
+        (cl-format *out* "  node [fontname=Arial, fontsize=25];~%")
+        (cl-format *out* "  edge [fontname=Helvetica, fontsize=20];~%")
 
-      (doseq [q dfa]
-        (when (:initial q)
-          (cl-format *out* "   H~D [label=\"\", style=invis, width=0]~%" (:index q))
-          (cl-format *out* "   H~D -> ~D;~%" (:index q) (:index q)))
-        (when (:accepting q)
-          (cl-format *out* "   H~D [label=\"\", style=invis, width=0]~%" (:index q))
-          (cl-format *out* "   ~D -> H~D;~%" (:index q) (:index q)))
-        (doseq [[type-desig next-state] (:transitions q)]
-          (cl-format *out* "   ~D -> ~D [label=\"~a\"];~%" (:index q) next-state type-desig)))
-      
-      (cl-format *out* "}~%"))))
+        (doseq [q dfa]
+          (when (:initial q)
+            (cl-format *out* "   H~D [label=\"\", style=invis, width=0]~%" (:index q))
+            (cl-format *out* "   H~D -> ~D;~%" (:index q) (:index q)))
+          (when (:accepting q)
+            (cl-format *out* "   ~D [shape=doublecircle] ;~%" (:index q)))
+          (doseq [[type-desig next-state] (:transitions q)]
+            (cl-format *out* "   ~D -> ~D [label=\"t~a\"];~%" (:index q) next-state (abbrevs type-desig))))
+        
+        (cl-format *out* "}~%")))))
 

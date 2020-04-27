@@ -749,7 +749,8 @@
                          (conj acc-derivs (triple 2)))]
                       )
                     )]
-            (let [disjoined (mdtd (conj (first-types pattern) :sigma))
+            (let [firsts (first-types pattern)
+                  disjoined (mdtd (conj firsts :sigma))
                   [new-triples new-derivatives] (reduce xx [[] ()] disjoined)]
               (recur (concat new-derivatives to-do-patterns)
                      (conj done pattern)
@@ -877,7 +878,10 @@
                (= 'rte (first t))))
         (not? [t]
           (and (sequential? t)
-               (= 'not (first t))))]
+               (= 'not (first t))))
+        (and? [t]
+          (and (sequential? t)
+               (= 'and (first t))))]
   
   (ty/new-disjoint-hook
    :rte
@@ -949,4 +953,11 @@
                 (not (isa? (resolve super-designator) clojure.lang.Sequential)))
            false
            
+           (and (rte? super-designator)
+                (and? sub-designator)
+                (some (fn [and-operand]
+                        (rte? and-operand)
+                        (ty/subtype? and-operand super-designator)) (rest sub-designator)))
+           true
+
            :else :dont-know))))

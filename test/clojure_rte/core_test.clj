@@ -47,7 +47,6 @@
     (is (nullable '(:? :epsilon)) 1)))
 
 (deftest t-first-types
-
   (testing "first-types"
     (is (= #{'a} (first-types 'a)))
     (is (= #{'a 'b} (first-types '(:or a b))))
