@@ -20,8 +20,7 @@
 ;; WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 (ns clojure-rte.cl-compat-test
-  (:require [clojure-rte.cl-compat :as sut]
-            [clojure-rte.cl-compat :refer [cl-cond cl-prog1 cl-prog2 cl-progn]]
+  (:require [clojure-rte.cl-compat :refer [cl-cond cl-prog1 cl-prog2 cl-progn]]
             [clojure-rte.util :refer [call-with-collector]]
             [clojure.test :refer :all]))
 
