@@ -42,25 +42,32 @@
            #{::Cat-Lion}))))
 
 
+(deftest t-disjoint-2-14
+  (if (and (resolve 'java.lang.constant.Constable)
+           (resolve 'java.lang.constant.ConstantDesc))   
+    (testing "disjoint 2 14"
+    ;; interface vs interface - never disjoint
+    (is (not (disjoint? 'java.lang.constant.Constable 'java.lang.constant.ConstantDesc)))
+    (is (not (disjoint? 'java.lang.constant.ConstantDesc 'java.lang.constant.Constable)))
+
+    ;; final vs interface is superclass
+    (is (not (disjoint? 'Integer 'java.lang.constant.Constable)))
+    (is (not (disjoint? 'java.lang.constant.Constable 'Integer)))
+
+
+      )))
+
 (deftest t-disjoint-2
   (testing "disjoint 2"
-    (assert (resolve 'java.lang.constant.Constable) "cannot run test because cannot resolve java.lang.constant.Constable")
-    (is (resolve 'java.lang.constant.ConstantDesc)  "cannot run test because cannot resolve java.lang.constant.ConstantDesc")
 
     (is (disjoint? 'Integer 'String)) ; final vs final
     (is (disjoint? 'String 'Integer)) ; final vs final
 
-    ;; interface vs interface - never disjoint
-    (is (not (disjoint? 'java.lang.constant.Constable 'java.lang.constant.ConstantDesc)))
-    (is (not (disjoint? 'java.lang.constant.ConstantDesc 'java.lang.constant.Constable)))
 
     ;; final vs interface not a superclass
     (is (disjoint? 'Integer 'java.lang.CharSequence))
     (is (disjoint? 'java.lang.CharSequence 'Integer))
 
-    ;; final vs interface is superclass
-    (is (not (disjoint? 'Integer 'java.lang.constant.Constable)))
-    (is (not (disjoint? 'java.lang.constant.Constable 'Integer)))
 
     ;; abstract vs abstract
     (is (disjoint? 'Number 'clojure.lang.ASeq))

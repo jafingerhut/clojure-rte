@@ -89,11 +89,31 @@
     (is (= :empty-set (canonicalize-pattern '(:and String Integer))) "empty-set 2")
     ))
 
-(deftest t-canonicalize-pattern
+(deftest t-canonicalize-pattern-14
+  ;; this code runs on java 14 and higher, it is not clear
+  ;; which earlier java version it might work for
+  ;; java.lang.constant.Constable and java.lang.constant.ConstantDesc
+  ;; were added at some point ?12?
+  (when (and (resolve 'java.lang.constant.Constable)
+             (resolve 'java.lang.constant.ConstantDesc))
+    
+    (testing "canonicalize-pattern 14"
+      (is (= '(:or (:and java.io.Serializable java.lang.Comparable java.lang.constant.ConstantDesc)
+                   (:and java.lang.Comparable java.lang.constant.Constable java.lang.constant.ConstantDesc))
+             (canonicalize-pattern '(:and (:or java.io.Serializable java.lang.constant.Constable) java.lang.constant.ConstantDesc java.lang.Comparable))) "and-distribute")
+      (is (= (canonicalize-pattern '(:permute java.lang.Comparable java.io.Serializable java.lang.constant.Constable ))
+           (canonicalize-pattern '(:or (:cat java.lang.Comparable java.io.Serializable java.lang.constant.Constable )
+                                       (:cat java.lang.Comparable java.lang.constant.Constable  java.io.Serializable)
+                                       (:cat java.io.Serializable java.lang.Comparable java.lang.constant.Constable )
+                                       (:cat java.io.Serializable java.lang.constant.Constable  java.lang.Comparable)
+                                       (:cat java.lang.constant.Constable  java.io.Serializable java.lang.Comparable)
+                                       (:cat java.lang.constant.Constable java.lang.Comparable java.io.Serializable)))) "permute 3 args")
+      
+      )))
 
+
+(deftest t-canonicalize-pattern
   (testing "canonicalize-pattern"
-    (assert (resolve 'java.lang.constant.Constable) "cannot run test because cannot resolve java.lang.constant.Constable")
-    (is (resolve 'java.lang.constant.ConstantDesc)  "cannot run test because cannot resolve java.lang.constant.ConstantDesc")
 
     ;; syntax errors
     (is (thrown? clojure.lang.ExceptionInfo (canonicalize-pattern '(:*))))
@@ -182,9 +202,7 @@
     (is (= '(:and java.io.Serializable java.lang.Comparable)
            (canonicalize-pattern-once '(:and java.io.Serializable java.lang.Comparable java.io.Serializable java.lang.Comparable))) "and remove duplicate 2")
 
-    (is (= '(:or (:and java.io.Serializable java.lang.Comparable java.lang.constant.ConstantDesc)
-                 (:and java.lang.Comparable java.lang.constant.Constable java.lang.constant.ConstantDesc))
-    (canonicalize-pattern '(:and (:or java.io.Serializable java.lang.constant.Constable) java.lang.constant.ConstantDesc java.lang.Comparable))) "and-distribute")
+    
 
     (is (= :empty-set
            (canonicalize-pattern '(:and  java.io.Serializable :empty-set java.lang.Comparable))) "and empty-set")
@@ -210,14 +228,6 @@
     (is (= (canonicalize-pattern '(:permute java.lang.Comparable java.io.Serializable))
            (canonicalize-pattern '(:or (:cat java.lang.Comparable java.io.Serializable)
                                        (:cat java.io.Serializable java.lang.Comparable)))) "permute 2 args")
-    (is (= (canonicalize-pattern '(:permute java.lang.Comparable java.io.Serializable java.lang.constant.Constable ))
-           (canonicalize-pattern '(:or (:cat java.lang.Comparable java.io.Serializable java.lang.constant.Constable )
-                                       (:cat java.lang.Comparable java.lang.constant.Constable  java.io.Serializable)
-                                       (:cat java.io.Serializable java.lang.Comparable java.lang.constant.Constable )
-                                       (:cat java.io.Serializable java.lang.constant.Constable  java.lang.Comparable)
-                                       (:cat java.lang.constant.Constable  java.io.Serializable java.lang.Comparable)
-                                       (:cat java.lang.constant.Constable java.lang.Comparable java.io.Serializable)))) "permute 3 args")
-    
     ))
 
 (deftest t-derivative
