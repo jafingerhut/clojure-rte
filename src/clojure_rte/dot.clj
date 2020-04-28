@@ -44,13 +44,14 @@
   rte-compile, or rte-to-dfa.
   For Mac OS, the :view option may be used to display the image
   interactively."
-  [dfa & {:keys [title view]
+  [dfa & {:keys [title view abbrev]
           :or {title "no-title"
+               abbrev true
                view false}}]
   (cond
     view (let [png-file-name (str *dot-tmp-dir* "/" title ".png")]
            (sh *dot-path* "-Tpng" "-o" png-file-name
-               :in (dfa-to-dot dfa :title title :view false))
+               :in (dfa-to-dot dfa :title title :view false :abbrev abbrev))
            (when (= "Mac OS X" (System/getProperty "os.name"))
              (sh "open" png-file-name)))
     :else
@@ -65,10 +66,11 @@
           (cl-format *out* "// ~a~%" title))
         (cl-format *out* "  rankdir=LR;~%")
         (cl-format *out* "  fontname=courier;~%")
-        (cl-format *out* "  label=\"~a\\l\"~%"
-                   (clojure.string/join "" (map (fn [index]
-                                                  (cl-format false "\\lt~a=~a" index (indexes index)))
-                                                (range (count (keys indexes))))))
+        (when abbrev
+          (cl-format *out* "  label=\"~a\\l\"~%"
+                     (clojure.string/join "" (map (fn [index]
+                                                    (cl-format false "\\lt~a=~a" index (indexes index)))
+                                                  (range (count (keys indexes)))))))
         (cl-format *out* "  graph [labeljust=l,nojustify=true];~%")
         (cl-format *out* "  node [fontname=Arial, fontsize=25];~%")
         (cl-format *out* "  edge [fontname=Helvetica, fontsize=20];~%")
@@ -80,7 +82,9 @@
           (when (:accepting q)
             (cl-format *out* "   ~D [shape=doublecircle] ;~%" (:index q)))
           (doseq [[type-desig next-state] (:transitions q)]
-            (cl-format *out* "   ~D -> ~D [label=\"t~a\"];~%" (:index q) next-state (abbrevs type-desig))))
+            (if abbrev
+              (cl-format *out* "   ~D -> ~D [label=\"t~a\"];~%" (:index q) next-state (abbrevs type-desig))
+              (cl-format *out* "   ~D -> ~D [label=\"~a\"];~%" (:index q) next-state type-desig))))
         
         (cl-format *out* "}~%")))))
 

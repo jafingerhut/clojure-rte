@@ -513,9 +513,21 @@ the corresponding graph using the `dfa-to-dot` function.
 (clojure-rte.dot/dfa-to-dot
   (rte-compile '(:and (:cat :sigma :sigma) (:cat (:not String) Long)))
   :title "Example"
+  :abbrev false
   :view true)
 ```
 <img src="img/example-dfa.png" alt="Example Finite Automaton" width="600"/>
+
+
+
+```clojure
+(clojure-rte.dot/dfa-to-dot
+  (rte-compile '(:and (:cat :sigma :sigma) (:cat (:not String) Long)))
+  :title "Example"
+  :abbrev true
+  :view true)
+```
+<img src="img/example-dfa-2.png" alt="Example Finite Automaton" width="600"/>
 
 
 
