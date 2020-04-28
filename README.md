@@ -527,7 +527,7 @@ the corresponding graph using the `dfa-to-dot` function.
   :abbrev true
   :view true)
 ```
-<img src="img/example-dfa-2.png" alt="Example Finite Automaton" width="600"/>
+<img src="img/example-dfa-2.png" alt="Example Finite Automaton" width="400"/>
 
 
 
