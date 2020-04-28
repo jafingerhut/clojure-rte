@@ -44,6 +44,9 @@
 
 (deftest t-disjoint-2
   (testing "disjoint 2"
+    (is (resolve 'java.lang.constant.Constable))
+    (is (resolve 'java.lang.constant.ConstantDesc))
+
     (is (disjoint? 'Integer 'String)) ; final vs final
     (is (disjoint? 'String 'Integer)) ; final vs final
 
