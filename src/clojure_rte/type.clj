@@ -189,11 +189,11 @@
 (defn disjoint?
   "Predicate to determine whether the two types overlap."
   [t1 t2]
-  (case (reduce (fn [_ key]
-                  (case ((key @disjoint-hooks) t1 t2)
+  (case (reduce (fn [_ key-tag]
+                  (case ((key-tag @disjoint-hooks) t1 t2)
                     (true) (reduced true)
                     (false) (reduced false)
-                    (case ((key @disjoint-hooks) t2 t1)
+                    (case ((key-tag @disjoint-hooks) t2 t1)
                       (true) (reduced true)
                       (false) (reduced false)
                       nil)))
@@ -275,8 +275,8 @@
   [sub-designator super-designator & {:keys [default]
                                                    :or {default *subtype?-default*}}]
   (binding [*subtype?-default* default]
-    (case (reduce (fn [_ key]
-                    (case ((key @subtype-hooks) sub-designator super-designator)
+    (case (reduce (fn [_ key-tag]
+                    (case ((key-tag @subtype-hooks) sub-designator super-designator)
                       (true) (reduced true)
                       (false) (reduced false)
                       nil))

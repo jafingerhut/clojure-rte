@@ -44,6 +44,14 @@
    (when (or if1 then1 others)
      (let [extra-clauses# (when others `(cl-cond ~@others))]
        (if then1
-         `(if ~if1 (do ~@then1) ~extra-clauses#)
+         (case if1
+           (:else)
+           `(do ~@then1) ;; avoid silly lint error, lein eastwood
+
+           (false nil)
+           `(do ~extra-clauses#)
+           
+           ;; else
+           `(if ~if1 (do ~@then1) ~extra-clauses#))
          `(or ~if1 ~extra-clauses#))))))
 

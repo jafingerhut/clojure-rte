@@ -22,6 +22,7 @@
 (ns clojure-rte.dot
   (:require [clojure.pprint :refer [cl-format]]
             [clojure.string]
+            [clojure.set]
             [clojure.java.shell :refer [sh]]))
 
 (def ^:dynamic *dot-path*
