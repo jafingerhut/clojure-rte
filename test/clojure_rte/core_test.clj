@@ -92,8 +92,8 @@
 (deftest t-canonicalize-pattern
 
   (testing "canonicalize-pattern"
-    (is (resolve 'java.lang.constant.Constable))
-    (is (resolve 'java.lang.constant.ConstantDesc))
+    (assert (resolve 'java.lang.constant.Constable) "cannot run test because cannot resolve java.lang.constant.Constable")
+    (is (resolve 'java.lang.constant.ConstantDesc)  "cannot run test because cannot resolve java.lang.constant.ConstantDesc")
 
     ;; syntax errors
     (is (thrown? clojure.lang.ExceptionInfo (canonicalize-pattern '(:*))))
