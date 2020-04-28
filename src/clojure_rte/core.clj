@@ -525,7 +525,6 @@
                                     ((member :empty-set operands)
                                      (cons :or (remove #{:empty-set} operands)))
 
-
                                     ;; (:or x (:not x)) --> :sigma
                                     ((let [nots (filter not? operands)
                                            others (remove not? operands)]
@@ -542,9 +541,7 @@
 
                                     (:else
                                      (cons :or operands))
-
-                                    )
-                                   )))))
+                                    ))))))
 
 (defn canonicalize-pattern 
   "find the fixed point of canonicalize-pattern-once"
@@ -613,13 +610,12 @@
                                               (ty/disjoint? wrt type)
                                               :empty-set
 
-                                              (ty/subtype? wrt type)
+                                              (ty/subtype? wrt type :default ty/subtype?-false)
                                               :epsilon
                                               
                                               (and (sequential? wrt)
                                                    (= 'and (first wrt)))
                                               (compute-compound-derivative type wrt)
-                                              
 
                                               :else
                                               (throw (ex-info (format "cannot compute derivative of overlapping types because %s is not a subtype of %s" wrt type)
@@ -957,7 +953,8 @@
                 (and? sub-designator)
                 (some (fn [and-operand]
                         (rte? and-operand)
-                        (ty/subtype? and-operand super-designator)) (rest sub-designator)))
+                        (ty/subtype? and-operand super-designator
+                                     :default ty/subtype?-false)) (rest sub-designator)))
            true
 
            :else :dont-know))))

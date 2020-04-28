@@ -247,20 +247,44 @@
                           (assoc @subtype-hooks key hook-fn)))
   (keys @subtype-hooks))
 
-(defn subtype? [sub-designator super-designator]
-  ;; it is assumed that the arguments have already been valided by class-designator?
-  (case (reduce (fn [_ key]
-                  (case ((key @subtype-hooks) sub-designator super-designator)
-                    (true) (reduced true)
-                    (false) (reduced false)
-                    nil))
-                :initial
-                (cons :primary (remove #{:primary} (keys @subtype-hooks))))
-    (true) true
-    (false) false
+(def subtype?-false (fn [_ _] false))
+
+(def subtype?-true (fn [_ _] true))
+
+(def subtype?-error
+  (fn [sub-designator super-designator]
     (throw (ex-info (format "subtype? cannot decide %s vs %s" sub-designator super-designator)
                     {:error-type :not-yet-implemented
                      :type-designators [sub-designator super-designator]}))))
+
+(def ^:dynamic *subtype?-default*
+  "Default to return when subtype-ness cannot be determined.  This value is a binary
+  function which is called with the two type designators in question:
+  [sub-designator super-designator]"
+  subtype?-error)
+                         
+(defn subtype?
+  "Determine whether sub-designator specifies a type which is a subtype
+  of super-designator. Sometimes this decision cannot be made, in
+  which case the value given for :default is interpreted as a binary
+  function which is called, and its value returned.  The default value
+  of :default is a function which raises an exception.  This default
+  value is controlled by the dynamic variable *subtype?-default* It is
+  assumed that the arguments have already been valided by
+  class-designator?"
+  [sub-designator super-designator & {:keys [default]
+                                                   :or {default *subtype?-default*}}]
+  (binding [*subtype?-default* default]
+    (case (reduce (fn [_ key]
+                    (case ((key @subtype-hooks) sub-designator super-designator)
+                      (true) (reduced true)
+                      (false) (reduced false)
+                      nil))
+                  :initial
+                  (cons :primary (remove #{:primary} (keys @subtype-hooks))))
+      (true) true
+      (false) false
+      (default))))
 
 (new-subtype-hook
  :primary
@@ -321,15 +345,15 @@
          ((:final :final)
           (:final :interface)
           (:final :abstract))
-         (not (subtype? t1 t2))
+         (not (subtype? t1 t2 :default subtype?-error))
 
          ((:interface :final)
           (:abstract :final))
-         (not (subtype? t2 t1))
+         (not (subtype? t2 t1 :default subtype?-error))
 
          ((:abstract :abstract))
-         (not (or (subtype? t1 t2)
-                  (subtype? t2 t1))))
+         (not (or (subtype? t1 t2 :default subtype?-false)
+                  (subtype? t2 t1 :default subtype?-error))))
 
        :dont-know)))
 
@@ -349,7 +373,7 @@
        (and ;;(class-designator? t1)
             (not? t2)
             ;;(class-designator? (second t2))
-            (subtype? t1 (second t2)))
+            (subtype? t1 (second t2) :default subtype?-false))
        true
 
        (and (class-designator? t1)
@@ -451,14 +475,14 @@
              ((and (not-empty left) (not-empty right)
                    ;; exists t2 in right such that t1 < t2
                    ;; then t1 & !t2 = nil
-                   (some (fn [t2] (subtype? (first left) t2))  right))
+                   (some (fn [t2] (subtype? (first left) t2 :default subtype?-false))  right))
               ;; prune
               )
 
              ((and (not-empty left) (not-empty right)
                    ;; exists t2 in right such that t1 < t2
                    ;; then t1 & !t2 = nil
-                   (some (fn [t1] (subtype? t1 (first right)))  left))
+                   (some (fn [t1] (subtype? t1 (first right) :default subtype?-false))  left))
               ;; prune
               )
 
