@@ -25,22 +25,16 @@
             [clojure.test :refer :all]))
 
 (deftest t-disjoint?
-  (derive ::Canine ::Animal)
-  (derive ::Wolf ::Canine)
-  (derive ::Fox ::Canine)
-  (derive ::Dog ::Canine)
-  (derive ::Feline ::Animal)
-  (derive ::Cat ::Feline)
-  (derive ::Lion ::Feline)
-  (derive ::Cat-Lion ::Cat)
-  (derive ::Cat-Lion ::Lion)
-  (testing "disjoint?"
-    (is (not (disjoint? ::Fox ::Animal)))
-    (is (not (disjoint? ::Cat ::Lion)))
-    (is (disjoint? ::Wolf ::Fox))
-    (is (= (set (type-intersection ::Cat ::Lion))
-           #{::Cat-Lion}))))
-
+  (when (and (resolve 'java.lang.CharSequence)
+             (resolve 'java.io.Serializable)
+             (resolve 'java.lang.Comparable))
+    (testing "disjoint?"
+      (is (not (disjoint? 'java.lang.CharSequence 'String)))
+      (is (not (disjoint? 'java.io.Serializable 'java.lang.Comparable)))
+      (is (disjoint? 'Integer 'String))
+      (is (not (disjoint? 'java.lang.constant.Constable '(not java.io.Serializable))))
+      (is (not (disjoint? '(and java.lang.Comparable (not clojure.lang.Symbol)) 'java.lang.Object)))
+)))
 
 (deftest t-disjoint-2-14
   (if (and (resolve 'java.lang.constant.Constable)

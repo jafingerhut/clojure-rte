@@ -20,10 +20,10 @@
 ;; WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 (ns clojure-rte.type
-  (:require [clojure.set :refer [union intersection]]
+  (:require [clojure.set :refer [intersection]]
             [clojure.pprint :refer [cl-format]]
             [clojure-rte.util :refer [call-with-collector]]
-            [clojure-rte.cl-compat :refer [cl-cond cl-prog1]]
+            [clojure-rte.cl-compat :refer [cl-cond]]
             [clojure.reflect :as refl]
   ))
 
@@ -37,7 +37,7 @@
   (satisfies A B)
   (= obj)
   (member a b c)"
-  (fn [a-value type-designator]
+  (fn [_value type-designator]
     (if (sequential? type-designator)
       (first type-designator)
       type-designator)))
@@ -109,13 +109,13 @@
       (and (symbol? f)
            (resolve f))))
 
-(defmethod typep '= [a-value [a-type value]]
+(defmethod typep '= [a-value [_type value]]
   (= value a-value))
 
 (defmethod valid-type? '= [[_ _]]
   true)
 
-(defmethod typep 'member [a-value [a-type & others]]
+(defmethod typep 'member [a-value [_type & others]]
   (some #{a-value} others))
 
 (defmethod valid-type? 'member [[_ & _]]
@@ -186,24 +186,42 @@
        :else
        :dont-know))))
 
+(def disjoint?-false (fn [_ _] false))
+(def disjoint?-true  (fn [_ _] true))
+(def disjoint?-false-warn (fn [t1 t2]
+                            (cl-format true "disjoint? cannot decide ~A vs ~A -- assuming not disjoint~%" t1 t2)
+                            false))
+(def ^:dynamic *disjoint?-default*
+  "Default to return when disjoint-ness cannot be determined.  This value is a binary
+  function which is called with the two type designators in question:
+  [t1 t2]"
+  disjoint?-false-warn)
+                
 (defn disjoint?
   "Predicate to determine whether the two types overlap."
-  [t1 t2]
-  (case (reduce (fn [_ key-tag]
-                  (case ((key-tag @disjoint-hooks) t1 t2)
-                    (true) (reduced true)
-                    (false) (reduced false)
-                    (case ((key-tag @disjoint-hooks) t2 t1)
-                      (true) (reduced true)
-                      (false) (reduced false)
-                      nil)))
-                :initial
-                (cons :primary (remove #{:primary} (keys @disjoint-hooks))))
-    (true) true
-    (false) false
-    (do
-      (cl-format true "disjoint? cannot decide ~A vs ~A -- assuming not disjoint~%" t1 t2)
-      false)))
+  ([t1 t2]
+   (disjoint? t1 t2 *disjoint?-default*))
+  ([t1 t2 default]
+   (binding [*disjoint?-default* default]
+     (case (reduce (fn [_ key-tag]
+                     (case ((key-tag @disjoint-hooks) t1 t2)
+                       (true) (reduced true)
+                       (false) (reduced false)
+                       (case ((key-tag @disjoint-hooks) t2 t1)
+                         (true) (reduced true)
+                         (false) (reduced false)
+                         nil)))
+                   :initial
+                   (cons :primary (remove #{:primary} (keys @disjoint-hooks))))
+       (true) true
+       (false) false
+       (default t1 t2)))))
+
+(defn class-designator? [t]
+  (and (symbol? t)
+       (resolve t)
+       (class? (resolve t))))
+
 
 (new-disjoint-hook
  :and
@@ -220,6 +238,12 @@
                 (some #{t2} (rest t1)))
            false
 
+           (and (and? t1)
+                (class-designator? t2)
+                (= (resolve t2) java.lang.Object)
+                (some class-designator? (rest t1)))
+           false
+
            :else
            :dont-know))))
 
@@ -228,10 +252,6 @@
  (fn [_t1 _t2]
    :dont-know))
 
-(defn class-designator? [t]
-  (and (symbol? t)
-       (resolve t)
-       (class? (resolve t))))
 
 (def subtype-hooks (atom {}))
 (defn new-subtype-hook 
@@ -265,26 +285,27 @@
                          
 (defn subtype?
   "Determine whether sub-designator specifies a type which is a subtype
-  of super-designator. Sometimes this decision cannot be made, in
-  which case the value given for :default is interpreted as a binary
+  of super-designator. Sometimes this decision cannot be made/computed, in
+  which case the given default value is interpreted as a binary
   function which is called, and its value returned.  The default value
-  of :default is a function which raises an exception.  This default
+  of default is a function which raises an exception.  This default
   value is controlled by the dynamic variable *subtype?-default* It is
   assumed that the arguments have already been valided by
   class-designator?"
-  [sub-designator super-designator & {:keys [default]
-                                                   :or {default *subtype?-default*}}]
-  (binding [*subtype?-default* default]
-    (case (reduce (fn [_ key-tag]
-                    (case ((key-tag @subtype-hooks) sub-designator super-designator)
-                      (true) (reduced true)
-                      (false) (reduced false)
-                      nil))
-                  :initial
-                  (cons :primary (remove #{:primary} (keys @subtype-hooks))))
-      (true) true
-      (false) false
-      (default))))
+  ([sub-designator super-designator]
+   (subtype? sub-designator super-designator *subtype?-default*))
+  ([sub-designator super-designator default]
+   (binding [*subtype?-default* default]
+     (case (reduce (fn [_ key-tag]
+                     (case ((key-tag @subtype-hooks) sub-designator super-designator)
+                       (true) (reduced true)
+                       (false) (reduced false)
+                       nil))
+                   :initial
+                   (cons :primary (remove #{:primary} (keys @subtype-hooks))))
+       (true) true
+       (false) false
+       (default sub-designator super-designator)))))
 
 (new-subtype-hook
  :primary
@@ -332,6 +353,42 @@
 
 
   (new-disjoint-hook
+   :subtype
+   (fn [sub super]
+     ;; TODO this is not really correct, what because if sub is a
+     ;;   subtype of super, but sub is the empty type, then they ARE
+     ;;   disjoint.
+     (cond (subtype? sub super subtype?-false)
+           false
+
+           :else
+           :dont-know)))
+
+  (new-disjoint-hook
+   :not-disjoint
+   (fn [t1 t2]
+     (cond (and (not? t2)
+                (disjoint? t1 (second t2) disjoint?-false))
+           false
+
+           (and (not? t2)
+                (class-designator? t1)
+                (class-designator? (second t2))
+                (= :interface (class-type t1))
+                (= :interface (class-type (second t2))))
+           false
+           
+           (and (not? t1)
+                (not? t2)
+                (class-designator? (second t1))
+                (class-designator? (second t2))
+                (= :interface (class-type (second t1)))
+                (= :interface (class-type (second t2))))
+           false
+           
+           :else :dont-know)))
+
+  (new-disjoint-hook
    :classes
    (fn [t1 t2]
      (if (and (class-designator? t1)
@@ -345,15 +402,15 @@
          ((:final :final)
           (:final :interface)
           (:final :abstract))
-         (not (subtype? t1 t2 :default subtype?-error))
+         (not (subtype? t1 t2 subtype?-error))
 
          ((:interface :final)
           (:abstract :final))
-         (not (subtype? t2 t1 :default subtype?-error))
+         (not (subtype? t2 t1 subtype?-error))
 
          ((:abstract :abstract))
-         (not (or (subtype? t1 t2 :default subtype?-false)
-                  (subtype? t2 t1 :default subtype?-error))))
+         (not (or (subtype? t1 t2 subtype?-false)
+                  (subtype? t2 t1 subtype?-error))))
 
        :dont-know)))
 
@@ -373,7 +430,7 @@
        (and ;;(class-designator? t1)
             (not? t2)
             ;;(class-designator? (second t2))
-            (subtype? t1 (second t2) :default subtype?-false))
+            (subtype? t1 (second t2) subtype?-false))
        true
 
        (and (class-designator? t1)
@@ -475,14 +532,14 @@
              ((and (not-empty left) (not-empty right)
                    ;; exists t2 in right such that t1 < t2
                    ;; then t1 & !t2 = nil
-                   (some (fn [t2] (subtype? (first left) t2 :default subtype?-false))  right))
+                   (some (fn [t2] (subtype? (first left) t2 subtype?-false))  right))
               ;; prune
               )
 
              ((and (not-empty left) (not-empty right)
                    ;; exists t2 in right such that t1 < t2
                    ;; then t1 & !t2 = nil
-                   (some (fn [t1] (subtype? t1 (first right) :default subtype?-false))  left))
+                   (some (fn [t1] (subtype? t1 (first right) subtype?-false))  left))
               ;; prune
               )
 

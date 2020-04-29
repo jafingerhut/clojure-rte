@@ -56,12 +56,21 @@
     (case key
       (:type) (rand-nth types)
       (:sigma :empty-set :epsilon) key
-      (:and :or :cat :permute) (cons key (map (fn [k] (gen-rte (dec size) types))
+      (:permute) (gen-rte :cat size types)
+      (:and :or :cat) (cons key (map (fn [k] (gen-rte (dec size) types))
                                               (range size)))
       (:? :+ :* :not) (list key (gen-rte (dec size) types)))))
 
 (def ^:dynamic *test-types*
-  '(integer? int? rational? ratio? string? keyword? symbol? decimal? float? seq?))
+  '(integer? int? rational? ratio? string? keyword? symbol? decimal? float? seq?
+             java.io.Serializable
+             java.lang.CharSequence
+             java.lang.Comparable
+             java.lang.Number
+             java.lang.Object
+             java.lang.constant.Constable
+             java.lang.constant.ConstantDesc
+))
 
 (defn test-rte-to-dfa [num-tries size verbose]
   (tester/random-test num-tries rte-to-dfa

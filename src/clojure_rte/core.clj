@@ -610,7 +610,7 @@
                                               (ty/disjoint? wrt type)
                                               :empty-set
 
-                                              (ty/subtype? wrt type :default ty/subtype?-false)
+                                              (ty/subtype? wrt type ty/subtype?-false)
                                               :epsilon
                                               
                                               (and (sequential? wrt)
@@ -954,7 +954,7 @@
                 (some (fn [and-operand]
                         (rte? and-operand)
                         (ty/subtype? and-operand super-designator
-                                     :default ty/subtype?-false)) (rest sub-designator)))
+                                     ty/subtype?-false)) (rest sub-designator)))
            true
 
            :else :dont-know))))
