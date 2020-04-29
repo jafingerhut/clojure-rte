@@ -55,3 +55,25 @@
            `(if ~if1 (do ~@then1) ~extra-clauses#))
          `(or ~if1 ~extra-clauses#))))))
 
+(defn call-with-escape
+  "A functional interface to CL block/return.
+  The caller of call-with-escape provides a unary function.
+  The body of that function may call the function passed as argument.
+  to cause call-with-escape to return. E.g.,
+  (call-with-escape
+    (fn [ret1]
+      ;; now ret1 is a unary function, callint ret1 with argument x
+      ;; causes call-with-escape to immediately return x
+      (if something
+          (ret1 42) ;; return 42 from call-with-escape
+         ...)))"  
+  [unary]
+  (letfn [(ret [v]
+            (throw (ex-info "" {:data v
+                                :ident ret})))]
+    (try (unary ret)
+         (catch clojure.lang.ExceptionInfo e
+           (if (= ret (:ident (ex-data e)))
+             (:data (ex-data e))
+             (throw e))))))
+  
