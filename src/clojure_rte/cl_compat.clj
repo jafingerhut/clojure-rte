@@ -76,4 +76,7 @@
            (if (= ret (:ident (ex-data e)))
              (:data (ex-data e))
              (throw e))))))
-  
+
+(defmacro with-escape [ret & body]
+  `(call-with-escape (fn [~ret] ~@body)))
+

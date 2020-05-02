@@ -20,7 +20,7 @@
 ;; WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 (ns clojure-rte.cl-compat-test
-  (:require [clojure-rte.cl-compat :refer [cl-cond cl-prog1 cl-prog2 cl-progn call-with-escape]]
+  (:require [clojure-rte.cl-compat :refer [cl-cond cl-prog1 cl-prog2 cl-progn call-with-escape with-escape]]
             [clojure-rte.util :refer [call-with-collector]]
             [clojure.test :refer :all]))
 
@@ -107,5 +107,23 @@
                                   (call-with-escape (fn [ret2]
                                                       (ret1 48)))
                                   (ret1 49)))))))
+
+(deftest t-with-escape
+  (testing "with-escape"
+    (is (= 42 (with-escape ret
+                (ret 42))))
+    (is (= 43 (with-escape ret
+                43)))
+    (is (= 44 (with-escape ret
+                (ret 44)
+                45)))
+    (is (= 47 (with-escape ret1
+                (with-escape ret2
+                  (ret2 46))
+                (ret1 47))))
+    (is (= 48 (with-escape ret1
+                (with-escape ret2
+                  (ret1 48))
+                (ret1 49))))))
     
     
