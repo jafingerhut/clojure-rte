@@ -32,21 +32,21 @@
       (is (not (disjoint? 'java.lang.CharSequence 'String)))
       (is (not (disjoint? 'java.io.Serializable 'java.lang.Comparable)))
       (is (disjoint? 'Integer 'String))
-      (is (not (disjoint? 'java.lang.constant.Constable '(not java.io.Serializable))))
+      (is (not (disjoint? 'java.lang.Comparable '(not java.io.Serializable))))
       (is (not (disjoint? '(and java.lang.Comparable (not clojure.lang.Symbol)) 'java.lang.Object)))
 )))
 
 (deftest t-disjoint-2-14
-  (if (and (resolve 'java.lang.constant.Constable)
-           (resolve 'java.lang.constant.ConstantDesc))   
+  (if (and (resolve 'java.lang.Comparable)
+           (resolve 'clojure.lang.IMeta))   
     (testing "disjoint 2 14"
     ;; interface vs interface - never disjoint
-    (is (not (disjoint? 'java.lang.constant.Constable 'java.lang.constant.ConstantDesc)))
-    (is (not (disjoint? 'java.lang.constant.ConstantDesc 'java.lang.constant.Constable)))
+    (is (not (disjoint? 'java.lang.Comparable 'clojure.lang.IMeta)))
+    (is (not (disjoint? 'clojure.lang.IMeta 'java.lang.Comparable)))
 
     ;; final vs interface is superclass
-    (is (not (disjoint? 'Integer 'java.lang.constant.Constable)))
-    (is (not (disjoint? 'java.lang.constant.Constable 'Integer)))
+    (is (not (disjoint? 'Integer 'java.lang.Comparable)))
+    (is (not (disjoint? 'java.lang.Comparable 'Integer)))
 
 
       )))

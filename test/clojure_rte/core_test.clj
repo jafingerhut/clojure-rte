@@ -24,7 +24,7 @@
             [clojure.pprint :refer [cl-format]]
             [clojure-rte.cl-compat :refer [cl-cond]]
             [clojure-rte.util :refer [sort-operands remove-once call-with-collector visit-permutations]]
-            [clojure-rte.type :refer [disjoint? type-intersection typep]]
+            [clojure-rte.type :refer [disjoint? type-intersection typep inhabited?]]
             [clojure-rte.core :refer :all]
             [clojure-rte.rte-tester :refer :all]))
 
@@ -69,14 +69,6 @@
            #{:sigma}) "first types cat sigma")
     ))
 
-(deftest t-isa?
-  (testing "disjoint"
-   (derive ::Feline ::Animal)
-   (derive ::Cat ::Feline)
-   (derive ::Lion ::Feline)
-   (is (isa? ::Lion ::Animal))
-   (is (not (isa? ::Lion ::Cat)))))
-
 (deftest t-canonicalize-pattern-subtypes
   (testing "canonicalize-pattern with subtypes"
     (is (= 'Number (canonicalize-pattern '(:or Integer Number))) "Number")
@@ -90,24 +82,28 @@
     ))
 
 (deftest t-canonicalize-pattern-14
-  ;; this code runs on java 14 and higher, it is not clear
-  ;; which earlier java version it might work for
-  ;; java.lang.constant.Constable and java.lang.constant.ConstantDesc
-  ;; were added at some point ?12?
-  (when (and (resolve 'java.lang.constant.Constable)
-             (resolve 'java.lang.constant.ConstantDesc))
+  (when (and (resolve 'java.lang.Comparable)
+             (resolve 'clojure.lang.IMeta))
     
     (testing "canonicalize-pattern 14"
-      (is (= '(:or (:and java.io.Serializable java.lang.Comparable java.lang.constant.ConstantDesc)
-                   (:and java.lang.Comparable java.lang.constant.Constable java.lang.constant.ConstantDesc))
-             (canonicalize-pattern '(:and (:or java.io.Serializable java.lang.constant.Constable) java.lang.constant.ConstantDesc java.lang.Comparable))) "and-distribute")
-      (is (= (canonicalize-pattern '(:permute java.lang.Comparable java.io.Serializable java.lang.constant.Constable ))
-           (canonicalize-pattern '(:or (:cat java.lang.Comparable java.io.Serializable java.lang.constant.Constable )
-                                       (:cat java.lang.Comparable java.lang.constant.Constable  java.io.Serializable)
-                                       (:cat java.io.Serializable java.lang.Comparable java.lang.constant.Constable )
-                                       (:cat java.io.Serializable java.lang.constant.Constable  java.lang.Comparable)
-                                       (:cat java.lang.constant.Constable  java.io.Serializable java.lang.Comparable)
-                                       (:cat java.lang.constant.Constable java.lang.Comparable java.io.Serializable)))) "permute 3 args")
+      (is (= '(:or (:and
+                    clojure.lang.IMeta
+                    clojure.lang.IReduceInit
+                    java.io.Serializable)
+                   (:and
+                    clojure.lang.IMeta
+                    clojure.lang.IReduceInit
+                    java.lang.Comparable))
+             (canonicalize-pattern '(:and (:or java.io.Serializable java.lang.Comparable)
+                                          clojure.lang.IMeta clojure.lang.IReduceInit)))
+          "and-distribute")
+      (is (= (canonicalize-pattern '(:permute java.lang.Comparable java.io.Serializable java.lang.Comparable ))
+           (canonicalize-pattern '(:or (:cat java.lang.Comparable java.io.Serializable java.lang.Comparable )
+                                       (:cat java.lang.Comparable java.lang.Comparable  java.io.Serializable)
+                                       (:cat java.io.Serializable java.lang.Comparable java.lang.Comparable )
+                                       (:cat java.io.Serializable java.lang.Comparable  java.lang.Comparable)
+                                       (:cat java.lang.Comparable  java.io.Serializable java.lang.Comparable)
+                                       (:cat java.lang.Comparable java.lang.Comparable java.io.Serializable)))) "permute 3 args")
       
       )))
 
@@ -467,3 +463,14 @@
     (is (rte-compile '(:or (rte (:* Number)) 
                            (rte (:cat Double Number))
                            (rte (:* Double)))))))
+
+(deftest t-inhabited
+  (testing "inhabited?"
+    (is (inhabited? 'Long))
+    (is (inhabited? '(not Long)))
+    (is (inhabited? 'Object))
+    (is (not (inhabited? '(not Object))))
+    (is (inhabited? '(rte (:+ Number))))
+    (is (not (inhabited? '(rte (:and (:+ Number)
+                                     (:+ String))))))))
+        

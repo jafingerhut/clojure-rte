@@ -879,6 +879,13 @@
           (and (sequential? t)
                (= 'and (first t))))]
   
+  (ty/new-inhabited-hook
+   :rte
+   (fn [t1]
+     (if (rte? t1)
+       (boolean (rte-inhabited? (rte-compile (second t1))))
+       :dont-know)))
+       
   (ty/new-disjoint-hook
    :rte
    (fn [t1 t2]

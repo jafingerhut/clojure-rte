@@ -68,8 +68,7 @@
              java.lang.Comparable
              java.lang.Number
              java.lang.Object
-             java.lang.constant.Constable
-             java.lang.constant.ConstantDesc
+             clojure.lang.IMeta
 ))
 
 (defn test-rte-to-dfa [num-tries size verbose]

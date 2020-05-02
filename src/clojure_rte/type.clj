@@ -145,46 +145,37 @@
 
 (new-disjoint-hook
  :primary
- (letfn [(derived? [t]
-           (and (or (keyword? t)
-                    (qualified-symbol? t))
-                (or (ancestors t)
-                    (descendants t))))]
-   (fn [t1 t2]
-     (cond
-       (= :empty-set t1)
-       true
-       
-       (= :empty-set t2)
-       true
+ (fn [t1 t2]
+   (cond
+     (= :empty-set t1)
+     true
+     
+     (= :empty-set t2)
+     true
 
-       (= t1 t2)
-       false
+     (= t1 t2)
+     false
 
-       (= :epsilon t1)
-       false
-       
-       (= :epsilon t2)
-       false
-       
-       (= :sigma t1)
-       false
-       
-       (= :sigma t2)
-       false
-       
-       (isa? t1 t2)
-       false
-       
-       (isa? t2 t1)
-       false
+     (= :epsilon t1)
+     false
+     
+     (= :epsilon t2)
+     false
+     
+     (= :sigma t1)
+     false
+     
+     (= :sigma t2)
+     false
+     
+     (isa? t1 t2)
+     false
+     
+     (isa? t2 t1)
+     false
 
-       (and (derived? t1)
-            (derived? t2))
-       (empty? (type-intersection t1 t2))
-       
-       :else
-       :dont-know))))
+     :else
+     :dont-know)))
 
 (def disjoint?-false (fn [_ _] false))
 (def disjoint?-true  (fn [_ _] true))
@@ -267,6 +258,57 @@
                           (assoc @subtype-hooks key hook-fn)))
   (keys @subtype-hooks))
 
+(def inhabited?-false (fn [_] false))
+(def inhabited?-true (fn [_] true))
+(def inhabited?-error 
+  (fn [type-designator]       
+    (throw (ex-info (format "inhabited? cannot decide %s" type-designator)
+                    {:error-type :not-yet-implemented
+                     :type-designator [type-designator]}))))
+
+(def ^:dynamic *inhabited?-default*
+  "doc string"
+  inhabited?-error
+)
+
+(def inhabited-hooks (atom {}))
+(defn new-inhabited-hook 
+  "docstring"
+  ;; TODO - also specify relative key for use in topological sort, to determine the order the hooks should run.
+  [key hook-fn]
+  (swap! inhabited-hooks (fn [_]
+                          (assoc @inhabited-hooks key hook-fn)))
+  (keys @inhabited-hooks))
+
+
+
+(new-inhabited-hook
+ :primary
+ (fn [type-designator]
+   (if (class-designator? type-designator)
+     true
+     :dont-know)))
+
+(defn inhabited?
+  "doc string"
+  ([type-designator]
+   (inhabited? type-designator *inhabited?-default*))
+  ([type-designator default]
+   (binding [*inhabited?-default* default]
+     (case (reduce (fn [_ key-tag]
+                     (case ((key-tag @inhabited-hooks) type-designator)
+                       (true) (reduced true)
+                       (false) (reduced false)
+                       nil))
+                   :initial
+                   (cons :primary (remove #{:primary} (keys @inhabited-hooks))))
+       (true) true
+       (false) false
+       (default type-designator)))))
+
+(defn vacuous? [type-designator]
+  (not (inhabited? type-designator)))
+
 (def subtype?-false (fn [_ _] false))
 
 (def subtype?-true (fn [_ _] true))
@@ -310,10 +352,17 @@
 (new-subtype-hook
  :primary
  (fn [sub-designator super-designator]
-   (if (and (class-designator? sub-designator)
-            (class-designator? super-designator))
-     (isa? (resolve sub-designator) (resolve super-designator))
-     :dont-know)))
+   
+   (cond (and (class-designator? super-designator)
+              (= Object (resolve super-designator)))
+         true
+         
+         (and (class-designator? sub-designator)
+              (class-designator? super-designator))
+         (isa? (resolve sub-designator) (resolve super-designator))
+
+         :else
+         :dont-know)))
 
 (letfn [(not? [t]
           (and (sequential? t)
@@ -355,10 +404,8 @@
   (new-disjoint-hook
    :subtype
    (fn [sub super]
-     ;; TODO this is not really correct, what because if sub is a
-     ;;   subtype of super, but sub is the empty type, then they ARE
-     ;;   disjoint.
-     (cond (subtype? sub super subtype?-false)
+     (cond (and (subtype? sub super subtype?-false)
+                (inhabited? sub inhabited?-false))
            false
 
            :else
@@ -375,7 +422,8 @@
                 (class-designator? t1)
                 (class-designator? (second t2))
                 (= :interface (class-type t1))
-                (= :interface (class-type (second t2))))
+                (= :interface (class-type (second t2)))
+                (not (= (resolve t1) (resolve (second t2)))))
            false
            
            (and (not? t1)
@@ -383,7 +431,8 @@
                 (class-designator? (second t1))
                 (class-designator? (second t2))
                 (= :interface (class-type (second t1)))
-                (= :interface (class-type (second t2))))
+                (= :interface (class-type (second t2)))
+                (not (= (resolve t1) (resolve t2))))
            false
            
            :else :dont-know)))
@@ -393,27 +442,40 @@
    (fn [t1 t2]
      (if (and (class-designator? t1)
               (class-designator? t2))
-       (case [(class-type t1) (class-type t2)]
-         ((:interface :interface)
-          (:interface :abstract)
-          (:abstract :interface))
-         false ;; not disjoint
-         
-         ((:final :final)
-          (:final :interface)
-          (:final :abstract))
-         (not (subtype? t1 t2 subtype?-error))
+       (if (= (resolve t1)
+              (resolve t2))
+         false
+         (case [(class-type t1) (class-type t2)]
+           ((:interface :interface)
+            (:interface :abstract)
+            (:abstract :interface))
+           false ;; not disjoint
+           
+           ((:final :final)
+            (:final :interface)
+            (:final :abstract))
+           (not (subtype? t1 t2 subtype?-error))
 
-         ((:interface :final)
-          (:abstract :final))
-         (not (subtype? t2 t1 subtype?-error))
+           ((:interface :final)
+            (:abstract :final))
+           (not (subtype? t2 t1 subtype?-error))
 
-         ((:abstract :abstract))
-         (not (or (subtype? t1 t2 subtype?-false)
-                  (subtype? t2 t1 subtype?-error))))
+           ((:abstract :abstract))
+           (not (or (subtype? t1 t2 subtype?-false)
+                    (subtype? t2 t1 subtype?-error)))))
 
        :dont-know)))
 
+  (new-inhabited-hook
+   :not
+   (fn [t1]
+     (if (and (not? t1)
+              (class-designator? (second t1)))
+       (not (= (resolve (second t1))
+               Object))
+       :dont-know)))
+       
+       
   (new-disjoint-hook
    :not
    (fn [t1 t2]
