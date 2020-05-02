@@ -451,10 +451,10 @@
       (is (not (rte-execute pat [1 2 3 1.2 3.4 5.6 7.8])))
       (is (rte-execute pat [[1 2 3] [1.2 3.4 5.6 7.8]])))))
 
-(deftest t-inhabited
-  (testing "inhabited?"
-    (is (inhabited? (rte-to-dfa '(:and (:* Long) (:* Double)))))
-    (is (vacuous? (rte-to-dfa '(:and (:+ Long) (:+ Double)))))))
+(deftest t-rte-inhabited
+  (testing "rte inhabited?"
+    (is (rte-inhabited? (rte-to-dfa '(:and (:* Long) (:* Double)))))
+    (is (rte-vacuous? (rte-to-dfa '(:and (:+ Long) (:+ Double)))))))
 
 (deftest t-rte-with-rte
   (testing "recursive rte"
