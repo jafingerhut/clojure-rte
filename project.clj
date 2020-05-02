@@ -26,7 +26,8 @@
             :url "https://opensource.org/licenses/MIT"}
   :plugins [      [lein-cloverage "1.1.2"]]
   :dependencies [[org.clojure/clojure "1.10.0"]
-                 [lein-cloverage "1.1.2"]]
+                 [lein-cloverage "1.1.2"]
+                 [org.clojure/math.combinatorics "0.1.6"]]
   :main ^:skip-aot clojure-rte.core
   :target-path "target/%s"
   :profiles {:uberjar {:aot :all}})
