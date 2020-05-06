@@ -129,53 +129,6 @@
   (intersection (conj (or (descendants t1) #{}) t1)
                 (conj (or (descendants t2) #{}) t2)))
 
-(def disjoint-hooks (atom {}))
-(defn new-disjoint-hook 
-  "Establish (or override) a named hook for use in disjoint?
-  This is necessary because clojure multmethods do not support
-  call-next-method.  We need several _methods_ to be called until
-  one fails to return :dont-know.
-  (new-disjoint-hook ...) establishes a new hook, which must designate
-  a binary function which returns true, false, or :dont-know."
-  ;; TODO - also specify relative key for use in topological sort, to determine the order the hooks should run.
-  [key hook-fn]
-  (swap! disjoint-hooks (fn [_]
-                          (assoc @disjoint-hooks key hook-fn)))
-  (keys @disjoint-hooks))
-
-(new-disjoint-hook
- :primary
- (fn [t1 t2]
-   (cond
-     (= :empty-set t1)
-     true
-     
-     (= :empty-set t2)
-     true
-
-     (= t1 t2)
-     false
-
-     (= :epsilon t1)
-     false
-     
-     (= :epsilon t2)
-     false
-     
-     (= :sigma t1)
-     false
-     
-     (= :sigma t2)
-     false
-     
-     (isa? t1 t2)
-     false
-     
-     (isa? t2 t1)
-     false
-
-     :else
-     :dont-know)))
 
 (def disjoint?-false (fn [_ _] false))
 (def disjoint?-true  (fn [_ _] true))
@@ -187,76 +140,6 @@
   function which is called with the two type designators in question:
   [t1 t2]"
   disjoint?-false-warn)
-                
-(defn disjoint?
-  "Predicate to determine whether the two types overlap."
-  ([t1 t2]
-   (disjoint? t1 t2 *disjoint?-default*))
-  ([t1 t2 default]
-   (binding [*disjoint?-default* default]
-     (case (reduce (fn [_ key-tag]
-                     (case ((key-tag @disjoint-hooks) t1 t2)
-                       (true) (reduced true)
-                       (false) (reduced false)
-                       (case ((key-tag @disjoint-hooks) t2 t1)
-                         (true) (reduced true)
-                         (false) (reduced false)
-                         nil)))
-                   :initial
-                   (cons :primary (remove #{:primary} (keys @disjoint-hooks))))
-       (true) true
-       (false) false
-       (default t1 t2)))))
-
-(defn class-designator? [t]
-  (and (symbol? t)
-       (resolve t)
-       (class? (resolve t))))
-
-
-(new-disjoint-hook
- :and
- (letfn [(and? [t]
-           (and (sequential? t)
-                (= 'and (first t))))]
-   (fn [t1 t2]
-     (cond (and (and? t2)
-                (some (fn [t]
-                        (disjoint? t1 t)) (rest t2)))
-           true
-
-           (and (and? t1)
-                (some #{t2} (rest t1)))
-           false
-
-           (and (and? t1)
-                (class-designator? t2)
-                (= (resolve t2) java.lang.Object)
-                (some class-designator? (rest t1)))
-           false
-
-           :else
-           :dont-know))))
-
-(new-disjoint-hook
- :derived
- (fn [_t1 _t2]
-   :dont-know))
-
-
-(def subtype-hooks (atom {}))
-(defn new-subtype-hook 
-  "Establish (or override) a named hook for use in subtype?
-  This is necessary because clojure multmethods do not support
-  call-next-method.  We need several _methods_ to be called until
-  one fails to return :dont-know.
-  (new-disjoint-hook ...) establishes a new hook, which must designate
-  a binary function which returns true, false, or :dont-know."
-  ;; TODO - also specify relative key for use in topological sort, to determine the order the hooks should run.
-  [key hook-fn]
-  (swap! subtype-hooks (fn [_]
-                          (assoc @subtype-hooks key hook-fn)))
-  (keys @subtype-hooks))
 
 (def inhabited?-false (fn [_] false))
 (def inhabited?-true (fn [_] true))
@@ -265,66 +148,125 @@
     (throw (ex-info (format "inhabited? cannot decide %s" type-designator)
                     {:error-type :not-yet-implemented
                      :type-designator [type-designator]}))))
-
 (def ^:dynamic *inhabited?-default*
   "doc string"
   inhabited?-error
 )
 
-(def inhabited-hooks (atom {}))
-(defn new-inhabited-hook 
-  "docstring"
-  ;; TODO - also specify relative key for use in topological sort, to determine the order the hooks should run.
-  [key hook-fn]
-  (swap! inhabited-hooks (fn [_]
-                          (assoc @inhabited-hooks key hook-fn)))
-  (keys @inhabited-hooks))
-
-
-
-(new-inhabited-hook
- :primary
- (fn [type-designator]
-   (if (class-designator? type-designator)
-     true
-     :dont-know)))
-
-(defn inhabited?
-  "doc string"
-  ([type-designator]
-   (inhabited? type-designator *inhabited?-default*))
-  ([type-designator default]
-   (binding [*inhabited?-default* default]
-     (case (reduce (fn [_ key-tag]
-                     (case ((key-tag @inhabited-hooks) type-designator)
-                       (true) (reduced true)
-                       (false) (reduced false)
-                       nil))
-                   :initial
-                   (cons :primary (remove #{:primary} (keys @inhabited-hooks))))
-       (true) true
-       (false) false
-       (default type-designator)))))
-
-(defn vacuous? [type-designator]
-  (not (inhabited? type-designator)))
-
 (def subtype?-false (fn [_ _] false))
-
 (def subtype?-true (fn [_ _] true))
-
 (def subtype?-error
   (fn [sub-designator super-designator]
     (throw (ex-info (format "subtype? cannot decide %s vs %s" sub-designator super-designator)
                     {:error-type :not-yet-implemented
                      :type-designators [sub-designator super-designator]}))))
-
 (def ^:dynamic *subtype?-default*
   "Default to return when subtype-ness cannot be determined.  This value is a binary
   function which is called with the two type designators in question:
   [sub-designator super-designator]"
   subtype?-error)
-                         
+
+(def sort-methods
+  "docstring"
+  (memoize (fn [name]
+             (let [-methods (methods name)
+                   -keys (cons :primary (remove #{:primary :default} (keys -methods)))]
+               (map -methods -keys)))))
+
+(defmulti -disjoint? "docstring"
+  (fn [_ _]
+    :default))
+
+(defn disjoint?
+  "Predicate to determine whether the two types overlap."
+  ([t1 t2]
+   (disjoint? t1 t2 *disjoint?-default*))
+  ([t1 t2 default]
+   (binding [*disjoint?-default* default]
+    (-disjoint? t1 t2))))
+
+(defmethod -disjoint? :default [t1 t2]
+  (case (reduce (fn [_ f]
+                  (case (f t1 t2)
+                    (true) (reduced true)
+                    (false) (reduced false)
+                    (case (f t2 t1)
+                      (true) (reduced true)
+                      (false) (reduced false)
+                      nil)))
+                :initial
+                (sort-methods -disjoint?))
+    (true) true
+    (false) false
+    (*disjoint?-default* t1 t2)))
+
+(defmethod -disjoint? :primary [t1 t2]
+  (cond
+    (= :empty-set t1)
+    true
+    
+    (= :empty-set t2)
+    true
+    
+    (= t1 t2)
+    false
+    
+    (= :epsilon t1)
+    false
+    
+    (= :epsilon t2)
+    false
+    
+    (= :sigma t1)
+    false
+    
+    (= :sigma t2)
+    false
+    
+    (isa? t1 t2)
+    false
+    
+    (isa? t2 t1)
+    false
+    
+    :else
+    :dont-know))
+
+(defn class-designator? [t]
+  (and (symbol? t)
+       (resolve t)
+       (class? (resolve t))))
+
+(letfn [(and? [t]
+          (and (sequential? t)
+               (= 'and (first t))))]
+
+  (defmethod -disjoint? :and [t1 t2]
+    (cond (and (and? t2)
+               (some (fn [t]
+                       (disjoint? t1 t)) (rest t2)))
+          true
+          
+          (and (and? t1)
+               (some #{t2} (rest t1)))
+          false
+          
+          (and (and? t1)
+               (class-designator? t2)
+               (= (resolve t2) java.lang.Object)
+               (some class-designator? (rest t1)))
+          false
+          
+          :else
+          :dont-know)))
+
+(defmethod -disjoint? :derived [_t1 _t2]
+  :dont-know)
+
+(defmulti -subtype? "docstring"
+  (fn [_ _]
+    :default))
+
 (defn subtype?
   "Determine whether sub-designator specifies a type which is a subtype
   of super-designator. Sometimes this decision cannot be made/computed, in
@@ -338,31 +280,63 @@
    (subtype? sub-designator super-designator *subtype?-default*))
   ([sub-designator super-designator default]
    (binding [*subtype?-default* default]
-     (case (reduce (fn [_ key-tag]
-                     (case ((key-tag @subtype-hooks) sub-designator super-designator)
-                       (true) (reduced true)
-                       (false) (reduced false)
-                       nil))
-                   :initial
-                   (cons :primary (remove #{:primary} (keys @subtype-hooks))))
-       (true) true
-       (false) false
-       (default sub-designator super-designator)))))
+     (-subtype? sub-designator super-designator))))
 
-(new-subtype-hook
- :primary
- (fn [sub-designator super-designator]
-   
-   (cond (and (class-designator? super-designator)
-              (= Object (resolve super-designator)))
-         true
-         
-         (and (class-designator? sub-designator)
-              (class-designator? super-designator))
-         (isa? (resolve sub-designator) (resolve super-designator))
+(defmethod -subtype? :default [sub-designator super-designator]
+  (case (reduce (fn [_ f]
+                  (case (f sub-designator super-designator)
+                    (true) (reduced true)
+                    (false) (reduced false)
+                    nil))
+                :initial
+                (sort-methods -subtype?))
+    (true) true
+    (false) false
+    (*subtype?-default* sub-designator super-designator)))
 
-         :else
-         :dont-know)))
+(defmulti -inhabited? "docstring"
+  (fn [_]
+    :default))
+
+(defn inhabited?
+  "doc string"
+  ([type-designator]
+   (inhabited? type-designator *inhabited?-default*))
+  ([type-designator default]
+   (binding [*inhabited?-default* default]
+     (-inhabited? type-designator))))
+
+(defmethod -inhabited? :default [type-designator]
+  (case (reduce (fn [_ f]
+                  (case (f type-designator)
+                    (true) (reduced true)
+                    (false) (reduced false)
+                    nil))
+                :initial
+                (sort-methods -inhabited?))
+    (true) true
+    (false) false
+    (*inhabited?-default* type-designator)))
+
+(defmethod -inhabited? :primary [type-designator]
+  (if (class-designator? type-designator)
+    true
+    :dont-know))
+
+(defn vacuous? [type-designator]
+  (not (inhabited? type-designator)))
+
+(defmethod -subtype? :primary [sub-designator super-designator]
+  (cond (and (class-designator? super-designator)
+             (= Object (resolve super-designator)))
+        true
+        
+        (and (class-designator? sub-designator)
+             (class-designator? super-designator))
+        (isa? (resolve sub-designator) (resolve super-designator))
+        
+        :else
+        :dont-know))
 
 (letfn [(not? [t]
           (and (sequential? t)
@@ -392,118 +366,104 @@
                                :a-type t
                                :flags flags})))))]
 
-  (new-subtype-hook
-   :and
-   (fn [t1 t2]
-     (if (and (and? t1)
-              (some #{t2} (rest t1)))
-       false
-       :dont-know)))
+  (defmethod -subtype? :and [t1 t2]
+    (if (and (and? t1)
+             (some #{t2} (rest t1)))
+      false
+      :dont-know))
 
+  (defmethod -disjoint? :subtype [sub super]
+    (cond (and (subtype? sub super subtype?-false)
+               (inhabited? sub inhabited?-false))
+          false
+          
+          :else
+          :dont-know))
 
-  (new-disjoint-hook
-   :subtype
-   (fn [sub super]
-     (cond (and (subtype? sub super subtype?-false)
-                (inhabited? sub inhabited?-false))
-           false
+  (defmethod -disjoint? :not-disjoint [t1 t2]
+    (cond (and (not? t2)
+               (disjoint? t1 (second t2) disjoint?-false))
+          false
+          
+          (and (not? t2)
+               (class-designator? t1)
+               (class-designator? (second t2))
+               (= :interface (class-type t1))
+               (= :interface (class-type (second t2)))
+               (not (= (resolve t1) (resolve (second t2)))))
+          false
+          
+          (and (not? t1)
+               (not? t2)
+               (class-designator? (second t1))
+               (class-designator? (second t2))
+               (= :interface (class-type (second t1)))
+               (= :interface (class-type (second t2)))
+               (not (= (resolve t1) (resolve t2))))
+          false
+          
+          :else :dont-know))
 
-           :else
-           :dont-know)))
+  (defmethod -disjoint? :classes [t1 t2]
+    (if (and (class-designator? t1)
+             (class-designator? t2))
+      (if (= (resolve t1)
+             (resolve t2))
+        false
+        (case [(class-type t1) (class-type t2)]
+          ((:interface :interface)
+           (:interface :abstract)
+           (:abstract :interface))
+          false ;; not disjoint
+          
+          ((:final :final)
+           (:final :interface)
+           (:final :abstract))
+          (not (subtype? t1 t2 subtype?-error))
+          
+          ((:interface :final)
+           (:abstract :final))
+          (not (subtype? t2 t1 subtype?-error))
+          
+          ((:abstract :abstract))
+          (not (or (subtype? t1 t2 subtype?-false)
+                   (subtype? t2 t1 subtype?-error)))))
+      
+      :dont-know))
 
-  (new-disjoint-hook
-   :not-disjoint
-   (fn [t1 t2]
-     (cond (and (not? t2)
-                (disjoint? t1 (second t2) disjoint?-false))
-           false
-
-           (and (not? t2)
-                (class-designator? t1)
-                (class-designator? (second t2))
-                (= :interface (class-type t1))
-                (= :interface (class-type (second t2)))
-                (not (= (resolve t1) (resolve (second t2)))))
-           false
-           
-           (and (not? t1)
-                (not? t2)
-                (class-designator? (second t1))
-                (class-designator? (second t2))
-                (= :interface (class-type (second t1)))
-                (= :interface (class-type (second t2)))
-                (not (= (resolve t1) (resolve t2))))
-           false
-           
-           :else :dont-know)))
-
-  (new-disjoint-hook
-   :classes
-   (fn [t1 t2]
-     (if (and (class-designator? t1)
-              (class-designator? t2))
-       (if (= (resolve t1)
-              (resolve t2))
-         false
-         (case [(class-type t1) (class-type t2)]
-           ((:interface :interface)
-            (:interface :abstract)
-            (:abstract :interface))
-           false ;; not disjoint
-           
-           ((:final :final)
-            (:final :interface)
-            (:final :abstract))
-           (not (subtype? t1 t2 subtype?-error))
-
-           ((:interface :final)
-            (:abstract :final))
-           (not (subtype? t2 t1 subtype?-error))
-
-           ((:abstract :abstract))
-           (not (or (subtype? t1 t2 subtype?-false)
-                    (subtype? t2 t1 subtype?-error)))))
-
-       :dont-know)))
-
-  (new-inhabited-hook
-   :not
-   (fn [t1]
-     (if (and (not? t1)
-              (class-designator? (second t1)))
-       (not (= (resolve (second t1))
-               Object))
-       :dont-know)))
+  (defmethod -inhabited? :not [t1]
+    (if (and (not? t1)
+             (class-designator? (second t1)))
+      (not (= (resolve (second t1))
+              Object))
+      :dont-know))
        
-       
-  (new-disjoint-hook
-   :not
-   (fn [t1 t2]
-     (cond
-       (and (not? t1)
-            (= t2 (second t1)))
-       true
-       
-       (and (not? t1)
-            (disjoint? (second t1) t2))
-       false
-
-       ;; if t1 < t2, then t1 disjoint from (not t2)
-       (and ;;(class-designator? t1)
-            (not? t2)
-            ;;(class-designator? (second t2))
-            (subtype? t1 (second t2) subtype?-false))
-       true
-
-       (and (class-designator? t1)
-            (not? t2)
-            (class-designator? (second t2))
-            (not (= (resolve (second t2)) (resolve t1)))
-            (isa? (resolve (second t2)) (resolve t1)))
-       false
-
-       :else
-       :dont-know))))
+  (defmethod -disjoint? :not [t1 t2]
+    (cond
+      (and (not? t1)
+           (= t2 (second t1)))
+      true
+      
+      (and (not? t1)
+           (disjoint? (second t1) t2 disjoint?-false))
+      false
+      
+      ;; if t1 < t2, then t1 disjoint from (not t2)
+      (and ;;(class-designator? t1)
+       (not? t2)
+       ;;(class-designator? (second t2))
+       (subtype? t1 (second t2) subtype?-false))
+      true
+      
+      (and (class-designator? t1)
+           (not? t2)
+           (class-designator? (second t2))
+           (not (= (resolve (second t2)) (resolve t1)))
+           (isa? (resolve (second t2)) (resolve t1)))
+      false
+      
+      :else
+      :dont-know)))
 
 (defn type-min 
   "Find an element of the given sequence which is a subtype
