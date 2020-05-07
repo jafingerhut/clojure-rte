@@ -130,36 +130,31 @@
                 (conj (or (descendants t2) #{}) t2)))
 
 
-(def disjoint?-false (fn [_ _] false))
-(def disjoint?-true  (fn [_ _] true))
-(def disjoint?-false-warn (fn [t1 t2]
-                            (cl-format true "disjoint? cannot decide ~A vs ~A -- assuming not disjoint~%" t1 t2)
-                            false))
+(defn disjoint?-false-warn [t1 t2]
+  (cl-format true "disjoint? cannot decide ~A vs ~A -- assuming not disjoint~%" t1 t2)
+  false)
+
 (def ^:dynamic *disjoint?-default*
   "Default to return when disjoint-ness cannot be determined.  This value is a binary
   function which is called with the two type designators in question:
   [t1 t2]"
   disjoint?-false-warn)
 
-(def inhabited?-false (fn [_] false))
-(def inhabited?-true (fn [_] true))
-(def inhabited?-error 
-  (fn [type-designator]       
-    (throw (ex-info (format "inhabited? cannot decide %s" type-designator)
-                    {:error-type :not-yet-implemented
-                     :type-designator [type-designator]}))))
+(defn inhabited?-error [type-designator]       
+  (throw (ex-info (format "inhabited? cannot decide %s" type-designator)
+                  {:error-type :not-yet-implemented
+                   :type-designator [type-designator]})))
+
 (def ^:dynamic *inhabited?-default*
   "doc string"
   inhabited?-error
 )
 
-(def subtype?-false (fn [_ _] false))
-(def subtype?-true (fn [_ _] true))
-(def subtype?-error
-  (fn [sub-designator super-designator]
-    (throw (ex-info (format "subtype? cannot decide %s vs %s" sub-designator super-designator)
-                    {:error-type :not-yet-implemented
-                     :type-designators [sub-designator super-designator]}))))
+(defn subtype?-error [sub-designator super-designator]
+  (throw (ex-info (format "subtype? cannot decide %s vs %s" sub-designator super-designator)
+                  {:error-type :not-yet-implemented
+                   :type-designators [sub-designator super-designator]})))
+
 (def ^:dynamic *subtype?-default*
   "Default to return when subtype-ness cannot be determined.  This value is a binary
   function which is called with the two type designators in question:
@@ -167,15 +162,39 @@
   subtype?-error)
 
 (def sort-methods
-  "docstring"
-  (memoize (fn [name]
-             (let [-methods (methods name)
+  "Given a multimethod object, return a list of methods.
+  The :primary method comes first in the return list and the :default
+  method has been filtered away."
+  (memoize (fn [f]
+             (let [-methods (methods f)
                    -keys (cons :primary (remove #{:primary :default} (keys -methods)))]
                (map -methods -keys)))))
 
-(defmulti -disjoint? "docstring"
-  (fn [_ _]
-    :default))
+(defmulti -disjoint?
+  "This function should never be called.
+  Applications may install methods via (defmethod -disjoint? ...).
+  The method accepts two arguments which are type-designators,
+  [t1 t2],  pontentially application specific.
+  The method should examine the designated types to determine whether
+  the designated types are disjoint, i.e., whether they have no
+  element in common, i.e., whether their intersection is empty.
+  The method must return true, false, or :dont-know.
+  The function, disjoint?, will call (-disjoint? t1 t2)
+  and also (-disjoint? t2 t1) if necessary, therefore
+  the methods need only check one or the other.
+  When disjoint? (the public calling interface) is called,
+  the methods of -disjoint? are called in some order
+  (:primary first) until one method returns true or false,
+  in which case disjoint? returns that value.
+  If no method returns true or false, then the function
+  *disjoint?-default* is called, and its value returned.
+  If disjoint? is called with a 3rd argument, then
+  *disjoint?-default* is dynamically bound to that value."
+  (fn [t1 t2]
+    (throw (ex-info "-disjoint? should not be called directly"
+                    {:error-type :should-not-be-called-directly
+                     :t1 t1
+                     :t2 t2}))))
 
 (defn disjoint?
   "Predicate to determine whether the two types overlap."
@@ -183,22 +202,16 @@
    (disjoint? t1 t2 *disjoint?-default*))
   ([t1 t2 default]
    (binding [*disjoint?-default* default]
-    (-disjoint? t1 t2))))
-
-(defmethod -disjoint? :default [t1 t2]
-  (case (reduce (fn [_ f]
-                  (case (f t1 t2)
-                    (true) (reduced true)
-                    (false) (reduced false)
-                    (case (f t2 t1)
-                      (true) (reduced true)
-                      (false) (reduced false)
-                      nil)))
-                :initial
-                (sort-methods -disjoint?))
-    (true) true
-    (false) false
-    (*disjoint?-default* t1 t2)))
+     (loop [[f & fs] (sort-methods -disjoint?)]
+       (case (f t1 t2)
+         (true) true
+         (false) false
+         (case (f t2 t1)
+           (true) true
+           (false) false
+           (if fs
+             (recur fs)
+             (default t1 t2))))))))
 
 (defmethod -disjoint? :primary [t1 t2]
   (cond
@@ -260,12 +273,26 @@
           :else
           :dont-know)))
 
-(defmethod -disjoint? :derived [_t1 _t2]
-  :dont-know)
-
-(defmulti -subtype? "docstring"
-  (fn [_ _]
-    :default))
+(defmulti -subtype?
+  "This function should never be called.
+  Applications may install methods via (defmethod -subtype? ...).
+  The method accepts two arguments which are type-designators,
+  [sub-designator super-designator],  pontentially application specific.
+  The method should examine the designated types to determine whether
+  they have a subtype relation, and return true, false, or :dont-know.
+  When subtype? (the public calling interface) is called,
+  the methods of -subtype? are called in some order
+  (:primary first) until one method returns true or false,
+  in which case subtype? returns that value.
+  If no method returns true or false, then the function
+  *subtype?-default* is called, and its value returned.
+  If subtype? is called with a 3rd argument, then
+  *inhabited?-default* is dynamically bound to that value."
+  (fn [sub super]
+    (throw (ex-info "-subtype? should not be called directly"
+                    {:error-type :should-not-be-called-directly
+                     :sub sub
+                     :super super}))))
 
 (defn subtype?
   "Determine whether sub-designator specifies a type which is a subtype
@@ -280,50 +307,58 @@
    (subtype? sub-designator super-designator *subtype?-default*))
   ([sub-designator super-designator default]
    (binding [*subtype?-default* default]
-     (-subtype? sub-designator super-designator))))
+     (loop [[f & fs] (sort-methods -subtype?)]
+       (let [s (f sub-designator super-designator)]
+         (case s
+           (true false) s
+           (if fs
+             (recur fs)
+             (default sub-designator super-designator))))))))
 
-(defmethod -subtype? :default [sub-designator super-designator]
-  (case (reduce (fn [_ f]
-                  (case (f sub-designator super-designator)
-                    (true) (reduced true)
-                    (false) (reduced false)
-                    nil))
-                :initial
-                (sort-methods -subtype?))
-    (true) true
-    (false) false
-    (*subtype?-default* sub-designator super-designator)))
-
-(defmulti -inhabited? "docstring"
-  (fn [_]
-    :default))
+(defmulti -inhabited?
+  "This function should never be called.
+  Applications may install methods via (defmethod -inhabited? ...).
+  The method accepts one argument which is a type-designator,
+  pontentially application specific.
+  The method should examine the type designator and return
+  true, false, or :dont-know.
+  When inhabited? (the public calling interface) is called,
+  the methods of -inhabited? are called in some order
+  (:primary first) until one method returns true or false,
+  in which case inhabited? returns that value.
+  If no method returns true or false, then the function
+  *inhabited?-default* is called, and its value returned.
+  If inhabited? is called with a 3rd argument, then
+  *inhabited?-default* is dynamically bound to that value."
+  (fn [type-designator]
+    (throw (ex-info "-inhabited? should not be called directly"
+                    {:type-designator type-designator
+                     :error-type :should-not-be-called-directly}))))
 
 (defn inhabited?
-  "doc string"
+  "Given a type-designator, perhaps application specific,
+  determine whether the type is inhabited, i.e., not the
+  empty type."
   ([type-designator]
    (inhabited? type-designator *inhabited?-default*))
   ([type-designator default]
    (binding [*inhabited?-default* default]
-     (-inhabited? type-designator))))
-
-(defmethod -inhabited? :default [type-designator]
-  (case (reduce (fn [_ f]
-                  (case (f type-designator)
-                    (true) (reduced true)
-                    (false) (reduced false)
-                    nil))
-                :initial
-                (sort-methods -inhabited?))
-    (true) true
-    (false) false
-    (*inhabited?-default* type-designator)))
+     (loop [[f & fs] (sort-methods -inhabited?)]
+       (case (f type-designator)
+         (true) true
+         (false) false
+         (if fs
+           (recur fs)
+           (default type-designator)))))))
 
 (defmethod -inhabited? :primary [type-designator]
   (if (class-designator? type-designator)
     true
     :dont-know))
 
-(defn vacuous? [type-designator]
+(defn vacuous? 
+  "Determine whether the specified type is empty, i.e., not inhabited."
+  [type-designator]
   (not (inhabited? type-designator)))
 
 (defmethod -subtype? :primary [sub-designator super-designator]
@@ -373,8 +408,8 @@
       :dont-know))
 
   (defmethod -disjoint? :subtype [sub super]
-    (cond (and (subtype? sub super subtype?-false)
-               (inhabited? sub inhabited?-false))
+    (cond (and (subtype? sub super (constantly false))
+               (inhabited? sub (constantly false)))
           false
           
           :else
@@ -382,7 +417,7 @@
 
   (defmethod -disjoint? :not-disjoint [t1 t2]
     (cond (and (not? t2)
-               (disjoint? t1 (second t2) disjoint?-false))
+               (disjoint? t1 (second t2) (constantly false)))
           false
           
           (and (not? t2)
@@ -426,7 +461,7 @@
           (not (subtype? t2 t1 subtype?-error))
           
           ((:abstract :abstract))
-          (not (or (subtype? t1 t2 subtype?-false)
+          (not (or (subtype? t1 t2 (constantly false))
                    (subtype? t2 t1 subtype?-error)))))
       
       :dont-know))
@@ -445,14 +480,14 @@
       true
       
       (and (not? t1)
-           (disjoint? (second t1) t2 disjoint?-false))
+           (disjoint? (second t1) t2 (constantly false)))
       false
       
       ;; if t1 < t2, then t1 disjoint from (not t2)
       (and ;;(class-designator? t1)
        (not? t2)
        ;;(class-designator? (second t2))
-       (subtype? t1 (second t2) subtype?-false))
+       (subtype? t1 (second t2) (constantly false)))
       true
       
       (and (class-designator? t1)
@@ -554,14 +589,14 @@
              ((and (not-empty left) (not-empty right)
                    ;; exists t2 in right such that t1 < t2
                    ;; then t1 & !t2 = nil
-                   (some (fn [t2] (subtype? (first left) t2 subtype?-false))  right))
+                   (some (fn [t2] (subtype? (first left) t2 (constantly false)))  right))
               ;; prune
               )
 
              ((and (not-empty left) (not-empty right)
                    ;; exists t2 in right such that t1 < t2
                    ;; then t1 & !t2 = nil
-                   (some (fn [t1] (subtype? t1 (first right) subtype?-false))  left))
+                   (some (fn [t1] (subtype? t1 (first right) (constantly false)))  left))
               ;; prune
               )
 
