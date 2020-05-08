@@ -189,6 +189,8 @@
   ([t1 t2]
    (disjoint? t1 t2 *disjoint?-default*))
   ([t1 t2 default]
+   {:pre [(fn? default)]
+    :post [(fn [v] (#{true false :dont-know} v))]}
    (binding [*disjoint?-default* default]
      (loop [[k & ks] (sort-method-keys -disjoint?)]
        (case ((k (methods -disjoint?)) t1 t2)
@@ -334,6 +336,8 @@
   ([sub-designator super-designator]
    (subtype? sub-designator super-designator *subtype?-default*))
   ([sub-designator super-designator default]
+   {:pre [(fn? default)]
+    :post [(fn [v] (#{true false :dont-know} v))]}
    (binding [*subtype?-default* default]
      (loop [[k & ks] (sort-method-keys -subtype?)]
        (let [s ((k (methods -subtype?)) sub-designator super-designator)]
@@ -370,6 +374,8 @@
   ([type-designator]
    (inhabited? type-designator *inhabited?-default*))
   ([type-designator default]
+   {:pre [(fn? default)]
+    :post [(fn [v] (#{true false :dont-know} v))]}
    (binding [*inhabited?-default* default]
      (loop [[k & ks] (sort-method-keys -inhabited?)]
        (case ((k (methods -inhabited?)) type-designator)
