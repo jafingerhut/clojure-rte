@@ -136,32 +136,34 @@
 
 (deftest t-disjoint-member
   (testing "disjoint member"
-    (is (disjoint? '(member 1 2 3) '(member 5 6 )))
-    (is (not (disjoint? '(member 1 2 3) '(member 3 6 ))))
-    (is (disjoint? '(= 1) '(= 2)))
-    (is (disjoint? '(= 1) '(member 2 3 4)))
-    (is (disjoint? '(member 2 3 4) '(= 1)))
-    (is (not (disjoint? '(= 3) '(member 2 3 4))))
-    (is (not (disjoint? '(member 2 3 4) '(= 3))))
+    (is (disjoint? '(member 1 2 3) '(member 5 6 )) "line 139")
+    (is (not (disjoint? '(member 1 2 3) '(member 3 6 ))) "line 140")
+    (is (disjoint? '(= 1) '(= 2)) "line 141")
+    (is (disjoint? '(= 1) '(member 2 3 4)) "line 142")
+    (is (disjoint? '(member 2 3 4) '(= 1)) "line 143")
+    (is (not (disjoint? '(= 3) '(member 2 3 4))) "line 144")
+    (is (not (disjoint? '(member 2 3 4) '(= 3))) "line 145")
 
-    (is (disjoint? '(member 1 2 3) '(not Long)))
-    (is (not (disjoint? '(member 1 "2" 3) '(not Long))))
+    (is (disjoint? '(member 1 2 3) '(not Long))  "line 147")
+    (is (not (disjoint? '(member 1 "2" 3) '(not Long))) "line 148")
 
-    (is (not (disjoint? '(member a b c 1 2 3) '(not (member 1 2 3)))))
+    (is (not (disjoint? '(member a b c 1 2 3) '(not (member 1 2 3)))) "line 150")
 
-    (is (disjoint? '(member 1 2 3) '(not (member a b c 1 2 3))))
+    (is (disjoint? '(member 1 2 3) '(not (member a b c 1 2 3))) "line 152")
     
-    (is (disjoint? 'Long '(not Long)))
-    (is (disjoint? '(not Long) 'Long))
+    (is (disjoint? 'Long '(not Long)) "line 154")
+    (is (disjoint? '(not Long) 'Long) "line 155")
 
     (is (disjoint? 'String '(member 1 2 3)))
     (is (disjoint? '(member 1 2 3) 'String))
 
-    (disjoint? 'String '(not (member 1 2 3)))
-    (disjoint? 'Long '(not (member 1 2 3)))
-    (disjoint? 'Object '(not (member 1 2 3)))
-    (disjoint? 'Object '(not (= 0)))
-    (disjoint? 'Long '(not (= 0)))
+    (is (not (disjoint? 'String '(not (member 1 2 3)))))
+    (is (not (disjoint? 'Long '(not (member 1 2 3)))))
+    (is (not (disjoint? 'Object '(not (member 1 2 3)))))
+    (is (not (disjoint? 'Object '(not (= 0)))))
+    (is (not (disjoint? 'Long '(not (= 0)))))
+    (is (not (disjoint? 'java.lang.CharSequence '(not (member a b c a b c)))))
+    (disjoint? '(member [1 2 3] [1 2] [1] []) '(not (member [1 2 3] [2 1 3])))
     ))
 
 (deftest t-subtype?

@@ -274,43 +274,30 @@
 
   (defmethod -disjoint? := [t1 t2]
     (cond (=? t1)
-          (disjoint? (cons 'member (rest t1)) t2)
-
-          (=? t2)
-          (disjoint? t1 (cons 'member (rest t2)))
-
-          (and (not? t2)
-               (=? (second t2))
-               (class-designator? t1))
+          (not (typep (second t1) t2))
+          
+          ;; (= ...) is finite, types are infinite
+          ;; (disjoint? '(not (= 1 2 3)) 'Long)
+          (and (not? t1)
+               (=? (second t1))
+               (class-designator? t2))
           false
           
           :else
           :dont-know))
           
   (defmethod -disjoint? :member [t1 t2]
-    (cond (and (member? t1)
-               (member? t2))
-          (not (some (fn [e1]
-                       (some #{e1} (rest t2))) (rest t1)))
-
-          (and (class-designator? t1)
-               (member? t2))
-          (not (some (fn [e2]
-                       (instance? (resolve t1) e2)) (rest t2)))
-
-          (and (member? t2)
-               (not? t1)
-               (class-designator? (second t1)))
-          (boolean (every? (fn [e2]
-                             (instance? (resolve (second t1)) e2)) (rest t2)))
+    (cond (member? t1)
+          (every? (fn [e1]
+                    (not (typep e1 t2))) (rest t1))
 
           ;; (member ...) is finite, types are infinite
-          ;; (disjoint? 'Long '(not (member 1 2 3)))
-          (and (not? t2)
-               (member? (second t2))
-               (class-designator? t1))
-          false               
-
+          ;; (disjoint? '(not (member 1 2 3)) 'Long)
+          (and (not? t1)
+               (member? (second t1))
+               (class-designator? t2))
+          false
+          
           :else
           :dont-know)))
 
@@ -459,28 +446,9 @@
           :dont-know))
 
   (defmethod -subtype? :member [sub super]
-    (cond (and (member? sub)
-               (class-designator? super))
+    (cond (member? sub)
           (every? (fn [e1]
-                    (instance? (resolve super) e1)) (rest sub))
-
-          ;; (subtype? '(member 1 2) '(not Long)) --> false
-          (and (member? sub)
-               (not? super)
-               (subtype? sub (second super) (constantly false)))
-          false
-          
-          (and (member? sub)
-               (member? super))
-          (boolean (every? (fn [e2] (some #{e2} (rest super))) (rest sub)))
-
-          ;; (subtype? '(member 1 2) '(not String))
-          (and (member? sub)
-               (not? super)
-               (class-designator? (second super)))
-          (boolean (every? (fn [e2]
-                             (not (instance? (resolve (second super)) e2)))
-                           (rest sub)))
+                    (typep e1 super)) (rest sub))
 
           :else
           :dont-know))
