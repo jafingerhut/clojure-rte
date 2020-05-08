@@ -24,7 +24,7 @@
             [clojure.pprint :refer [cl-format]]
             [clojure-rte.cl-compat :refer [cl-cond]]
             [clojure-rte.util :refer [sort-operands remove-once call-with-collector visit-permutations]]
-            [clojure-rte.type :refer [disjoint? type-intersection typep inhabited?]]
+            [clojure-rte.type :refer [disjoint? typep inhabited?]]
             [clojure-rte.core :refer :all]
             [clojure-rte.rte-tester :refer :all]))
 
@@ -116,7 +116,6 @@
     (is (thrown? clojure.lang.ExceptionInfo (canonicalize-pattern '(:not))))
     (is (thrown? clojure.lang.ExceptionInfo (canonicalize-pattern '(:?))))
     (is (thrown? clojure.lang.ExceptionInfo (canonicalize-pattern '(:+))))
-    (is (thrown? clojure.lang.ExceptionInfo (canonicalize-pattern '(:rte))))
 
     ;; type
     (is (= 'Number (canonicalize-pattern-once 'Number)) "canonicalize :type")
@@ -327,7 +326,6 @@
 
 (deftest t-syntax
   (testing "syntax"
-    (is (thrown? clojure.lang.ExceptionInfo (rte-compile '(:rte :epsilon :epsilon))))
     (is (thrown? clojure.lang.ExceptionInfo (rte-compile '(:* :epsilon :epsilon))))
     (is (thrown? clojure.lang.ExceptionInfo (rte-compile '(:? :epsilon :epsilon))))
     (is (thrown? clojure.lang.ExceptionInfo (rte-compile '(:+ :epsilon :epsilon))))))
@@ -473,4 +471,34 @@
     (is (inhabited? '(rte (:+ Number))))
     (is (not (inhabited? '(rte (:and (:+ Number)
                                      (:+ String))))))))
-        
+
+(deftest t-pattern-with-=-and-class
+  (testing "pattern with ="
+    (is (rte-match '(:or Long (= 42)) [42]))
+    (is (rte-match '(:or Long (= "42")) [0]))
+    (is (rte-match '(:or Long (= "42")) ["42"]))))
+
+(deftest t-pattern-with-=
+  (testing "pattern with ="
+    (is (rte-match '(= 42) [42]))
+    (is (not (rte-match '(= 42) [43])))
+    (is (not (rte-match '(= 42) [42 42])))
+    (is (not (rte-match '(= 42) [])))
+
+    (is (rte-match '(:* (= 42)) []))
+    (is (rte-match '(:* (= 42)) [42]))
+    (is (rte-match '(:* (= 42)) [42 42 42 42]))
+
+    (is (not (rte-match '(:+ (= 42)) [])))
+    (is (rte-match '(:+ (= 42)) [42 ]))
+    (is (rte-match '(:+ (= 42)) [42 42 42]))
+    (is (not (rte-match '(:+ (= 42)) [42 42 42 43])))
+
+    (is (rte-match '(:or (= 43 ) (= 42)) [42]))
+    (is (rte-match '(:or (= 43 ) (= 42)) [43]))
+    (is (not (rte-match '(:or (= 43 ) (= 42)) [0])))
+    (is (rte-match '(:* (:or (= 43 )(= 42))) []))
+    (is (rte-match '(:* (:or (= 43 )(= 42))) [42 42 42 43 42 43]))
+    (is (not (rte-match '(:* (:or (= 43 ) (= 42))) [42 42 42 43 42 0 43])))
+
+    ))

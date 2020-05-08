@@ -34,19 +34,25 @@
       (is (disjoint? 'Integer 'String))
       (is (not (disjoint? 'java.lang.Comparable '(not java.io.Serializable))))
       (is (not (disjoint? '(and java.lang.Comparable (not clojure.lang.Symbol)) 'java.lang.Object)))
-)))
+      )))
+
+(deftest t-disjoint-not?
+  (when (and (resolve 'java.lang.Number)
+             (resolve 'clojure.lang.ISeq))
+    (testing "disjoint not"
+      (is (not (disjoint? 'clojure.lang.ISeq '(not java.lang.Number)))))))
 
 (deftest t-disjoint-2-14
   (if (and (resolve 'java.lang.Comparable)
            (resolve 'clojure.lang.IMeta))   
     (testing "disjoint 2 14"
-    ;; interface vs interface - never disjoint
-    (is (not (disjoint? 'java.lang.Comparable 'clojure.lang.IMeta)))
-    (is (not (disjoint? 'clojure.lang.IMeta 'java.lang.Comparable)))
+      ;; interface vs interface - never disjoint
+      (is (not (disjoint? 'java.lang.Comparable 'clojure.lang.IMeta)))
+      (is (not (disjoint? 'clojure.lang.IMeta 'java.lang.Comparable)))
 
-    ;; final vs interface is superclass
-    (is (not (disjoint? 'Integer 'java.lang.Comparable)))
-    (is (not (disjoint? 'java.lang.Comparable 'Integer)))
+      ;; final vs interface is superclass
+      (is (not (disjoint? 'Integer 'java.lang.Comparable)))
+      (is (not (disjoint? 'java.lang.Comparable 'Integer)))
 
 
       )))
@@ -127,3 +133,43 @@
              ['(Object) '(Integer Long)]})
         "expected content"
 )))
+
+(deftest t-disjoint-member
+  (testing "disjoint member"
+    (is (disjoint? '(member 1 2 3) '(member 5 6 )))
+    (is (not (disjoint? '(member 1 2 3) '(member 3 6 ))))
+    (is (disjoint? '(= 1) '(= 2)))
+    (is (disjoint? '(= 1) '(member 2 3 4)))
+    (is (disjoint? '(member 2 3 4) '(= 1)))
+    (is (not (disjoint? '(= 3) '(member 2 3 4))))
+    (is (not (disjoint? '(member 2 3 4) '(= 3))))
+
+    (is (disjoint? '(member 1 2 3) '(not Long)))
+    (is (not (disjoint? '(member 1 "2" 3) '(not Long))))
+
+    (is (not (disjoint? '(member a b c 1 2 3) '(not (member 1 2 3)))))
+
+    (is (disjoint? '(member 1 2 3) '(not (member a b c 1 2 3))))
+    
+    (is (disjoint? 'Long '(not Long)))
+    (is (disjoint? '(not Long) 'Long))
+
+    (is (disjoint? 'String '(member 1 2 3)))
+    (is (disjoint? '(member 1 2 3) 'String))
+
+    (disjoint? 'String '(not (member 1 2 3)))
+    (disjoint? 'Long '(not (member 1 2 3)))
+    (disjoint? 'Object '(not (member 1 2 3)))
+    (disjoint? 'Object '(not (= 0)))
+    (disjoint? 'Long '(not (= 0)))
+    ))
+
+(deftest t-subtype?
+  (testing "subtype?"
+    (is (subtype? '(member 1 2) '(member 0 1 2 3)))
+    (is (not (subtype? '(member 0 1 2 3) '(member 1 2))))
+    (is (subtype? '(member 1 2) 'Long) "line 154")
+    (is (not (subtype? '(member 1 2) 'String)) "line 155")
+    (is (not (subtype? '(member 1 2) '(not Long))) "line 156")
+    (is (subtype? '(member 1 2) '(not String)) "line 157")))
+  

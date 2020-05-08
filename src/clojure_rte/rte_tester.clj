@@ -69,6 +69,14 @@
              java.lang.Number
              java.lang.Object
              clojure.lang.IMeta
+             (= 1)
+             (= 0)
+             (= [])
+             (member 1 2 3)
+             (member 2 3 4)
+             (member "a" "b" "c")
+             (member "a" "b" "c" 1 2 3)
+             (member 1 "a")
 ))
 
 (defn test-rte-to-dfa [num-tries size verbose]

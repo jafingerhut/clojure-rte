@@ -91,7 +91,6 @@
 (defmethod valid-type? 'and [_ & others]
   (every? valid-type? others))
 
-
 (defmethod typep 'or [a-value [_a-type & others]]
   (some (fn [t1]
           (typep a-value t1)) others))
@@ -120,15 +119,6 @@
 
 (defmethod valid-type? 'member [[_ & _]]
   true)
-
-(defn type-intersection 
-  "Return the set of the subtypes of the two types, ie. the set of types
-  which are both a subtype of t1 and of t2.  If the types don't
-  intersect, #{} is returned."
-  [t1 t2]
-  (intersection (conj (or (descendants t1) #{}) t1)
-                (conj (or (descendants t2) #{}) t2)))
-
 
 (defn disjoint?-false-warn [t1 t2]
   (cl-format true "disjoint? cannot decide ~A vs ~A -- assuming not disjoint~%" t1 t2)
@@ -161,14 +151,12 @@
   [sub-designator super-designator]"
   subtype?-error)
 
-(def sort-methods
-  "Given a multimethod object, return a list of methods.
+(def sort-method-keys
+  "Given a multimethod object, return a list of method keys.
   The :primary method comes first in the return list and the :default
   method has been filtered away."
   (memoize (fn [f]
-             (let [-methods (methods f)
-                   -keys (cons :primary (remove #{:primary :default} (keys -methods)))]
-               (map -methods -keys)))))
+             (cons :primary (remove #{:primary :default} (keys (methods f)))))))
 
 (defmulti -disjoint?
   "This function should never be called.
@@ -202,15 +190,15 @@
    (disjoint? t1 t2 *disjoint?-default*))
   ([t1 t2 default]
    (binding [*disjoint?-default* default]
-     (loop [[f & fs] (sort-methods -disjoint?)]
-       (case (f t1 t2)
+     (loop [[k & ks] (sort-method-keys -disjoint?)]
+       (case ((k (methods -disjoint?)) t1 t2)
          (true) true
          (false) false
-         (case (f t2 t1)
+         (case ((k (methods -disjoint?)) t2 t1)
            (true) true
            (false) false
-           (if fs
-             (recur fs)
+           (if ks
+             (recur ks)
              (default t1 t2))))))))
 
 (defmethod -disjoint? :primary [t1 t2]
@@ -273,6 +261,59 @@
           :else
           :dont-know)))
 
+(letfn [(=? [t]
+          (and (sequential? t)
+               (= '= (first t))
+               (= (count t) 2)))
+        (not? [t]
+          (and (sequential? t)
+               (= 'not (first t))))
+        (member? [t]
+          (and (sequential? t)
+               (= 'member (first t))))]
+
+  (defmethod -disjoint? := [t1 t2]
+    (cond (=? t1)
+          (disjoint? (cons 'member (rest t1)) t2)
+
+          (=? t2)
+          (disjoint? t1 (cons 'member (rest t2)))
+
+          (and (not? t2)
+               (=? (second t2))
+               (class-designator? t1))
+          false
+          
+          :else
+          :dont-know))
+          
+  (defmethod -disjoint? :member [t1 t2]
+    (cond (and (member? t1)
+               (member? t2))
+          (not (some (fn [e1]
+                       (some #{e1} (rest t2))) (rest t1)))
+
+          (and (class-designator? t1)
+               (member? t2))
+          (not (some (fn [e2]
+                       (instance? (resolve t1) e2)) (rest t2)))
+
+          (and (member? t2)
+               (not? t1)
+               (class-designator? (second t1)))
+          (boolean (every? (fn [e2]
+                             (instance? (resolve (second t1)) e2)) (rest t2)))
+
+          ;; (member ...) is finite, types are infinite
+          ;; (disjoint? 'Long '(not (member 1 2 3)))
+          (and (not? t2)
+               (member? (second t2))
+               (class-designator? t1))
+          false               
+
+          :else
+          :dont-know)))
+
 (defmulti -subtype?
   "This function should never be called.
   Applications may install methods via (defmethod -subtype? ...).
@@ -307,12 +348,12 @@
    (subtype? sub-designator super-designator *subtype?-default*))
   ([sub-designator super-designator default]
    (binding [*subtype?-default* default]
-     (loop [[f & fs] (sort-methods -subtype?)]
-       (let [s (f sub-designator super-designator)]
+     (loop [[k & ks] (sort-method-keys -subtype?)]
+       (let [s ((k (methods -subtype?)) sub-designator super-designator)]
          (case s
            (true false) s
-           (if fs
-             (recur fs)
+           (if ks
+             (recur ks)
              (default sub-designator super-designator))))))))
 
 (defmulti -inhabited?
@@ -343,12 +384,12 @@
    (inhabited? type-designator *inhabited?-default*))
   ([type-designator default]
    (binding [*inhabited?-default* default]
-     (loop [[f & fs] (sort-methods -inhabited?)]
-       (case (f type-designator)
+     (loop [[k & ks] (sort-method-keys -inhabited?)]
+       (case ((k (methods -inhabited?)) type-designator)
          (true) true
          (false) false
-         (if fs
-           (recur fs)
+         (if ks
+           (recur ks)
            (default type-designator)))))))
 
 (defmethod -inhabited? :primary [type-designator]
@@ -379,6 +420,12 @@
         (and? [t]
           (and (sequential? t)
                (= 'and (first t))))
+        (member? [t]
+          (and (sequential? t)
+               (= 'member (first t))))
+        (=? [t]
+          (and (sequential? t)
+               (= '= (first t))))
         (class-type [t]
           (let [c (resolve t)
                 r (refl/type-reflect c)
@@ -401,6 +448,43 @@
                                :a-type t
                                :flags flags})))))]
 
+  (defmethod -subtype? := [sub super]
+    (cond (=? sub)
+          (subtype? (cons 'member (rest sub)) super)
+
+          (=? super)
+          (subtype? sub (cons 'member (rest super)))
+
+          :else
+          :dont-know))
+
+  (defmethod -subtype? :member [sub super]
+    (cond (and (member? sub)
+               (class-designator? super))
+          (every? (fn [e1]
+                    (instance? (resolve super) e1)) (rest sub))
+
+          ;; (subtype? '(member 1 2) '(not Long)) --> false
+          (and (member? sub)
+               (not? super)
+               (subtype? sub (second super) (constantly false)))
+          false
+          
+          (and (member? sub)
+               (member? super))
+          (boolean (every? (fn [e2] (some #{e2} (rest super))) (rest sub)))
+
+          ;; (subtype? '(member 1 2) '(not String))
+          (and (member? sub)
+               (not? super)
+               (class-designator? (second super)))
+          (boolean (every? (fn [e2]
+                             (not (instance? (resolve (second super)) e2)))
+                           (rest sub)))
+
+          :else
+          :dont-know))
+  
   (defmethod -subtype? :and [t1 t2]
     (if (and (and? t1)
              (some #{t2} (rest t1)))
@@ -472,24 +556,41 @@
       (not (= (resolve (second t1))
               Object))
       :dont-know))
+
+  (defmethod -inhabited? :member [t1]
+    (if (member? t1)
+      (boolean (rest t1))
+      :dont-know))
+
+
+  (defmethod -inhabited? := [t1]
+    (if (=? t1)
+      true
+      :dont-know))
        
   (defmethod -disjoint? :not [t1 t2]
     (cond
-      (and (not? t1)
-           (= t2 (second t1)))
+      (and (not? t2)
+           (= t1 (second t2)))
       true
       
-      (and (not? t1)
-           (disjoint? (second t1) t2 (constantly false)))
+      (and (not? t2)
+           (disjoint? (second t2) t1 (constantly false)))
       false
       
       ;; if t1 < t2, then t1 disjoint from (not t2)
-      (and ;;(class-designator? t1)
-       (not? t2)
-       ;;(class-designator? (second t2))
-       (subtype? t1 (second t2) (constantly false)))
+      ;; (disjoint? '(member 1 2 3) '(not (member a b c 1 2 3)))
+      (and (not? t2)
+           (subtype? t1 (second t2) (constantly false))
+           (not (subtype? (second t2) t1 (constantly true))))
       true
-      
+
+      ;; (disjoint? '(member a b c 1 2 3) '(not (member 1 2 3)))
+      (and (not? t2)
+           (subtype? (second t2) t1 (constantly false))
+           (not (subtype? t1 (second t2) (constantly true))))
+      false
+
       (and (class-designator? t1)
            (not? t2)
            (class-designator? (second t2))
@@ -497,6 +598,14 @@
            (isa? (resolve (second t2)) (resolve t1)))
       false
       
+      (and (class-designator? t1)
+           (not? t2)
+           (class-designator? (second t2))
+           ;; and neither is final
+           (not (= :final (class-designator? (resolve t1))))
+           (not (= :final (class-designator? (resolve (second t2))))))
+      false
+
       :else
       :dont-know)))
 
