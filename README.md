@@ -629,6 +629,11 @@ will improve run-time performance.
 (or Long (and (not Long) (not String))) = (not String)
 ```
 
+3. Currently adding a new type means you have to change the
+   `supported-nontrivial-types` global variable.  This means
+   applications really cannot yet add types without having access to
+   the source code.  This needs to be replaced with some sort of
+   `deftype` registration mechansim.
 
 ## Package dependencies overview
 
