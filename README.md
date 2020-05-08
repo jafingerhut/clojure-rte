@@ -533,7 +533,7 @@ the corresponding graph using the `dfa-to-dot` function.
 ## Extensible types
 
 The namespace `clojure-rte.type` defines a type system which extends the
-Clojure built-in type system.   Types are sets of objects. Some types may be designated via so-called type *designators*.
+Clojure built-in type system.   Types are sets of objects. Some types may be designated via so-called *type designators*.
 
 A *type designator* is defined by the following recursive definition.  If `A` and `B` are type designators and `f` is a symbol whose global value `(resolve 'f)` is a unary predicate function,
 then
@@ -590,8 +590,19 @@ Example
 
 ## How to extend the type system
 
-An application may extend the type system by adding a new type designator syntax.
+An application may extend the type system by adding a new type
+designator syntax.  To do so several methods must be added to allow
+the system to reason about the new type.
 
+* `typep` ---
+
+* `-inhabited?` ---
+
+* `-disjoint?` ---
+
+* `-subtype?` ---
+
+For more information, see the documentation in the source code.
 
 ## Not yet implemented
 
@@ -605,24 +616,7 @@ There are several important extensions we would like to implement.
   We would like to make these *type designators* part of the public interface to RTE.
   In order to do so we must fully implement, test, and document the DSL.
   
-  A *type designator* is defined by the following recursive definition.  If `A` and `B` are type designators and `f` is a symbol whose global value `(resolve 'f)` is a unary predicate function,
-  then
-
-  - Any symbol designates a type, provided it can be resolved with the function `resolve`, and the resulting value is true according to the `class?` predicate.  I.e., if the predicate `(fn [x] (and (symbol? x) (resolve x) (class? (resolve x))))` is returns true.
-
-  - `(and A B)` is a type designator, designating the set of values which are simultaneously of type `A` and `B`. `(and ...)` may have arbitrarily many operands. `(and A)` means `A`, and `(and)` means the empty set of all possible.
-
-  - `(or A B)` is a type designator, designating the set of values which are of type `A` or of type `B`, or perhaps of both. `(or ...)` may have arbitrarily many operands.  `(or A)` means `A`, and `(or)` means the empty set of values.
-
-  - `(not A)` is a type designating, designating the set of values which are *not* of type `A`.
-
   - `(satisfies f)` is a type designator, designating the set of values, `x` for which `(f x)` returns Boolean *true*.  It is assumed that `f` may be called with any value, always returns, and has no side effects.
-
-  - `(= x)`  is a type designator, designating the set of all values which are equal `=` to its literal operand.  For example `(= 42)` is the set of all values equal to 42, which include among others the `java.lang.Long 42`, the `java.lang.Short 42`, and the  `java.lang.Byte 42`.
-
-  - `(member x y z ...)` is a type designator equivalent to `(or (= x) (= y) (= z) ...)`.
-  
-  - `(rte pattern)` is a type designator which specifies the set of sequences which match the given rte pattern.  For example, the type `(rte (:cat Long String))` is the set of two element sequences whose first element is a `Long` and whose second element is a string.
 
 2. We have made no attempts to minimize the DFA which is produced.
 For example the image shown in section [Debugging](#debugging) is no
