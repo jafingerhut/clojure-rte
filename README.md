@@ -593,60 +593,65 @@ An application may extend the type system by adding a new type
 designator syntax.  To do so several methods must be added to allow
 the system to reason about the new type.
 
-* `typep [value type-designator]` ---
+* `typep [value type-designator]` --- Applications defining new types
+should define a method on `typep` which decides whether a given value 
+is a member of that type. Example:
+```clojure
+(defmethod typep 'member [a-value [_type & others]]
+  (some #{a-value} others))
+```
 
 * `-inhabited?` ---   This function should never be called.
-  Applications may install methods via `(defmethod -inhabited? ...)`.
-  The method accepts one argument which is a type-designator,
-  pontentially application specific.
-  The method should examine the type designator and return
-  `true`, `false`, or `:dont-know`.
-  When `inhabited?` (the public calling interface) is called,
-  the methods of `-inhabited?` are called in some order
-  (`:primary` first) until one method returns `true` or `false`,
-  in which case `inhabited?` returns that value.
-  If no method returns `true` or `false`, then the function
-  `*inhabited?-default*` is called, and its value returned.
-  If `inhabited?` is called with a 3rd argument, then
-  `*inhabited?-default*` is dynamically bound to that value."
+Applications may install methods via `(defmethod -inhabited? ...)`.
+The method accepts one argument which is a type-designator,
+pontentially application specific.
+The method should examine the type designator and return
+`true`, `false`, or `:dont-know`.
+When `inhabited?` (the public calling interface) is called,
+the methods of `-inhabited?` are called in some order
+(`:primary` first) until one method returns `true` or `false`,
+in which case `inhabited?` returns that value.
+If no method returns `true` or `false`, then the function
+`*inhabited?-default*` is called, and its value returned.
+If `inhabited?` is called with a 3rd argument, then
+`*inhabited?-default*` is dynamically bound to that value."
 
 
 * `-disjoint?` ---   This function should never be called.
-  Applications may install methods via `(defmethod -disjoint? ...)`.
-  The method accepts two arguments which are type-designators,
-  `[t1 t2]`,  pontentially application specific.
-  The method should examine the designated types to determine whether
-  the designated types are disjoint, i.e., whether they have no
-  element in common, i.e., whether their intersection is empty.
-  The method must return `true`, `false`, or `:dont-know`.
-  The function, disjoint?, will call `(-disjoint? t1 t2)`
-  and also `(-disjoint? t2 t1)` if necessary, therefore
-  the methods need only check one or the other.
-  When `disjoint?` (the public calling interface) is called,
-  the methods of -disjoint? are called in some order
-  (`:primary` first) until one method returns `true` or `false`,
-  in which case `disjoint?` returns that value.
-  If no method returns true or false, then the function
-  `*disjoint?-default*` is called, and its value returned.
-  If `disjoint?` is called with a 3rd argument, then
-  `*disjoint?-default*` is dynamically bound to that value.
-
+Applications may install methods via `(defmethod -disjoint? ...)`.
+The method accepts two arguments which are type-designators,
+`[t1 t2]`,  pontentially application specific.
+The method should examine the designated types to determine whether
+the designated types are disjoint, i.e., whether they have no
+element in common, i.e., whether their intersection is empty.
+The method must return `true`, `false`, or `:dont-know`.
+The function, disjoint?, will call `(-disjoint? t1 t2)`
+and also `(-disjoint? t2 t1)` if necessary, therefore
+the methods need only check one or the other.
+When `disjoint?` (the public calling interface) is called,
+the methods of -disjoint? are called in some order
+(`:primary` first) until one method returns `true` or `false`,
+in which case `disjoint?` returns that value.
+If no method returns true or false, then the function
+`*disjoint?-default*` is called, and its value returned.
+If `disjoint?` is called with a 3rd argument, then
+`*disjoint?-default*` is dynamically bound to that value.
+    
 
 * `-subtype?` ---  This function should never be called.
-  Applications may install methods via `(defmethod -subtype? ...)`.
-  The method accepts two arguments which are type-designators,
-  `[sub-designator super-designator]`,  pontentially application specific.
-  The method should examine the designated types to determine whether
-  they have a subtype relation, and return `true`, `false`, or `:dont-know`.
-  When `subtype?` (the public calling interface) is called,
-  the methods of `-subtype?` are called in some order
-  (`:primary` first) until one method returns `true` or `false`,
-  in which case `subtype?` returns that value.
-  If no method returns true or false, then the function
-  `*subtype?-default*` is called, and its value returned.
-  If subtype? is called with a 3rd argument, then
-  `*inhabited?-default*` is dynamically bound to that value.
-
+Applications may install methods via `(defmethod -subtype? ...)`.
+The method accepts two arguments which are type-designators,
+`[sub-designator super-designator]`,  pontentially application specific.
+The method should examine the designated types to determine whether
+they have a subtype relation, and return `true`, `false`, or `:dont-know`.
+When `subtype?` (the public calling interface) is called,
+the methods of `-subtype?` are called in some order
+(`:primary` first) until one method returns `true` or `false`,
+in which case `subtype?` returns that value.
+If no method returns true or false, then the function
+`*subtype?-default*` is called, and its value returned.
+If subtype? is called with a 3rd argument, then
+`*inhabited?-default*` is dynamically bound to that value.
 
 For more information, see the documentation in the source code.
 
