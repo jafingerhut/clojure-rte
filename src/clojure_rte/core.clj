@@ -165,7 +165,7 @@
   type names which appear as (something maybe-args), which are
   supported by RTE.  The goal is to support all those supported
   by typep, but that's not yet implemented."
- '(rte))
+ '(rte = member))
 
 (defn traverse-pattern
   "Workhorse function for walking an rte pattern.
@@ -196,8 +196,7 @@
                  :*
                  :?
                  :+
-                 :exp
-                 :rte) (throw (ex-info (format "invalid pattern %s, expecting exactly one operand" pattern)
+                 :exp) (throw (ex-info (format "invalid pattern %s, expecting exactly one operand" pattern)
                                        {:error-type :rte-syntax-error
                                         :keyword keyword
                                         :pattern pattern
@@ -205,9 +204,13 @@
                                         :cause :unary-keyword
                                         }))
                 ;; case-else
-                (if (some #{(first pattern)} supported-nontrivial-types)
+                (cond
+                  (and (sequential? keyword)
+                       (some #{(first keyword)} supported-nontrivial-types))
                   ((:type functions) pattern functions)
-                  (throw (ex-info (format "0-ary type %s not yet implemented" pattern)
+
+                  :else
+                  (throw (ex-info (format "%s in pattern %s not implemented" keyword pattern)
                                   {:error-type :type-not-yet-implemented
                                    :pattern pattern
                                    :functions functions
@@ -215,14 +218,6 @@
           (if-exactly-one-operand []
             (let [[token operand] pattern]
               (case token
-                (:rte)
-                (throw (ex-info (format "not yet implemented: derivative of %s" pattern)
-                                {:error-type :rte-not-yet-implemented
-                                 :keyword keyword
-                                 :pattern pattern
-                                 :functions functions
-                                 }))
-                
                 (:or :and :cat :permute)
                 (traverse-pattern operand functions)
                 
@@ -248,7 +243,7 @@
                 ;;case-else
                 (if (some #{(first pattern)} supported-nontrivial-types)
                   ((:type functions) pattern functions)
-                  (throw (ex-info (format "unary type %s not yet implemented" pattern)
+                  (throw (ex-info (format "unary type %s in %s not yet implemented" token pattern)
                                   {:error-type :type-not-yet-implemented
                                    :pattern pattern
                                    :functions functions
@@ -267,7 +262,7 @@
                  :cat)
                 ((functions token) operands functions)
 
-                (:not :* :+ :? :rte :exp)
+                (:not :* :+ :? :exp)
                 (throw (ex-info (format "invalid pattern %s, expecting exactly one operand" pattern)
                                 {:error-type :rte-syntax-error
                                  :keyword keyword
@@ -277,9 +272,10 @@
                                  }))
 
                 ;;case-else
-                (if (some #{(first pattern)} supported-nontrivial-types)
+                (if (some #{token} supported-nontrivial-types)
                   ((:type functions) pattern functions)
-                  (throw (ex-info (format "variadic type %s not yet implemented" pattern)
+                  (throw (ex-info (format "variadic type %s in %s not yet implemented, expecting one of %s"
+                                          token pattern supported-nontrivial-types)
                                   {:error-type :type-not-yet-implemented
                                    :pattern pattern
                                    :functions functions
@@ -868,13 +864,12 @@
 (defmethod ty/valid-type? 'rte [[_ pattern]]
   (boolean (rte-compile pattern)))
 
-
 (letfn [(rte? [t]
           (and (sequential? t)
                (= 'rte (first t))))
         (not? [t]
           (and (sequential? t)
-               (= 'not (first t))))
+               (= 'not (first t))))        
         (and? [t]
           (and (sequential? t)
                (= 'and (first t))))]

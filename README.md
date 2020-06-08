@@ -530,6 +530,130 @@ the corresponding graph using the `dfa-to-dot` function.
 <img src="img/example-dfa-2.png" alt="Example Finite Automaton" width="400"/>
 
 
+## Extensible types
+
+The namespace `clojure-rte.type` defines a type system which extends the
+Clojure built-in type system.   Types are sets of objects. Some types may be designated via so-called *type designators*.
+
+A *type designator* is defined by the following recursive definition.  If `A` and `B` are type designators and `f` is a symbol whose global value `(resolve 'f)` is a unary predicate function,
+then
+
+  - Any symbol designates a type, provided it can be resolved with the function `resolve`, and the resulting value is true according to the `class?` predicate.  I.e., if the predicate `(fn [x] (and (symbol? x) (resolve x) (class? (resolve x))))` is returns true.
+
+  - `(and A B)` is a type designator, designating the set of values which are simultaneously of type `A` and `B`. `(and ...)` may have arbitrarily many operands. `(and A)` means `A`, and `(and)` means the empty set of all possible.
+
+  - `(or A B)` is a type designator, designating the set of values which are of type `A` or of type `B`, or perhaps of both. `(or ...)` may have arbitrarily many operands.  `(or A)` means `A`, and `(or)` means the empty set of values.
+
+  - `(not A)` is a type designating, designating the set of values which are *not* of type `A`.
+
+  - `(= x)`  is a type designator, designating the set of all values which are equal `=` to its literal operand.  For example `(= 42)` is the set of all values equal to 42, which include among others the `java.lang.Long 42`, the `java.lang.Short 42`, and the  `java.lang.Byte 42`.
+
+  - `(member x y z ...)` is a type designator equivalent to `(or (= x) (= y) (= z) ...)`.
+  
+  - `(rte pattern)` is a type designator which specifies the set of sequences which match the given rte pattern.  For example, the type `(rte (:cat Long String))` is the set of two element sequences whose first element is a `Long` and whose second element is a string.
+
+
+The user interface to `clojure-rte.type` includes the following functions:
+
+* `typep [value type-designator]` --- predicate to determine whether a given object is an element of a designated type.
+
+Example 
+```clojure
+(typep 42 'Long) ;; true
+(typep "42" '(not Long)) ;; true
+```
+
+* `subtype? [sub super]` --- predicate to determine whether one type is a subtype of another.  I.e., for any `x` in `t1` is it tru that `x` is also in `t2` ?  There are three possible answers to this question, `true`, `false`, and `:dont-know`.
+
+Example 
+```clojure
+(subtypep 'Long '(or Long Double)) ;; true
+(subtype 'Long '(or String (not Long))) ;; false
+```
+
+* `disjoint? [t1 t2]` --- predicate to determine whether two types are disjoint in the sense that their intersection is empty. There are three possible answers to this question, `true`, `false`, and `:dont-know`.
+
+Example 
+```clojure
+(disjoint? 'Long 'Double) ;; true
+(disjoint 'Number 'java.io.Serializable) ;; false
+```
+
+* `inhabited? [type-designator]` --- predicate to determine whether there exists an element of a given type.  Any type which is not inhabited is vacuous. There are three possible answers to this question, `true`, `false`, and `:dont-know`.
+
+Example 
+```clojure
+(inhabited? 'Long) ;; true
+(inhabited? '(rte (:and (:+ Number) (:+ String)))) ;; false
+```
+
+## How to extend the type system
+
+An application may extend the type system by adding a new type
+designator syntax.  To do so several methods must be added to allow
+the system to reason about the new type.
+
+* `typep [value type-designator]` --- Applications defining new types
+should define a method on `typep` which decides whether a given value 
+is a member of that type. Example:
+```clojure
+(defmethod typep 'member [a-value [_type & others]]
+  (some #{a-value} others))
+```
+
+* `-inhabited?` ---   This function should never be called.
+Applications may install methods via `(defmethod -inhabited? ...)`.
+The method accepts one argument which is a type-designator,
+pontentially application specific.
+The method should examine the type designator and return
+`true`, `false`, or `:dont-know`.
+When `inhabited?` (the public calling interface) is called,
+the methods of `-inhabited?` are called in some order
+(`:primary` first) until one method returns `true` or `false`,
+in which case `inhabited?` returns that value.
+If no method returns `true` or `false`, then the function
+`*inhabited?-default*` is called, and its value returned.
+If `inhabited?` is called with a 3rd argument, then
+`*inhabited?-default*` is dynamically bound to that value."
+
+
+* `-disjoint?` ---   This function should never be called.
+Applications may install methods via `(defmethod -disjoint? ...)`.
+The method accepts two arguments which are type-designators,
+`[t1 t2]`,  pontentially application specific.
+The method should examine the designated types to determine whether
+the designated types are disjoint, i.e., whether they have no
+element in common, i.e., whether their intersection is empty.
+The method must return `true`, `false`, or `:dont-know`.
+The function, disjoint?, will call `(-disjoint? t1 t2)`
+and also `(-disjoint? t2 t1)` if necessary, therefore
+the methods need only check one or the other.
+When `disjoint?` (the public calling interface) is called,
+the methods of -disjoint? are called in some order
+(`:primary` first) until one method returns `true` or `false`,
+in which case `disjoint?` returns that value.
+If no method returns true or false, then the function
+`*disjoint?-default*` is called, and its value returned.
+If `disjoint?` is called with a 3rd argument, then
+`*disjoint?-default*` is dynamically bound to that value.
+    
+
+* `-subtype?` ---  This function should never be called.
+Applications may install methods via `(defmethod -subtype? ...)`.
+The method accepts two arguments which are type-designators,
+`[sub-designator super-designator]`,  pontentially application specific.
+The method should examine the designated types to determine whether
+they have a subtype relation, and return `true`, `false`, or `:dont-know`.
+When `subtype?` (the public calling interface) is called,
+the methods of `-subtype?` are called in some order
+(`:primary` first) until one method returns `true` or `false`,
+in which case `subtype?` returns that value.
+If no method returns true or false, then the function
+`*subtype?-default*` is called, and its value returned.
+If subtype? is called with a 3rd argument, then
+`*inhabited?-default*` is dynamically bound to that value.
+
+For more information, see the documentation in the source code.
 
 ## Not yet implemented
 
@@ -543,24 +667,7 @@ There are several important extensions we would like to implement.
   We would like to make these *type designators* part of the public interface to RTE.
   In order to do so we must fully implement, test, and document the DSL.
   
-  A *type designator* is defined by the following recursive definition.  If `A` and `B` are type designators and `f` is a symbol whose global value `(resolve 'f)` is a unary predicate function,
-  then
-
-  - Any symbol designates a type, provided it can be resolved with the function `resolve`, and the resulting value is true according to the `class?` predicate.  I.e., if the predicate `(fn [x] (and (symbol? x) (resolve x) (class? (resolve x))))` is returns true.
-
-  - `(and A B)` is a type designator, designating the set of values which are simultaneously of type `A` and `B`. `(and ...)` may have arbitrarily many operands. `(and A)` means `A`, and `(and)` means the empty set of all possible.
-
-  - `(or A B)` is a type designator, designating the set of values which are of type `A` or of type `B`, or perhaps of both. `(or ...)` may have arbitrarily many operands.  `(or A)` means `A`, and `(or)` means the empty set of values.
-
-  - `(not A)` is a type designating, designating the set of values which are *not* of type `A`.
-
   - `(satisfies f)` is a type designator, designating the set of values, `x` for which `(f x)` returns Boolean *true*.  It is assumed that `f` may be called with any value, always returns, and has no side effects.
-
-  - `(= x)`  is a type designator, designating the set of all values which are equal `=` to its literal operand.  For example `(= 42)` is the set of all values equal to 42, which include among others the `java.lang.Long 42`, the `java.lang.Short 42`, and the  `java.lang.Byte 42`.
-
-  - `(member x y z ...)` is a type designator equivalent to `(or (= x) (= y) (= z) ...)`.
-  
-  - `(rte pattern)` is a type designator which specifies the set of sequences which match the given rte pattern.  For example, the type `(rte (:cat Long String))` is the set of two element sequences whose first element is a `Long` and whose second element is a string.
 
 2. We have made no attempts to minimize the DFA which is produced.
 For example the image shown in section [Debugging](#debugging) is no
@@ -573,6 +680,11 @@ will improve run-time performance.
 (or Long (and (not Long) (not String))) = (not String)
 ```
 
+3. Currently adding a new type means you have to change the
+   `supported-nontrivial-types` global variable.  This means
+   applications really cannot yet add types without having access to
+   the source code.  This needs to be replaced with some sort of
+   `deftype` registration mechansim.
 
 ## Package dependencies overview
 

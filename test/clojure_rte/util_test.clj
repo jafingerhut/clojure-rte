@@ -31,6 +31,10 @@
 
 (deftest t-sort-operands-1
   (testing "sort-operands"
+    (is (= (sort-operands ())
+           ()))
+    (is (= (sort-operands [])
+           ()))
     (is (= (sort-operands '(::Cat ::Lion))
            '(::Cat ::Lion)))
     (is (= (sort-operands '(::Lion ::Cat))
