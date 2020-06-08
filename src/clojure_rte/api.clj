@@ -19,7 +19,9 @@
 ;; OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
 ;; WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-(ns clojure-rte.api)
+(ns clojure-rte.api
+  "This is an empty namespace to fool lein to load this file as part of
+  the clojure-rte.core ns.")
 
 (in-ns 'clojure-rte.core)
 

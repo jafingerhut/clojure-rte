@@ -18,7 +18,9 @@
 ;; LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
 ;; OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
 ;; WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
-(ns clojure-rte.type-extend)
+(ns clojure-rte.type-extend
+  "This is an empty namespace to fool lein to load this file as part of
+  the clojure-rte.core ns.")
 
 (in-ns 'clojure-rte.core)
 
