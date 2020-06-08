@@ -738,7 +738,13 @@
   ;;     array representing the finite atomaton.
   [index accepting pattern transitions])
 
+(defmethod print-method State [v w]
+  (.write w (format "#<State %d>" (:index v))))
+
 (defrecord Dfa [pattern canonicalized states])
+
+(defmethod print-method Dfa [v w]
+  (.write w (format "#<Dfa %d states>" (count (:states v)))))
 
 (defn rte-to-dfa 
   "Use the Brzozowski derivative aproach to compute a finite automaton
