@@ -19,6 +19,7 @@
 ;; OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
 ;; WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
+(ns clojure-rte.api)
 
 (in-ns 'clojure-rte.core)
 
@@ -44,18 +45,17 @@
   (rte-trace (rte-compile pattern)))
 
 (defmethod rte-trace :Dfa
-  [rte]
-  (letfn [(recurring [state path lineage]
-            (cond
-              (:accepting (rte state)) path
-              (some #{state} lineage) false
-              :else (some (fn [[type dst-state]]
-                            (recurring dst-state (conj path type) (conj lineage state)))
-                          (:transitions (rte state))))
-            )]
-    (recurring 0 [] ())))
-
-
+  [dfa]
+  (let [state-vec (:states dfa)]
+    (letfn [(recurring [state path lineage]
+              (cond
+                (:accepting (state-vec state)) path
+                (some #{state} lineage) false
+                :else (some (fn [[type dst-state]]
+                              (recurring dst-state (conj path type) (conj lineage state)))
+                            (:transitions (state-vec state))))
+              )]
+      (recurring 0 [] ()))))
 
 (defmulti rte-inhabited?
   (fn [rte]
@@ -82,29 +82,30 @@
 
 (defmethod rte-execute :Dfa
   [dfa items]
-  (letfn [(consume [state-index item]
-            (let [state-obj (dfa state-index)]
-              (cl-cond
-               ((:sync-state state-obj)
-                (reduced (:accepting state-obj)))
-               ((some (fn [[type next-state-index]]
-                        (if (ty/typep item type)
-                          next-state-index
-                          false))
-                      (:transitions state-obj)))
-               (:else (reduced false)))))]
-    (let [final-state (reduce consume 0 items)]
-      ;; final-state may be integer disgnating the state which was
-      ;;  reached on iterating successfully through the input
-      ;;  sequence, items.  Or final-state may true or false, if the
-      ;;  iteration finished without iterating through the entire
-      ;;  sequence.  Two such cases, we found ourselves in a
-      ;;  sync-state, or we encountered a item for which no transition
-      ;;  was possible.
-      (case final-state 
-        (true) true
-        (false) false
-        (:accepting (dfa final-state))))))
+  (let [state-vec (:states dfa)]
+    (letfn [(consume [state-index item]
+              (let [state-obj (state-vec state-index)]
+                (cl-cond
+                 ((:sync-state state-obj)
+                  (reduced (:accepting state-obj)))
+                 ((some (fn [[type next-state-index]]
+                          (if (ty/typep item type)
+                            next-state-index
+                            false))
+                        (:transitions state-obj)))
+                 (:else (reduced false)))))]
+      (let [final-state (reduce consume 0 items)]
+        ;; final-state may be integer disgnating the state which was
+        ;;  reached on iterating successfully through the input
+        ;;  sequence, items.  Or final-state may true or false, if the
+        ;;  iteration finished without iterating through the entire
+        ;;  sequence.  Two such cases, we found ourselves in a
+        ;;  sync-state, or we encountered a item for which no transition
+        ;;  was possible.
+        (case final-state 
+          (true) true
+          (false) false
+          (:accepting (state-vec final-state)))))))
 
 (defmulti rte-match "Given a rte pattern or finite automaton, determine whether the
   given sequence, items, matches the regular type expression.  If the
