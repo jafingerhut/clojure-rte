@@ -751,24 +751,11 @@
 (defn rte-to-dfa 
   "Use the Brzozowski derivative aproach to compute a finite automaton
   representing the given rte patten.  The finite automaton is in the
-  form of an array of states.  The n'th state is array[n].  Each state
-  is a map with the keys:
-
-  :index -- the index of this state in the array
-  :accepting - Boolean true/false indicating whether this state is a
-      final/accepting state.
-  :pattern -- the derivative value representing an rte pattern matching
-      any tail of the input sequence which is accepting from this point
-      onward.
-  :transitions -- A list of pairs, each pair is a 2 element array of the form
-      [type next-state], e.g., [clojure.lang.Keyword 1]
-      which means if the value at the head of the sequence is of type
-      clojure.lang.Keyword, then go to state 1.  The type is some value
-      compatible with isa?.  the state index is some index of the state
-      array representing the finite atomaton."
+  form of an array of States.  The n'th State is array[n]."
   [pattern]
 
-  (let [pattern (canonicalize-pattern pattern)
+  (let [given-pattern pattern
+        pattern (canonicalize-pattern pattern)
         [triples derivatives] (find-all-derivatives pattern)
         derivatives (cons pattern (remove #{pattern} derivatives))
         index-map (zipmap derivatives (range (count derivatives)))
@@ -777,85 +764,50 @@
                        ) triples)
         grouped (group-by (fn [trip]
                             (trip 0)) triples)]
-    (into [] (map (fn [deriv index]
-                    (let [transitions (if (and (grouped index)
-                                               (apply = (map (fn [[_src _wrt dst]]
-                                                               dst) (grouped index))))
-                                        ;; if all transitions have same dst, then don't draw
-                                        ;; multiple transitions, just draw with with label = :sigma
-                                        (list [:sigma ((first (grouped index)) 2)])
-                                        (map (fn [[_src wrt dst]]
-                                               [wrt dst]) (grouped index)))]
-                      {:index index
-                       :initial (= 0 index)
-                       :accepting (nullable deriv)
-                       :pattern deriv
-                       :sync-state (and (some #{[:sigma index]} transitions) true)
-                       :transitions transitions}))
-                  derivatives (range (count derivatives))))))
+    (map->Dfa
+     {:pattern given-pattern
+      :canonicalized pattern
+      :states
+      (into [] (map (fn [deriv index]
+                      (let [transitions (if (and (grouped index)
+                                                 (apply = (map (fn [[_src _wrt dst]]
+                                                                 dst) (grouped index))))
+                                          ;; if all transitions have same dst, then don't draw
+                                          ;; multiple transitions, just draw with with label = :sigma
+                                          (list [:sigma ((first (grouped index)) 2)])
+                                          (map (fn [[_src wrt dst]]
+                                                 [wrt dst]) (grouped index)))]
+                        (map->State {:index index
+                                     :initial (= 0 index)
+                                     :accepting (nullable deriv)
+                                     :pattern deriv
+                                     :sync-state (and (some #{[:sigma index]} transitions) true)
+                                     :transitions transitions})))
+                    derivatives (range (count derivatives))))})))
 
-(def rte-compile
+
+(defrecord State 
+  ;; :index -- the index of this state in the array
+  ;; :accepting - Boolean true/false indicating whether this state is a
+  ;;     final/accepting state.
+  ;; :pattern -- the derivative value representing an rte pattern matching
+  ;;     any tail of the input sequence which is accepting from this point
+  ;;     onward.
+  ;; :sync-state -- Boolean
+  ;; :pattern -- 
+  ;; :transitions -- A list of pairs, each pair is a 2 element array of the form
+  ;;     [type next-state], e.g., [clojure.lang.Keyword 1]
+  ;;     which means if the value at the head of the sequence is of type
+  ;;     clojure.lang.Keyword, then go to state 1.  The type is some value
+  ;;     compatible with isa?.  the state index is some index of the state
+  ;;     array representing the finite atomaton.
+  [index accepting pattern transitions])
+
+(defrecord Dfa [pattern canonicalized states])
+
+(def rte-compile 
   "Compile an rte pattern into a finite automaton."
   (memoize rte-to-dfa))
-
-(defn rte-trace
-  "Given a compiled rte, find a sequence of types which satisfy the corresponding pattern."
-  [rte]
-  (letfn [(recurring [state path lineage]
-            (cond
-              (:accepting (rte state)) path
-              (some #{state} lineage) false
-              :else (some (fn [[type dst-state]]
-                            (recurring dst-state (conj path type) (conj lineage state)))
-                          (:transitions (rte state))))
-            )]
-    (recurring 0 [] ())))
-
-(defn rte-inhabited? [dfa]
-  (some :accepting dfa))
-
-(defn rte-vacuous? [dfa]
-  (not (rte-inhabited? dfa)))
-
-(defn rte-execute 
-  "Given a finite automaton generated by rte-to-dfa (or rte-compile), determine
-   whether the given sequence, items, matches the regular type expression."
-  [dfa items]
-  (letfn [(consume [state-index item]
-            (let [state-obj (dfa state-index)]
-              (cl-cond
-               ((:sync-state state-obj)
-                (reduced (:accepting state-obj)))
-               ((some (fn [[type next-state-index]]
-                        (if (ty/typep item type)
-                          next-state-index
-                          false))
-                      (:transitions state-obj)))
-               (:else (reduced false)))))]
-    (let [final-state (reduce consume 0 items)]
-      ;; final-state may be integer disgnating the state which was
-      ;;  reached on iterating successfully through the input
-      ;;  sequence, items.  Or final-state may true or false, if the
-      ;;  iteration finished without iterating through the entire
-      ;;  sequence.  Two such cases, we found ourselves in a
-      ;;  sync-state, or we encountered a item for which no transition
-      ;;  was possible.
-      (case final-state 
-        (true) true
-        (false) false
-        (:accepting (dfa final-state))))))
-
-(defn rte-match 
-  "Given a rte pattern, not a finite automaton, determine whether the
-  given sequence, items, matches the regular type expression.  If the
-  caller wishes to check more than one sequence against the same
-  pattern, it is better to call rte-compile, to get an automaton, and
-  use that same automaton in several calls to rte-execute.
-  rte-execute has time complexity O(n) where n is the length of the
-  sequence, while rte-compile has worst case exponential complexity.
-  rte-match contains a call to both rte-compile and rte-execute."
-  [pattern items]
-  (rte-execute (rte-compile pattern) items))
 
 (defmethod ty/typep 'rte [a-value [_a-type pattern]]
   (and (sequential? a-value)
