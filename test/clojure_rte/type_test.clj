@@ -34,6 +34,12 @@
       (is (disjoint? 'Integer 'String))
       (is (not (disjoint? 'java.lang.Comparable '(not java.io.Serializable))))
       (is (not (disjoint? '(and java.lang.Comparable (not clojure.lang.Symbol)) 'java.lang.Object)))
+
+      ;; (disjoint? (and A1 A2 .. An) S)
+      ;; if Ai is non empty subset of S
+      (is (not (disjoint? '(and Long (not (member 2 3 4))) 'java.lang.Comparable)))
+
+
       )))
 
 (deftest t-disjoint-not?
@@ -157,17 +163,42 @@
     (is (disjoint? 'String '(member 1 2 3)))
     (is (disjoint? '(member 1 2 3) 'String))
 
-    (is (not (disjoint? 'String '(not (member 1 2 3)))))
-    (is (not (disjoint? 'Long '(not (member 1 2 3)))))
-    (is (not (disjoint? 'Object '(not (member 1 2 3)))))
-    (is (not (disjoint? 'Object '(not (= 0)))))
-    (is (not (disjoint? 'Long '(not (= 0)))))
-    (is (not (disjoint? 'java.lang.CharSequence '(not (member a b c a b c)))))
-    (disjoint? '(member [1 2 3] [1 2] [1] []) '(not (member [1 2 3] [2 1 3])))
+    (is (not (disjoint? 'String '(not (member 1 2 3))
+                        (constantly true))))
+    (is (not (disjoint? 'Long '(not (member 1 2 3))
+                        (constantly true))))
+    (is (not (disjoint? 'Object '(not (member 1 2 3))
+                        (constantly true))))
+    (is (not (disjoint? 'Object '(not (= 0))
+                        (constantly true))))
+    (is (not (disjoint? 'Long '(not (= 0))
+                        (constantly true))))
+    (is (not (disjoint? 'java.lang.CharSequence '(not (member a b c a b c))
+                        (constantly true))))
+    (is (not (disjoint? '(member 3 2)
+                        '(member 3 4)
+                        (constantly true))))
+    (is (not (disjoint? '(member 3 2)
+                        '(not (member 3 4))
+                        (constantly true))))
+    (is (not (disjoint? '(member [1 2 3] [1 2] [1] [])
+                        '(not (member [1 2 3] [2 1 3]))
+                        (constantly true))))
+    (is (not (disjoint? '(and String (not (member a b c 1 2 3)))
+                        'java.lang.Comparable
+                        (constantly true))))
     ))
 
 (deftest t-subtype?
   (testing "subtype?"
+    (is (not (subtype? 'Long '(member 1 2 3) (constantly true))))
+    (is (not (subtype? 'Long '(member 1 1.2 1.3) (constantly true))))
+    (is (not (subtype? 'Long '(member 1.1 1.2 1.3) (constantly true))))
+
+    (is (not (subtype? 'Long '(not (member 1 2 3)) (constantly true))))
+    (is (not (subtype? 'Long '(not (member 1 1.2 1.3)) (constantly true))))
+    (is (subtype? 'Long '(not (member 1.1 1.2 1.3)) (constantly false)))
+    
     (is (subtype? '(member 1 2) '(member 0 1 2 3)))
     (is (not (subtype? '(member 0 1 2 3) '(member 1 2))))
     (is (subtype? '(member 1 2) 'Long) "line 154")
