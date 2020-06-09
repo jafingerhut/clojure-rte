@@ -62,6 +62,8 @@
       (rte-match '(:cat ::a ::b) [1 \"hello\" 2
                                   \"world\" 1.0 2.0])))"
   [bindings thunk]
+  ;; TODO need to detect if every a local key is defined differently,
+  ;; and if so purge the memoize cache of rte-compile.
   (binding [*rte-known* (apply assoc *rte-known* bindings)]
     (thunk)))
       
