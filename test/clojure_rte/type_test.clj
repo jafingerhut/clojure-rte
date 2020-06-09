@@ -29,6 +29,7 @@
              (resolve 'java.io.Serializable)
              (resolve 'java.lang.Comparable))
     (testing "disjoint?"
+      (is (not (disjoint? 'java.io.Serializable '(and clojure.lang.Symbol (not (member a b))) (constantly true))))
       (is (not (disjoint? 'java.lang.CharSequence 'String)))
       (is (not (disjoint? 'java.io.Serializable 'java.lang.Comparable)))
       (is (disjoint? 'Integer 'String))
