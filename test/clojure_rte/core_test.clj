@@ -308,13 +308,13 @@
 (deftest t-rte-match
   (testing "rte-match"
     (let [rte (rte-compile '(:* (:cat clojure.lang.Keyword java.lang.Long)))]
-      (is (rte-execute rte '(:x 1 :y 2 :z 42)))
-      (is (rte-execute rte '()))
-      (is (not (rte-execute rte '(x 1 y 2 z 42)))))
+      (is (rte-match rte '(:x 1 :y 2 :z 42)))
+      (is (rte-match rte '()))
+      (is (not (rte-match rte '(x 1 y 2 z 42)))))
     (let [rte (rte-compile '(:* (:cat clojure.lang.Keyword java.lang.Long)))]
-      (is (rte-execute rte '(:x 1 :y 2 :z 42)))
-      (is (rte-execute rte '()))
-      (is (not (rte-execute rte '(x 1 y 2 z 42)))))
+      (is (rte-match rte '(:x 1 :y 2 :z 42)))
+      (is (rte-match rte '()))
+      (is (not (rte-match rte '(x 1 y 2 z 42)))))
 
     (is (rte-match '(:cat (:* integer?) (:? String))
                    '( 1 2 3 4 "hello")))
@@ -359,8 +359,6 @@
     (is (rte-match '(:* (:cat clojure.lang.Keyword (:and :sigma (:not java.lang.Long))))
                    '(:x "hello" :y "hello" :z "hello")))
     
-    
-
     ;; currently this test fails
     (is (rte-match '(:not Number) ["Hello" "world"]))
     ))
@@ -379,7 +377,7 @@
                  pattern `(:cat (:exp (~n (:? Long))) (:exp (~n Long)))
                  rte (rte-compile pattern)]
 
-             (is (rte-execute rte data) (format "n=%s" n))))
+             (is (rte-match rte data) (format "n=%s" n))))
          (range 10))))
 
 (deftest t-typep-rte
@@ -394,6 +392,11 @@
     (is (rte-trace (rte-compile '(:* (rte (:* Long)))))  "test 6")
     (is (rte-trace (rte-compile '(:cat (:+ (:cat Long Double String))
                                        (:+ (:cat String Long Double)))))  "test 7")
+
+    (is (rte-trace  '(:* (rte Long)))  "test 12")
+    (is (rte-trace  '(:* (rte (:* Long))))  "test 16")
+    (is (rte-trace  '(:cat (:+ (:cat Long Double String))
+                                       (:+ (:cat String Long Double))))  "test 17")
 ))
 
 (deftest t-with-rte-1
@@ -410,7 +413,7 @@
   (with-rte [::a (:permute Long Long String)]
     (is (resolve-rte-tag ::a))
     (let [rte (rte-compile '(:cat ::a ::a))]
-      (is (rte-execute rte [2 2 "hello"
+      (is (rte-match rte [2 2 "hello"
                             4 4 "world"]) "case 1")))
   )
 
@@ -418,15 +421,15 @@
   (with-rte [::a (:permute Long Long String)]
     (is (resolve-rte-tag ::a))
     (let [rte (rte-compile '(:cat ::a ::a))]
-      (is (rte-execute rte [2 2 "hello"
+      (is (rte-match rte [2 2 "hello"
                             4 4 "world"]) "case 1")
-      (is (rte-execute rte [2 "hello" 2
+      (is (rte-match rte [2 "hello" 2
                             4 4 "world"]) "case 2")
-      (is (rte-execute rte [2 "hello" 2
+      (is (rte-match rte [2 "hello" 2
                             "world" 4 4]) "case 3")
-      (is (not (rte-execute rte [2 "hello" 2 2 2
+      (is (not (rte-match rte [2 "hello" 2 2 2
                                  "world" 4 4])) "case 4")
-      (is (not (rte-execute rte [2 "hello" "hello"
+      (is (not (rte-match rte [2 "hello" "hello"
                                  "world" 4 4])) "case 5")))
   )
 
@@ -437,18 +440,21 @@
 
       (let [pat (rte-compile '(:cat ::x  ::y))]
         ;; the same as (rte-compile '(:cat (:+ Long) (:+ Double)))
-        (is (rte-execute pat [1 2 3 1.2 3.4 5.6 7.8]))
-        (is (not (rte-execute pat [[1 2 3] [1.2 3.4 5.6 7.8]])))
+        (is (rte-match pat [1 2 3 1.2 3.4 5.6 7.8]))
+        (is (not (rte-match pat [[1 2 3] [1.2 3.4 5.6 7.8]])))
         ))
 
     (let [pat (rte-compile '(:cat (rte (:+ Long)) (rte (:+ Double))))]
-      (is (not (rte-execute pat [1 2 3 1.2 3.4 5.6 7.8])))
-      (is (rte-execute pat [[1 2 3] [1.2 3.4 5.6 7.8]])))))
+      (is (not (rte-match pat [1 2 3 1.2 3.4 5.6 7.8])))
+      (is (rte-match pat [[1 2 3] [1.2 3.4 5.6 7.8]])))))
 
 (deftest t-rte-inhabited
   (testing "rte inhabited?"
     (is (rte-inhabited? (rte-to-dfa '(:and (:* Long) (:* Double)))))
-    (is (rte-vacuous? (rte-to-dfa '(:and (:+ Long) (:+ Double)))))))
+    (is (rte-vacuous? (rte-to-dfa '(:and (:+ Long) (:+ Double)))))
+
+    (is (rte-inhabited? '(:and (:* Long) (:* Double))))
+    (is (rte-vacuous? '(:and (:+ Long) (:+ Double))))))
 
 (deftest t-rte-with-rte
   (testing "recursive rte"

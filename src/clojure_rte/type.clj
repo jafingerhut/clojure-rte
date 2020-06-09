@@ -456,6 +456,20 @@
           (every? (fn [e1]
                     (typep e1 super)) (rest sub))
 
+          ;; (subtype? 'Long '(member 1 2 3))
+          (and (member? super)
+               (class-designator? sub)) ;; assuming a class is infinite
+          false
+
+          ;; (subtype? 'Long '(not (member 1 2 3))) ==> false
+          ;; (subtype? 'Long '(not (member 1.1 2 3))) ==> false
+          ;; (subtype? 'Long '(not (member 1.1 2.2 3.3))) ==> true
+          (and (not? super)
+               (class-designator? sub)
+               (member? (second super)))
+          (every? (fn [e2]
+                    (not (typep e2 sub))) (rest (second super)))
+
           :else
           :dont-know))
   
@@ -580,6 +594,37 @@
            (not (= :final (class-designator? (resolve (second t2))))))
       false
 
+      ;; I don't know the general form of this, so make it a special case for the moment.
+      ;; (ty/disjoint? '(and Long (not (member 2 3 4))) 'java.lang.Comparable)
+      ;;                      A   (not B)                     C
+      ;; should return false
+      ;; TODO generalize this special case.
+      ;; If B < A and A !< B    and A < C and C !< A
+      ;;   then (and A !B) is NOT disjoint from C
+      (and (and? t1) ;; t1 of the form (and ...)
+           (= 3 (count t1)) ;; t1 of the form (and x y)
+           (not? (first (rest (rest t1))))  ;; t1 of the form (and x (not y))
+           (let [[_ A [_ B]] t1
+                 C t2]
+             (and (subtype? B A (constantly false))
+                  (not (subtype? A B (constantly true)))
+                  (subtype? A C (constantly false))
+                  (not (subtype? C A (constantly true))))))
+      false
+
+      
+      ;; (ty/disjoint? '(and String (not (member a b c 1 2 3))) 'java.lang.Comparable)
+      ;;                       A    (not B)                     C
+      ;;  since A and B are disjoint
+      ;;  we may ask (disjoint? A C)
+      (and (and? t1) ;; t1 of the form (and ...)
+           (= 3 (count t1)) ;; t1 of the form (and x y)
+           (not? (first (rest (rest t1))))  ;; t1 of the form (and x (not y))
+           (let [[_ A [_ B]] t1
+                 C t2]
+             (disjoint? A B)))
+      (disjoint? (second t1) t2)
+      
       :else
       :dont-know)))
 
