@@ -784,8 +784,5 @@
                     derivatives (range (count derivatives))))})))
 
 
-(def rte-compile 
-  "Compile an rte pattern into a finite automaton."
-  (memoize rte-to-dfa))
 
 

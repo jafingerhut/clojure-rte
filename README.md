@@ -13,15 +13,15 @@ expression pattern is represented internally (after compilation with
 
 
 
-This means that the time complexity of matching a sequence,
-`rte-execute`, against a pattern is `O(n)` where `n` is the length of
+This means that after the pattern has been compiled, the time complexity of matching a sequence,
+`rte-match`, against a pattern is `O(n)` where `n` is the length of
 the sequence.  I.e., the time to perform the match is not a function of the
 complexity of the pattern; it is only a function of the sequence
 length.  On the contrary, the time to compile the pattern depends on
 the complexity of the pattern, and may be exponential in worst case.
-For this reason, the programmer is encouraged to arrange that
-expressions be compiled either once, and used many times, or if
-possible to compile the expressions at compile-time/load-time via:
+For this reason, patterns are compiled and automatically memoized
+via the clojure [`memoize`](https://clojuredocs.org/clojure.core/memoize)
+function.
 
 In some cases the sequence can be determined to match the pattern
 without examining the entire sequence.  For example if the pattern is,
@@ -94,10 +94,10 @@ Example
 
 ```clojure
 (let [rte (rte-compile '(:cat integer? String))]
-  (rte-execute rte [1 "hello"]) ;; true
-  (rte-execute rte [1.0 "hello"]) ;; false
-  (rte-execute rte [1 2]) ;; false
-  (rte-execute rte [1 2 "hello"]) ;; false
+  (rte-match rte [1 "hello"]) ;; true
+  (rte-match rte [1.0 "hello"]) ;; false
+  (rte-match rte [1 2]) ;; false
+  (rte-match rte [1 2 "hello"]) ;; false
   )
 ```
 
@@ -107,10 +107,10 @@ Example
 
 ```clojure
 (let [rte (rte-compile '(:+ integer?))]
-  (rte-execute rte [1 2 3 4 5]) ;; true
-  (rte-execute rte [1]) ;; true
-  (rte-execute rte []) ;; false
-  (rte-execute rte [1.0 2 3.0 4 5]) ;; false
+  (rte-match rte [1 2 3 4 5]) ;; true
+  (rte-match rte [1]) ;; true
+  (rte-match rte []) ;; false
+  (rte-match rte [1.0 2 3.0 4 5]) ;; false
   )
 ```
 
@@ -120,10 +120,10 @@ Example
 
 ```clojure
 (let [rte (rte-compile '(:* integer?))]
-  (rte-execute rte [1 2 3 4 5]) ;; true
-  (rte-execute rte [1]) ;; true
-  (rte-execute rte []) ;; true
-  (rte-execute rte [1.0 2 3.0 4 5]) ;; false
+  (rte-match rte [1 2 3 4 5]) ;; true
+  (rte-match rte [1]) ;; true
+  (rte-match rte []) ;; true
+  (rte-match rte [1.0 2 3.0 4 5]) ;; false
   )
 ```
 
@@ -133,15 +133,15 @@ Example
 
 ```clojure
 (let [rte (rte-compile '(:? integer?))]
-  (rte-execute rte [1]) ;; true
-  (rte-execute rte []) ;; true
-  (rte-execute rte [1 2]) ;; false
+  (rte-match rte [1]) ;; true
+  (rte-match rte []) ;; true
+  (rte-match rte [1 2]) ;; false
   )
 
 (let [rte (rte-compile '(:cat integer? (:? String)))]
-  (rte-execute rte [1 2 3 4 5]) ;; true
-  (rte-execute rte [1 2 3 4 5 "hello"]) ;; true
-  (rte-execute rte [1 2 3 4 5 "hello" "world"]) ;; false
+  (rte-match rte [1 2 3 4 5]) ;; true
+  (rte-match rte [1 2 3 4 5 "hello"]) ;; true
+  (rte-match rte [1 2 3 4 5 "hello" "world"]) ;; false
   )
 ```
 
@@ -151,9 +151,9 @@ Example --- to match a sequence 0 to 5 Integers,
 
 ```clojure
 (let [rte (rte-compile '(:exp (5 (:? integer?))))]
-   (rte-execute rte []) ;; true
-   (rte-execute rte [1 2 3]) ;; true
-   (rte-execute rte [1 2 3 3 4 5 6]) ;; false
+   (rte-match rte []) ;; true
+   (rte-match rte [1 2 3]) ;; true
+   (rte-match rte [1 2 3 3 4 5 6]) ;; false
    )
 ```
 
@@ -164,9 +164,9 @@ Example ---  Keyword followed by 1 or two integers, repeated any number of times
 ```clojure
 (let [rte (rte-compile '(:and (:* (:cat Keyword integer? (:? integer?)))
                               (:+ (:sigma :sigma :sigma))))]
-  (rte-execute rte [:x 1 :x 2 :x 3]) ;; true
-  (rte-execute rte [:x 1 2 :y 2 3]) ;; true
-  (rte-execute rte [:x 1 :y 3]) ;; false
+  (rte-match rte [:x 1 :x 2 :x 3]) ;; true
+  (rte-match rte [:x 1 2 :y 2 3]) ;; true
+  (rte-match rte [:x 1 :y 3]) ;; false
   )
 ```
 
@@ -177,9 +177,9 @@ Example  ---  Takes 0 or more operands.  Either 0 or more integers, or 1 or more
 
 ```clojure
 (let [rte (rte-compile '(:or (:* integer?) (:+ String)))]
-  (rex-execute rte []) ;; true, 0 integers
-  (rex-execute rte [1 2 3]) ;; true
-  (rex-execute rte ["hello" "world"]) ;; true one or more strings
+  (rte-match rte []) ;; true, 0 integers
+  (rte-match rte [1 2 3]) ;; true
+  (rte-match rte ["hello" "world"]) ;; true one or more strings
   )
 ```
 
@@ -194,11 +194,11 @@ slow, and perhaps exhaust virtual memory.
 
 ```clojure
 (let [rte (rte-compile '(:permute integer? integer? String))]
-  (rex-execute rte [1 2 "hello"]) ;; true
-  (rex-execute rte [1 "hello" 2]) ;; true
-  (rex-execute rte ["hello" 1 2]) ;; true
-  (rex-execute rte ["hello" 2]) ;; false
-  (rex-execute rte [1 2]) ;; false
+  (rte-match rte [1 2 "hello"]) ;; true
+  (rte-match rte [1 "hello" 2]) ;; true
+  (rte-match rte ["hello" 1 2]) ;; true
+  (rte-match rte ["hello" 2]) ;; false
+  (rte-match rte [1 2]) ;; false
   )
 ```
 
@@ -209,9 +209,9 @@ Example any number of integers or strings in any order.
 
 ```clojure
 (let [rte (rte-compile '(:* (:or integer? String)))]
-  (rex-execute rte [1]) ;; true
-  (rex-execute rte [1 "hello"]) ;; true
-  (rex-execute rte ["hello" "world" 1 2 "hello" 3 "world"]) ;; true
+  (rte-match rte [1]) ;; true
+  (rte-match rte [1 "hello"]) ;; true
+  (rte-match rte ["hello" "world" 1 2 "hello" 3 "world"]) ;; true
 
 ```
 
@@ -223,11 +223,11 @@ Example -- any number of repetitions of integer anything String.
 
 ```clojure
 (let [rte (rte-compile '(:* (:cat integer? :sigma String)))]
-  (rex-execute rte []) ;; true
-  (rex-execute rte [1]) ;; false
-  (rex-execute rte [1 2]) ;; false
-  (rex-execute rte [1 "hello" 2]) ;; true
-  (rex-execute rte [1 "hello" 2 3 "world" 4 1 "hello" 2 3 "world" 4]) ;; true
+  (rte-match rte []) ;; true
+  (rte-match rte [1]) ;; false
+  (rte-match rte [1 2]) ;; false
+  (rte-match rte [1 "hello" 2]) ;; true
+  (rte-match rte [1 "hello" 2 3 "world" 4 1 "hello" 2 3 "world" 4]) ;; true
   )
 ```
 
@@ -254,9 +254,9 @@ Example -- `String` matches a singleton sequence whose element is a string.  So 
 
 (let [rte (rte-compile '(:cat (:* (:cat clojure.lang.Keyword java.lang.Long))
                                   (:? String)))]
-  (rte-execute '(:x 1 :y 2 :z 42)) ;; --> true
-  (rte-execute '(:x 1 :y 2 :z 42 "Hello")) ;; --> true
-  (rte-execute '(:x 1 :y 2 :z 42 "Hello" "World")) ;; --> false
+  (rte-match '(:x 1 :y 2 :z 42)) ;; --> true
+  (rte-match '(:x 1 :y 2 :z 42 "Hello")) ;; --> true
+  (rte-match '(:x 1 :y 2 :z 42 "Hello" "World")) ;; --> false
 )
 ```
 
@@ -337,7 +337,7 @@ or readability, use the macro `with-rte`.
            ::b (:permute Double Double String) ;; not quoted
            ]
   (let [rte (rte-compile '(:cat ::a ::a ::b ::b))]
-    (rte-execute rte [2 2 "hello"
+    (rte-match rte [2 2 "hello"
                       2 "hello" 2
                       4.0 4.0 "world"
                       "world" 4.1 4.2]) ;; true
@@ -364,13 +364,13 @@ matches the pattern *y*.  E.g.,
 
   (let [pat (rte-compile '(:cat ::x  ::y))]
     ;; the same as (rte-compile '(:cat (:+ Long) (:+ Double)))
-    (rte-execute pat [1 2 3 1.2 3.4 5.6 7.8]) ;; true
-    (rte-execute pat [[1 2 3] [1.2 3.4 5.6 7.8]]) ;; false
+    (rte-match pat [1 2 3 1.2 3.4 5.6 7.8]) ;; true
+    (rte-match pat [[1 2 3] [1.2 3.4 5.6 7.8]]) ;; false
   ))
 
 (let [pat (rte-compile '(:cat (rte (:+ Long)) (rte (:+ Double))))]
-  (rte-execute pat [1 2 3 1.2 3.4 5.6 7.8]) ;; false
-  (rte-execute pat [[1 2 3] [1.2 3.4 5.6 7.8]]) ;; true
+  (rte-match pat [1 2 3 1.2 3.4 5.6 7.8]) ;; false
+  (rte-match pat [[1 2 3] [1.2 3.4 5.6 7.8]]) ;; true
 )
 ```
 
@@ -386,13 +386,13 @@ vacuity.  For example, given two patterns, one might ask, is there a
 sequence which matches neither of the patterns?  Or to ask whether
 every sequence which matches one also matches the other.
 
-* `rte-trace` takes a compiled RTE, return value of `rte-compile` and
+* `rte-trace` takes an rte pattern (compiled or not) and
   returns a sequence of type designators indicating the values of a
   sequence which will satisfy the original pattern.
 
 ```clojure
-(rte-trace (rte-compile '(:and (:cat :sigma :sigma)
-                               (:* integer?))))
+(rte-trace '(:and (:cat :sigma :sigma)
+                  (:* integer?)))
 
 ==> [Byte Byte]
 
@@ -443,7 +443,7 @@ The return value of this function is memoized.  Thus if the same rte
 pattern is encountered again the previously compiled dfa is returned
 as an `O(1)` operation.
 
-The return value of `rte-compile` may be used as first argument of `rte-execute`.
+The return value of `rte-compile` may be used as first argument of `rte-match`.
 
 Note about performance.  You may force an rte to be compiled at
 program load/compile time by defining at top level using `def`.
@@ -459,13 +459,13 @@ time the code is evaluated.
 (defn foo [args ...]
   (let [rte (rte-compile '(:cat (:* Long) (:* Double) (:* String)))]
     ...
-    ... (rte-execute rte ...)
+    ... (rte-match rte ...)
     ...
     ))
 ```
 
 
-### (`rte-execute` rte items)
+### (`rte-match` rte items)
 
 Returns Boolean value.
 
@@ -473,24 +473,18 @@ Match a given sequence against a pre-compiled RTE pattern.
 
 ```clojure
 (let [rte (rte-compile '(:cat (:* String) (:* Long) (:* Double)))]
-  (rte-execute rte ["hello" "world" 1 2 3]) ;; true
-  (rte-execute rte ["hello" "world" 1.0 2.0 3.0]) ;; true
-  (rte-execute rte ["hello" "world" 1.0 2.0 3]) ;; false
+  (rte-match rte ["hello" "world" 1 2 3]) ;; true
+  (rte-match rte ["hello" "world" 1.0 2.0 3.0]) ;; true
+  (rte-match rte ["hello" "world" 1.0 2.0 3]) ;; false
   )
 ==> true
 ```
-
-
-### (`rte-match` pattern items)
-
-Returns Boolean value.
-
-Match a given sequence against a RTE pattern which has not yet been compiled.
 
 ```clojure
 (rte-match '(:cat (:* String) (:* Double)) ["hello" "world" 1 2 3])
 ==> true
 ```
+
 
 
 ### (`with-rte` bindings & body)
