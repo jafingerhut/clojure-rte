@@ -25,7 +25,7 @@
 
 (in-ns 'clojure-rte.core)
 
-// TODO this needs to be ^dynamic so it can be tested by re-binding the function
+;; TODO this needs to be ^dynamic so it can be tested by re-binding the function
 (def rte-compile 
   "Compile an rte pattern into a finite automaton."
   (memoize rte-to-dfa))
