@@ -117,7 +117,18 @@
   type names which appear as (something maybe-args), which are
   supported by RTE.  The goal is to support all those supported
   by typep, but that's not yet implemented."
- '(rte = member))
+  (atom #{}))
+
+(defmacro register-type [type-name]
+  `(swap! supported-nontrivial-types
+          conj '~type-name))
+
+(defn get-supported-nontrivial-types []
+  @supported-nontrivial-types)
+
+(register-type rte)
+(register-type =)
+(register-type member)
 
 (defn traverse-pattern
   "Workhorse function for walking an rte pattern.
@@ -158,7 +169,7 @@
                 ;; case-else
                 (cond
                   (and (sequential? keyword)
-                       (some #{(first keyword)} supported-nontrivial-types))
+                       (some #{(first keyword)} (get-supported-nontrivial-types)))
                   ((:type functions) pattern functions)
 
                   :else
@@ -193,7 +204,7 @@
                                         ~operand) functions)
 
                 ;;case-else
-                (if (some #{(first pattern)} supported-nontrivial-types)
+                (if (some #{(first pattern)} (get-supported-nontrivial-types))
                   ((:type functions) pattern functions)
                   (throw (ex-info (format "unary type %s in %s not yet implemented" token pattern)
                                   {:error-type :type-not-yet-implemented
@@ -224,10 +235,10 @@
                                  }))
 
                 ;;case-else
-                (if (some #{token} supported-nontrivial-types)
+                (if (some #{token} (get-supported-nontrivial-types))
                   ((:type functions) pattern functions)
                   (throw (ex-info (format "variadic type %s in %s not yet implemented, expecting one of %s"
-                                          token pattern supported-nontrivial-types)
+                                          token pattern (get-supported-nontrivial-types))
                                   {:error-type :type-not-yet-implemented
                                    :pattern pattern
                                    :functions functions

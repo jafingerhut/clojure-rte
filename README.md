@@ -584,8 +584,18 @@ Example
 ## How to extend the type system
 
 An application may extend the type system by adding a new type
-designator syntax.  To do so several methods must be added to allow
+designator syntax.  To do so, several steps must be followed.
+
+To declare a new type as existing, you must register it with a call
+to the `register-type` macro.
+
+```clojure
+(register-type my-new-type)
+```
+
+Additional several methods must be added to allow
 the system to reason about the new type.
+
 
 * `typep [value type-designator]` --- Applications defining new types
 should define a method on `typep` which decides whether a given value 
@@ -674,11 +684,6 @@ will improve run-time performance.
 (or Long (and (not Long) (not String))) = (not String)
 ```
 
-3. Currently adding a new type means you have to change the
-   `supported-nontrivial-types` global variable.  This means
-   applications really cannot yet add types without having access to
-   the source code.  This needs to be replaced with some sort of
-   `deftype` registration mechansim.
 
 ## Package dependencies overview
 
