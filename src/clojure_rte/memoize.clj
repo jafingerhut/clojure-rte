@@ -61,7 +61,13 @@
    (with-rte [::a (:permute Long Long String)
               ::b (:permute Double Double String)]
      (rte-match '(:cat ::a ::b) [1 \"hello\" 2
-                                \"world\" 1.0 2.0])))"
+                                \"world\" 1.0 2.0])))
+   Warning, any rte patterns which are compiled during the dynamic extent
+   of with-rte, survive the dynamic extend.  I.e., they are not compiled
+   twice, rather they are memoized.   
+   Any patterns which were compiled before the dynamic extend are ignored.
+   Any patterns compiled within the dynamic extend are abandoned when
+   the dynamic extend ends."
   [bindings & body]
   `(call-with-rte '~bindings (fn [] ~@body)))
 
