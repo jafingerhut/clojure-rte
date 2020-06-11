@@ -50,6 +50,7 @@
                                       sort-operands member]]
             [clojure-rte.type :as ty]
             [clojure-rte.rte]
+            [clojure-rte.memoize]
             [clojure-rte.api]
             [clojure-rte.type-extend]
             )
