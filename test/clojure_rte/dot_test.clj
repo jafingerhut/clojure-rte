@@ -27,7 +27,8 @@
 
 (deftest t-dfa-to-dot
   (testing "dfa-to-dot"
-    (sut/dfa-to-dot
-     (rte-compile '(:and (:cat :sigma :sigma) (:cat (:not String) Long)))
-     :title "Example"
-     :view false)))
+    (with-compile-env ()
+      (sut/dfa-to-dot
+       (rte-compile '(:and (:cat :sigma :sigma) (:cat (:not String) Long)))
+       :title "Example"
+       :view false))))

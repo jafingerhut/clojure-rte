@@ -299,76 +299,82 @@
 (deftest t-rte-to-dfa
 
   (testing "rte-to-dfa"
-    (is (rte-to-dfa '(:cat :epsilon (:+ (:* :epsilon)) :sigma)) "dfa 1")
-    ;; (is (thrown? clojure.lang.ExceptionInfo
-    ;;              (rte-to-dfa '(:permute ::Wolf (:? (:+ :empty-set)) (:+ (:* (:and)))))) "dfa 2")
-    ))
+    (with-compile-env ()
+      (is (rte-to-dfa '(:cat :epsilon (:+ (:* :epsilon)) :sigma)) "dfa 1")
+      ;; (is (thrown? clojure.lang.ExceptionInfo
+      ;;              (rte-to-dfa '(:permute ::Wolf (:? (:+ :empty-set)) (:+ (:* (:and)))))) "dfa 2")
+      )))
 
 
 (deftest t-rte-match
   (testing "rte-match"
-    (let [rte (rte-compile '(:* (:cat clojure.lang.Keyword java.lang.Long)))]
-      (is (rte-match rte '(:x 1 :y 2 :z 42)))
-      (is (rte-match rte '()))
-      (is (not (rte-match rte '(x 1 y 2 z 42)))))
-    (let [rte (rte-compile '(:* (:cat clojure.lang.Keyword java.lang.Long)))]
-      (is (rte-match rte '(:x 1 :y 2 :z 42)))
-      (is (rte-match rte '()))
-      (is (not (rte-match rte '(x 1 y 2 z 42)))))
+    (with-compile-env ()
+      (let [rte (rte-compile '(:* (:cat clojure.lang.Keyword java.lang.Long)))]
+        (is (rte-match rte '(:x 1 :y 2 :z 42)))
+        (is (rte-match rte '()))
+        (is (not (rte-match rte '(x 1 y 2 z 42)))))
+      (let [rte (rte-compile '(:* (:cat clojure.lang.Keyword java.lang.Long)))]
+        (is (rte-match rte '(:x 1 :y 2 :z 42)))
+        (is (rte-match rte '()))
+        (is (not (rte-match rte '(x 1 y 2 z 42)))))
 
-    (is (rte-match '(:cat (:* integer?) (:? String))
-                   '( 1 2 3 4 "hello")))
-    (is (not (rte-match '(:cat (:* integer?) (:? String))
-                        '( 1 2 3 4 "hello" "world"))))
+      (is (rte-match '(:cat (:* integer?) (:? String))
+                     '( 1 2 3 4 "hello")))
+      (is (not (rte-match '(:cat (:* integer?) (:? String))
+                          '( 1 2 3 4 "hello" "world"))))
 
 
-    ))
+      )))
 
 (deftest t-syntax
   (testing "syntax"
-    (is (thrown? clojure.lang.ExceptionInfo (rte-compile '(:* :epsilon :epsilon))))
-    (is (thrown? clojure.lang.ExceptionInfo (rte-compile '(:? :epsilon :epsilon))))
-    (is (thrown? clojure.lang.ExceptionInfo (rte-compile '(:+ :epsilon :epsilon))))))
+    (with-compile-env ()
+      (is (thrown? clojure.lang.ExceptionInfo (rte-compile '(:* :epsilon :epsilon))))
+      (is (thrown? clojure.lang.ExceptionInfo (rte-compile '(:? :epsilon :epsilon))))
+      (is (thrown? clojure.lang.ExceptionInfo (rte-compile '(:+ :epsilon :epsilon)))))))
 
 (deftest t-types
   (testing "types"
-    (is (rte-match '(:* int?) [ 1 2 3]))
-    (is (rte-match '(:* number?) [ 1 2.0 1/3]))
-    (is (rte-match '(:* symbol?)  '(a b c)))
-    (is (rte-match '(:* keyword?)  '(:a :b :c)))
-    (is (not (rte-match '(:* symbol?)  '(a :b c))))
-    (is (rte-match '(:* string?)  '("hello" "world")))
-    (is (rte-match '(:* rational?) [ 1 2 1/3]))
-    (is (rte-match '(:* float?) [ 1.0 2.0 3.0]))
-))
+    (with-compile-env ()
+      (is (rte-match '(:* int?) [ 1 2 3]))
+      (is (rte-match '(:* number?) [ 1 2.0 1/3]))
+      (is (rte-match '(:* symbol?)  '(a b c)))
+      (is (rte-match '(:* keyword?)  '(:a :b :c)))
+      (is (not (rte-match '(:* symbol?)  '(a :b c))))
+      (is (rte-match '(:* string?)  '("hello" "world")))
+      (is (rte-match '(:* rational?) [ 1 2 1/3]))
+      (is (rte-match '(:* float?) [ 1.0 2.0 3.0]))
+      )))
 
 (deftest t-not
   (testing "patterns with :not"
-    (is (rte-match '(:cat (:* (:cat clojure.lang.Keyword (:not java.lang.Long))))
-                   '(:x 1 :y 2 :z 42 "hello" 3)))
-    
-    (is (not (rte-match '(:cat clojure.lang.Keyword (:not java.lang.Long))
-                        '(:x 1))))
-    
-    (is (not (rte-match '(:* (:cat clojure.lang.Keyword (:and :sigma (:not java.lang.Long))))
-                        '(:x 1))))
-    (is (not (rte-match '(:* (:cat clojure.lang.Keyword (:and :sigma (:not java.lang.Long))))
-                        '(:x 1 :y 2))))
-    (is (not (rte-match '(:* (:cat clojure.lang.Keyword (:and :sigma (:not java.lang.Long))))
-                        '(:x 1 :y 2 :z 3))))
-    (is (rte-match '(:* (:cat clojure.lang.Keyword (:and :sigma (:not java.lang.Long))))
-                   '(:x "hello" :y "hello" :z "hello")))
-    
-    ;; currently this test fails
-    (is (rte-match '(:not Number) ["Hello" "world"]))
-    ))
+    (with-compile-env ()
+      (is (rte-match '(:cat (:* (:cat clojure.lang.Keyword (:not java.lang.Long))))
+                     '(:x 1 :y 2 :z 42 "hello" 3)))
+      
+      (is (not (rte-match '(:cat clojure.lang.Keyword (:not java.lang.Long))
+                          '(:x 1))))
+      
+      (is (not (rte-match '(:* (:cat clojure.lang.Keyword (:and :sigma (:not java.lang.Long))))
+                          '(:x 1))))
+      (is (not (rte-match '(:* (:cat clojure.lang.Keyword (:and :sigma (:not java.lang.Long))))
+                          '(:x 1 :y 2))))
+      (is (not (rte-match '(:* (:cat clojure.lang.Keyword (:and :sigma (:not java.lang.Long))))
+                          '(:x 1 :y 2 :z 3))))
+      (is (rte-match '(:* (:cat clojure.lang.Keyword (:and :sigma (:not java.lang.Long))))
+                     '(:x "hello" :y "hello" :z "hello")))
+      
+      ;; currently this test fails
+      (is (rte-match '(:not Number) ["Hello" "world"]))
+      )))
 
 (deftest t-mdtd
   (testing "mdtd"
-    (is (= (set (mdtd #{:sigma 'java.lang.Exception 'clojure.lang.ExceptionInfo}))
-           #{`(~'not java.lang.Exception)
-             `(~'and java.lang.Exception (~'not clojure.lang.ExceptionInfo))
-             'clojure.lang.ExceptionInfo}))))
+    (with-compile-env ()
+      (is (= (set (mdtd #{:sigma 'java.lang.Exception 'clojure.lang.ExceptionInfo}))
+             #{`(~'not java.lang.Exception)
+               `(~'and java.lang.Exception (~'not clojure.lang.ExceptionInfo))
+               'clojure.lang.ExceptionInfo})))))
 
 (deftest t-exp
   (testing "exp"
@@ -382,22 +388,24 @@
 
 (deftest t-typep-rte
   (testing "typep rte"
-    (is (typep [3 3.0 "hello" "world" 3 3.0]
-               '(rte (:cat (:+ (:cat Long Double String))
-                           (:+ (:cat String Long Double))))))))
+    (with-compile-env ()
+      (is (typep [3 3.0 "hello" "world" 3 3.0]
+                 '(rte (:cat (:+ (:cat Long Double String))
+                             (:+ (:cat String Long Double)))))))))
 
 (deftest t-rte-trace
   (testing "rte trace"
-    (is (rte-trace (rte-compile '(:* (rte Long))))  "test 2")
-    (is (rte-trace (rte-compile '(:* (rte (:* Long)))))  "test 6")
-    (is (rte-trace (rte-compile '(:cat (:+ (:cat Long Double String))
-                                       (:+ (:cat String Long Double)))))  "test 7")
+    (with-compile-env ()
+      (is (rte-trace (rte-compile '(:* (rte Long))))  "test 2")
+      (is (rte-trace (rte-compile '(:* (rte (:* Long)))))  "test 6")
+      (is (rte-trace (rte-compile '(:cat (:+ (:cat Long Double String))
+                                         (:+ (:cat String Long Double)))))  "test 7")
 
-    (is (rte-trace  '(:* (rte Long)))  "test 12")
-    (is (rte-trace  '(:* (rte (:* Long))))  "test 16")
-    (is (rte-trace  '(:cat (:+ (:cat Long Double String))
-                                       (:+ (:cat String Long Double))))  "test 17")
-))
+      (is (rte-trace  '(:* (rte Long)))  "test 12")
+      (is (rte-trace  '(:* (rte (:* Long))))  "test 16")
+      (is (rte-trace  '(:cat (:+ (:cat Long Double String))
+                             (:+ (:cat String Long Double))))  "test 17")
+      )))
 
 (deftest t-with-rte-1
   (with-rte [::a (:permute Long Long String)]
@@ -411,11 +419,11 @@
 
 (deftest t-with-rte-3
   (with-rte [::a (:permute Long Long String)]
-    (is (resolve-rte-tag ::a))
-    (let [rte (rte-compile '(:cat ::a ::a))]
-      (is (rte-match rte [2 2 "hello"
+      (is (resolve-rte-tag ::a))
+      (let [rte (rte-compile '(:cat ::a ::a))]
+        (is (rte-match rte [2 2 "hello"
                             4 4 "world"]) "case 1")))
-  )
+    )
 
 (deftest t-with-rte
   (with-rte [::a (:permute Long Long String)]
@@ -448,63 +456,97 @@
       (is (not (rte-match pat [1 2 3 1.2 3.4 5.6 7.8])))
       (is (rte-match pat [[1 2 3] [1.2 3.4 5.6 7.8]])))))
 
+(deftest t-with-rte-5
+  (testing "with-rte 5"
+    (with-rte [::x (:+ Long)
+               ::y (:+ Double)]
+
+      (let [pat (rte-compile '(:cat ::x  ::y))]
+        ;; the same as (rte-compile '(:cat (:+ Long) (:+ Double)))
+        (is (rte-match pat [1 2 3 1.2 3.4 5.6 7.8]))
+        (is (not (rte-match pat [[1 2 3] [1.2 3.4 5.6 7.8]])))
+        ))
+
+    (with-rte [::x (:+ String)
+               ::y (:+ Double)]
+
+      (let [pat (rte-compile '(:cat ::x  ::y))]
+        ;; the same as (rte-compile '(:cat (:+ Long) (:+ Double)))
+        (is (rte-match pat ["1" "2" "3" 1.2 3.4 5.6 7.8]))
+        (is (not (rte-match pat [["1" "2" "3"] [1.2 3.4 5.6 7.8]])))
+        ))
+    
+
+    (let [pat (rte-compile '(:cat (rte (:+ Long)) (rte (:+ Double))))]
+      (is (not (rte-match pat [1 2 3 1.2 3.4 5.6 7.8])))
+      (is (rte-match pat [[1 2 3] [1.2 3.4 5.6 7.8]])))))
+
 (deftest t-rte-inhabited
   (testing "rte inhabited?"
-    (is (rte-inhabited? (rte-to-dfa '(:and (:* Long) (:* Double)))))
-    (is (rte-vacuous? (rte-to-dfa '(:and (:+ Long) (:+ Double)))))
+    (with-compile-env ()
 
-    (is (rte-inhabited? '(:and (:* Long) (:* Double))))
-    (is (rte-vacuous? '(:and (:+ Long) (:+ Double))))))
+      (is (rte-inhabited? (rte-to-dfa '(:and (:* Long) (:* Double)))))
+      (is (rte-vacuous? (rte-to-dfa '(:and (:+ Long) (:+ Double)))))
+
+      (is (rte-inhabited? '(:and (:* Long) (:* Double))))
+      (is (rte-vacuous? '(:and (:+ Long) (:+ Double)))))))
 
 (deftest t-rte-with-rte
   (testing "recursive rte"
-    (is (not (disjoint? '(rte (:* Number))
-                        '(rte (:* Double)))))
-    (is (not (disjoint? '(rte (:* Number))
-                        '(rte (:* String)))))
-    (is (disjoint? '(rte (:+ Number)) 
-                   '(rte (:+ String))))
-    (is (rte-compile '(:or (rte (:* Number)) 
-                           (rte (:cat Double Number))
-                           (rte (:* Double)))))))
+    (with-compile-env ()
+
+      (is (not (disjoint? '(rte (:* Number))
+                          '(rte (:* Double)))))
+      (is (not (disjoint? '(rte (:* Number))
+                          '(rte (:* String)))))
+      (is (disjoint? '(rte (:+ Number)) 
+                     '(rte (:+ String))))
+      (is (rte-compile '(:or (rte (:* Number)) 
+                             (rte (:cat Double Number))
+                             (rte (:* Double))))))))
 
 (deftest t-inhabited
   (testing "inhabited?"
-    (is (inhabited? 'Long))
-    (is (inhabited? '(not Long)))
-    (is (inhabited? 'Object))
-    (is (not (inhabited? '(not Object))))
-    (is (inhabited? '(rte (:+ Number))))
-    (is (not (inhabited? '(rte (:and (:+ Number)
-                                     (:+ String))))))))
+    (with-compile-env ()
+
+      (is (inhabited? 'Long))
+      (is (inhabited? '(not Long)))
+      (is (inhabited? 'Object))
+      (is (not (inhabited? '(not Object))))
+      (is (inhabited? '(rte (:+ Number))))
+      (is (not (inhabited? '(rte (:and (:+ Number)
+                                       (:+ String)))))))))
 
 (deftest t-pattern-with-=-and-class
   (testing "pattern with ="
-    (is (rte-match '(:or Long (= 42)) [42]))
-    (is (rte-match '(:or Long (= "42")) [0]))
-    (is (rte-match '(:or Long (= "42")) ["42"]))))
+    (with-compile-env ()
+
+      (is (rte-match '(:or Long (= 42)) [42]))
+      (is (rte-match '(:or Long (= "42")) [0]))
+      (is (rte-match '(:or Long (= "42")) ["42"])))))
 
 (deftest t-pattern-with-=
   (testing "pattern with ="
-    (is (rte-match '(= 42) [42]))
-    (is (not (rte-match '(= 42) [43])))
-    (is (not (rte-match '(= 42) [42 42])))
-    (is (not (rte-match '(= 42) [])))
+    (with-compile-env ()
+      (is (rte-match '(= 42) [42]))
+      (is (not (rte-match '(= 42) [43])))
+      (is (not (rte-match '(= 42) [42 42])))
+      (is (not (rte-match '(= 42) [])))
 
-    (is (rte-match '(:* (= 42)) []))
-    (is (rte-match '(:* (= 42)) [42]))
-    (is (rte-match '(:* (= 42)) [42 42 42 42]))
+      (is (rte-match '(:* (= 42)) []))
+      (is (rte-match '(:* (= 42)) [42]))
+      (is (rte-match '(:* (= 42)) [42 42 42 42]))
 
-    (is (not (rte-match '(:+ (= 42)) [])))
-    (is (rte-match '(:+ (= 42)) [42 ]))
-    (is (rte-match '(:+ (= 42)) [42 42 42]))
-    (is (not (rte-match '(:+ (= 42)) [42 42 42 43])))
+      (is (not (rte-match '(:+ (= 42)) [])))
+      (is (rte-match '(:+ (= 42)) [42 ]))
+      (is (rte-match '(:+ (= 42)) [42 42 42]))
+      (is (not (rte-match '(:+ (= 42)) [42 42 42 43])))
 
-    (is (rte-match '(:or (= 43 ) (= 42)) [42]))
-    (is (rte-match '(:or (= 43 ) (= 42)) [43]))
-    (is (not (rte-match '(:or (= 43 ) (= 42)) [0])))
-    (is (rte-match '(:* (:or (= 43 )(= 42))) []))
-    (is (rte-match '(:* (:or (= 43 )(= 42))) [42 42 42 43 42 43]))
-    (is (not (rte-match '(:* (:or (= 43 ) (= 42))) [42 42 42 43 42 0 43])))
+      (is (rte-match '(:or (= 43 ) (= 42)) [42]))
+      (is (rte-match '(:or (= 43 ) (= 42)) [43]))
+      (is (not (rte-match '(:or (= 43 ) (= 42)) [0])))
+      (is (rte-match '(:* (:or (= 43 )(= 42))) []))
+      (is (rte-match '(:* (:or (= 43 )(= 42))) [42 42 42 43 42 43]))
+      (is (not (rte-match '(:* (:or (= 43 ) (= 42))) [42 42 42 43 42 0 43])))
 
-    ))
+      )))
