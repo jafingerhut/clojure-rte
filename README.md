@@ -532,7 +532,7 @@ Clojure built-in type system.   Types are sets of objects. Some types may be des
 A *type designator* is defined by the following recursive definition.  If `A` and `B` are type designators and `f` is a symbol whose global value `(resolve 'f)` is a unary predicate function,
 then
 
-  - Any symbol designates a type, provided it can be resolved with the function `resolve`, and the resulting value is true according to the `class?` predicate.  I.e., if the predicate `(fn [x] (and (symbol? x) (resolve x) (class? (resolve x))))` is returns true.
+  - Any symbol designates a type, provided it can be resolved with the function `resolve`, and the resulting value is `true` according to the `class?` predicate.  I.e., if the predicate `(fn [x] (and (symbol? x) (resolve x) (class? (resolve x))))` is returns `true`.
 
   - `(and A B)` is a type designator, designating the set of values which are simultaneously of type `A` and `B`. `(and ...)` may have arbitrarily many operands. `(and A)` means `A`, and `(and)` means the empty set of all possible.
 
@@ -724,7 +724,7 @@ When `disjoint?` (the public calling interface) is called,
 the methods of -disjoint? are called in some order
 (`:primary` first) until one method returns `true` or `false`,
 in which case `disjoint?` returns that value.
-If no method returns true or false, then the function
+If no method returns `true` or `false`, then the function
 `*disjoint?-default*` is called, and its value returned.
 If `disjoint?` is called with a 3rd argument, then
 `*disjoint?-default*` is dynamically bound to that value.
@@ -743,7 +743,7 @@ When `subtype?` (the public calling interface) is called,
 the methods of `-subtype?` are called in some order
 (`:primary` first) until one method returns `true` or `false`,
 in which case `subtype?` returns that value.
-If no method returns true or false, then the function
+If no method returns `true` or `false`, then the function
 `*subtype?-default*` is called, and its value returned.
 If subtype? is called with a 3rd argument, then
 `*inhabited?-default*` is dynamically bound to that value.
