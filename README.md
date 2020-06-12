@@ -240,9 +240,9 @@ except ones which match the pattern.  This can be confusing. See section [Hierar
 Example -- `String` matches a singleton sequence whose element is a string.  So `(:not String)` matches any sequence except one of length 1 consisting of a string, including matching the empty sequence.
 
 ```clojure
-(rte-match '(:not String] []) ;; true
-(rte-match '(:not String] ["hello"]) ;; false
-(rte-match '(:not String] ["hello" "world"]) ;; true
+(rte-match '(:not String) []) ;; true
+(rte-match '(:not String) ["hello"]) ;; false
+(rte-match '(:not String) ["hello" "world"]) ;; true
 ```
 
 ## Examples
