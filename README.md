@@ -586,12 +586,16 @@ Example
 An application may extend the type system by adding a new type
 designator syntax.  To do so, several steps must be followed.
 
-To declare a new type as existing, you must register it with a call
-to the `register-type` macro.
+### Registering the existance of the new type
+
+To declare a new type as existing and supported by rte, you must register
+by added a method via `defmethod registered-type?` returning `true.
 
 ```clojure
-(register-type my-new-type)
+(defmethod registered-type? 'my-type [_] true)
 ```
+
+### Determine whether a given element is a member of the new type
 
 Additional several methods must be added to allow
 the system to reason about the new type.
@@ -599,18 +603,91 @@ the system to reason about the new type.
 
 * `typep [value type-designator]` --- Applications defining new types
 should define a method on `typep` which decides whether a given value 
-is a member of that type. Example:
+is a member of that type.  This method will be called when the sytem has already determined that 
+the type designator is a `sequential?` whose first element is your type name e.g., `my-type`.
+Thus the logic within the method body has the task of determining whether the given 
+object `my-value` is an element of the designated type.
+
+
+ Example:
 ```clojure
 (defmethod typep 'member [a-value [_type & others]]
   (some #{a-value} others))
+
+(defmethod typep 'my-type [a-value [_type & others]]
+  ... some logic ...)
 ```
 
-* `-inhabited?` ---   This function should never be called.
+### Determine various characteristics of the new type
+
+The system reasons about types via an interface defined by the
+functions: `registered-type?`, `typep`, `inhabited?`, `disjoint?`, and `subtype?`.  While
+you are expected to add a method `registered-type?` and `typep` for your new type, you must
+not add methods to `inhabited?`, `disjoint?`, or `subtype?`.
+To fully implement a new type, you must provide several methods which
+extend some built-in multimethods:  `-inhabited?`, `-disjoint?`, and `-subtype?`.
+
+These multimethods should never be called; rather each method thereof
+will be called by a mechanism different from the multimethod.  In each
+case, the system calls the methods in some order (which you cannot
+control) until one method returns either `true` or `false`.  As a
+convention each method should return `:dont-know` if it cannot decide
+between `true` and `false`.
+
+The task of each method is to determine whether or not the type in question
+is in play.  For example, if you are implementing a type named `my-type`,
+then your method may be called with other type designators other than `my-type`
+in which your method should recognize this and return `:dont-know`.
+
+For example, if you are implementing `my-type` and `-inhabited?` is called with
+argument `(foo 1 2 3)`, your `-inhabited?` method should recognize that
+the type is not `(my-type ...)` and should return `:dont-know`.  If the
+argument is `(my-type ...)`, then and only then should it examine the arguments
+and proceed making its decision to return `true` or `false`.
+
+When installing a method such as `-inhabited?`, for an application specific type,
+it is the responsibility of the method to detect whether the type designator
+syntax is correct, and return `:dont-know` or signal an error.
+If the method does not recognize the syntax, then return `:dont-know`.
+If the method recognizes the syntax to be invalid, then signal an error.
+For example, if you are implementing `my-type`, and you have determined that
+any `my-type` type designator must specify exactly one operand such as `(my-type 3)`, and
+if the given type designator is `(my-type 3 4)`, you should determine that the number
+of operands IS NOT 1, so you my signal an error such as with a call to:
+```clojure
+(defmethod -inhabited? 'my-type [type-designator]
+  (cond
+   (not (sequential? type-designator))
+   :dont-know
+
+   (not= 'my-type (first type-designator))
+   :dont-know
+
+   (not= 2 (count my-type))
+   (throw (ex-info (format "invalid syntax %s" type-designator)
+                   {:type-name 'my-type
+                    :type-designator type-designator}))
+
+   :else
+   ... some logic ...
+   )
+```
+
+### Determining whether a type is inhabited or vacuous
+
+* `-inhabited?` ---   
+
 Applications may install methods via `(defmethod -inhabited? ...)`.
 The method accepts one argument which is a type-designator,
-pontentially application specific.
-The method should examine the type designator and return
-`true`, `false`, or `:dont-know`.
+pontentially application specific.  The method should examine the type
+designator and return `true`, `false`, or `:dont-know` depending on
+whether there exists an object of this type.  If the designated type
+is empty, return `false`; if it is not empty, return `true`; if it is
+not possible to programmatically determine whether the type is empty
+(e.g., because of the halting problem, or because not enough
+information is given) return `:dont-know`.
+
+
 When `inhabited?` (the public calling interface) is called,
 the methods of `-inhabited?` are called in some order
 (`:primary` first) until one method returns `true` or `false`,
@@ -620,8 +697,19 @@ If no method returns `true` or `false`, then the function
 If `inhabited?` is called with a 3rd argument, then
 `*inhabited?-default*` is dynamically bound to that value."
 
+```clojure
+(defmethod -inhabited? 'my-type [type-designator]
+  (if (and (sequential? type-designator)
+           (= 'my-type (first type-designator)))
+    (... some logic ...)
+    :dont-know))
+```
 
-* `-disjoint?` ---   This function should never be called.
+### Determining whether two types are disjoint or intersecting.
+
+
+* `-disjoint?` ---   
+
 Applications may install methods via `(defmethod -disjoint? ...)`.
 The method accepts two arguments which are type-designators,
 `[t1 t2]`,  pontentially application specific.
@@ -642,7 +730,10 @@ If `disjoint?` is called with a 3rd argument, then
 `*disjoint?-default*` is dynamically bound to that value.
     
 
-* `-subtype?` ---  This function should never be called.
+### Determining whether one type is a subtype of another
+
+* `-subtype?` ---  
+
 Applications may install methods via `(defmethod -subtype? ...)`.
 The method accepts two arguments which are type-designators,
 `[sub-designator super-designator]`,  pontentially application specific.
