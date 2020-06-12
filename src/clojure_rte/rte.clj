@@ -51,9 +51,6 @@
    'symbol? 'clojure.lang.Symbol
    'seq? 'clojure.lang.ISeq
    })
-      
-
-
 
 (defn resolve-rte-tag
   "Look up a tag in *rte-known*, or return the given tag
@@ -112,23 +109,19 @@
               ((:client functions) pattern functions))
    })
 
-(def supported-nontrivial-types
+
+(defmulti registered-type? identity)
+(defmethod registered-type? :default [_] false)
+(defmethod registered-type? '= [_] true)
+(defmethod registered-type? 'rte [_] true)
+(defmethod registered-type? 'member [_] true)
+
+(defn supported-nontrivial-types []
   "Which types are currently supported?  This list denotes the
   type names which appear as (something maybe-args), which are
   supported by RTE.  The goal is to support all those supported
-  by typep, but that's not yet implemented."
-  (atom #{}))
-
-(defmacro register-type [type-name]
-  `(swap! supported-nontrivial-types
-          conj '~type-name))
-
-(defn get-supported-nontrivial-types []
-  @supported-nontrivial-types)
-
-(register-type rte)
-(register-type =)
-(register-type member)
+  by typep, but that may not yet be the case."
+  (clojure.set/difference (set (keys (methods registered-type?)))  #{:default}))
 
 (defn traverse-pattern
   "Workhorse function for walking an rte pattern.
@@ -169,7 +162,7 @@
                 ;; case-else
                 (cond
                   (and (sequential? keyword)
-                       (some #{(first keyword)} (get-supported-nontrivial-types)))
+                       (registered-type? (first keyword)))
                   ((:type functions) pattern functions)
 
                   :else
@@ -204,7 +197,7 @@
                                         ~operand) functions)
 
                 ;;case-else
-                (if (some #{(first pattern)} (get-supported-nontrivial-types))
+                (if (registered-type? (first pattern))
                   ((:type functions) pattern functions)
                   (throw (ex-info (format "unary type %s in %s not yet implemented" token pattern)
                                   {:error-type :type-not-yet-implemented
@@ -235,10 +228,10 @@
                                  }))
 
                 ;;case-else
-                (if (some #{token} (get-supported-nontrivial-types))
+                (if (registered-type? token)
                   ((:type functions) pattern functions)
                   (throw (ex-info (format "variadic type %s in %s not yet implemented, expecting one of %s"
-                                          token pattern (get-supported-nontrivial-types))
+                                          token pattern (supported-nontrivial-types))
                                   {:error-type :type-not-yet-implemented
                                    :pattern pattern
                                    :functions functions
