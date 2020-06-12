@@ -69,8 +69,8 @@ followed (in the same sequence) by one or more objects of type `String`.
 
 Which kinds of type designators can be used?  You may use 
 
-- Any type name which is a symbol, `T` for which `(resolve T)` is accepted by the `isa?` function.
-- Any name which is registered in `*rte-known*`.
+- Any type name which is a symbol, `T` for which `(class? (resolve T))` evaluates to Boolean true.
+- Any name which is an element of the set returned from `(supported-non-trivial-types)`, equivalently if `(registered-type? T)` returns `true`.
 
 The dynamic variable `*rte-known*` is intended for applications to
 extend but comes equipped with several useful *quasi-types*. For example,
