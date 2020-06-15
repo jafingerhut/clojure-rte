@@ -242,7 +242,7 @@ Example -- `String` matches a singleton sequence whose element is a string.  So 
 ```clojure
 (rte-match '(:not String) []) ;; true
 (rte-match '(:not String) ["hello"]) ;; false
-(rte-match '(:not String) ["hello" "world"]) ;; true
+(rte-match '(:not String)["hello" "world"]) ;; true
 ```
 
 ## Examples
