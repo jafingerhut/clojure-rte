@@ -1,22 +1,26 @@
 # clojure-rte
 
-This package implements rational type expressions (RTEs) for the [Clojure](https://clojure.org) programming language.
-The implementation is based on a similar package for [Common Lisp](https://lisp-lang.org).
-The theory of how RTEs work can be found here: [Type-Checking of Heterogeneous Sequences in Common Lisp](https://www.lrde.epita.fr/wiki/Publications/newton.16.els) and [Representing and Computing with Types in Dynamically Typed Languages](https://www.lrde.epita.fr/wiki/Publications/newton.18.phd)
+This package implements rational type expressions (RTEs) for the 
+[Clojure](https://clojure.org) programming language.
+The implementation is based on a similar package for 
+[Common Lisp](https://lisp-lang.org).
+The theory of how RTEs work can be found here: 
+[Type-Checking of Heterogeneous Sequences in Common Lisp](https://www.lrde.epita.fr/wiki/Publications/newton.16.els) and [Representing and Computing with Types in Dynamically Typed Languages](https://www.lrde.epita.fr/wiki/Publications/newton.18.phd)
 
 An important aspect of this implementation is that a regular type
 expression pattern is represented internally (after compilation with
 `rte-compile`) as a symbolic finite automaton.
 
-<img src="img/symbolic-finite-automaton.png" alt="Symbolic Finite Automaton" width="300"/>
+<img src="img/symbolic-finite-automaton.png" 
+alt="Symbolic Finite Automaton" width="300"/>
 
 
 
 
-This means that after the pattern has been compiled, the time complexity of matching a sequence,
-`rte-match`, against a pattern is `O(n)` where `n` is the length of
-the sequence.  I.e., the time to perform the match is not a function of the
-complexity of the pattern; it is only a function of the sequence
+This means that after the pattern has been compiled, the time complexity of 
+matching a sequence, `rte-match`, against a pattern is `O(n)` where `n` is the 
+length of the sequence.  I.e., the time to perform the match is not a function 
+of the complexity of the pattern; it is only a function of the sequence
 length.  On the contrary, the time to compile the pattern depends on
 the complexity of the pattern, and may be exponential in worst case.
 For this reason, patterns are compiled and automatically memoized
@@ -159,7 +163,8 @@ Example --- to match a sequence 0 to 5 Integers,
 
 * `(:and ...)` ---  Takes 0 or more operands.  Simultaneously matches all of the given patterns.
 
-Example ---  Keyword followed by 1 or two integers, repeated any number of times which is a multiple of 3 total items.
+Example ---  Keyword followed by 1 or two integers, repeated any number of 
+times which is a multiple of 3 total items.
 
 ```clojure
 (let [rte (rte-compile '(:and (:* (:cat Keyword integer? (:? integer?)))
@@ -173,7 +178,8 @@ Example ---  Keyword followed by 1 or two integers, repeated any number of times
 
 * `(:or ...)` --- matches any of the given patterns.
 
-Example  ---  Takes 0 or more operands.  Either 0 or more integers, or 1 or more strings.
+Example  ---  Takes 0 or more operands.  Either 0 or more integers, or 1 or 
+more strings.
 
 ```clojure
 (let [rte (rte-compile '(:or (:* integer?) (:+ String)))]
@@ -232,12 +238,16 @@ Example -- any number of repetitions of integer anything String.
 ```
 
 * `:epsilon` --- matching nothing once, identity for `:cat`.  This is probably
-not useful to the end user.  However, internally `(:? x)` expands to `(:or x :epsilon)`.
+not useful to the end user.  However, internally `(:? x)` expands to 
+`(:or x :epsilon)`.
 
 * `(:not ...)` --- Takes exactly one operand.  Matches any sequence
-except ones which match the pattern.  This can be confusing. See section [Hierarchical Sequences](#hierarchical-sequences) for details.
+except ones which match the pattern.  This can be confusing. See section
+[Hierarchical Sequences](#hierarchical-sequences) for details.
 
-Example -- `String` matches a singleton sequence whose element is a string.  So `(:not String)` matches any sequence except one of length 1 consisting of a string, including matching the empty sequence.
+Example -- `String` matches a singleton sequence whose element is a string.  
+So `(:not String)` matches any sequence except one of length 1 consisting of a
+string, including matching the empty sequence.
 
 ```clojure
 (rte-match '(:not String) []) ;; true
@@ -266,8 +276,8 @@ As mentioned above the semantics of `:not` can be confusing and unintuitive.
 
 The pattern `(:and :sigma (:not String))` 
 matches a singleton sequence whose element is not a string; however,
-`(:not String)` will match any sequence except a singleton sequence whose element
-is a string.  This becomes confusing in concatenations.
+`(:not String)` will match any sequence except a singleton sequence whose 
+element is a string.  This becomes confusing in concatenations.
 
 The pattern `(:cat (:not String) Long)` will refuse match 
 `["hello" 4]` which is probably what the user intended.  But it will also match 
@@ -275,10 +285,11 @@ The pattern `(:cat (:not String) Long)` will refuse match
 matches `Long`.
 
 If you really intended to exclude `["hello" 4]` and also exclude `[1 2 3 4 5]`,
-the rte pattern needs more information.  For example, you might limit the sequence
-to sequences of two entries.  `(:and (:cat :sigma :sigma) (:cat (:not String) Long))`
-which will refuse to match `[1 2 3 4 5]`, but will match `[1.2 3]`, because
-`[1.2]` is not a singleton sequence of String.
+the rte pattern needs more information.  For example, you might limit the 
+sequence to sequences of two entries.  
+`(:and (:cat :sigma :sigma) (:cat (:not String) Long))` which will refuse to 
+match `[1 2 3 4 5]`, but will match `[1.2 3]`, because `[1.2]` is not a 
+singleton sequence of String.
 
 If you want to match a sequence like `[:x 100 :y 200 :z 300]` but not
 if any of the values after the keyword is a String, you may use the following.
@@ -288,9 +299,10 @@ sequence whose element is NOT a string.
 
 A feature which is not yet implemented will alleviate some of this confusion.
 The *type designator* `(not ...)` will represent the set of all values except
-those of a designated type.  `(:cat (not String) Long)` (once supported by RTE) will match
-sequence of length 2 whose second element is a `Long`, and whose first element is
-a member of the type `(not String)`, i.e., the set of all values which are not strings.
+those of a designated type.  `(:cat (not String) Long)` (once supported by RTE) 
+will match sequence of length 2 whose second element is a `Long`, and whose 
+first element is a member of the type `(not String)`, i.e., the set of all 
+values which are not strings.
 
 See section [Not yet implemented](#not-yet-implemented) for more
 details of the proposed type designator syntax.
@@ -348,15 +360,17 @@ The semantics
 of `(with-rte [...] ...)` vs `(rte ...)` may be confusing.
 `(rte pattern)` designates a subtype of sequence whose
 content matches the designated pattern.  On the other hand
-`(with-rte [...] ...)` specifies sub-patterns which are interpolated into another pattern.
+`(with-rte [...] ...)` specifies sub-patterns which are interpolated into 
+another pattern.
 
 `(:cat (rte x) (rte y))` matches a two element sequence whose elements
 are sequences *a* and *b*, where *a* matches the pattern *x* and *b*
 matches the pattern *y*.
 
-`(with-rte [::x ... ::y ...] (rte-match '(:cat :: ::y) ...))` matches a sequence of two concatenated
+`(with-rte [::x ... ::y ...] (rte-match '(:cat ::x ::y) ...))` matches a 
+sequence of two concatenated
 sequence *a* and *b*, where *a* matches the pattern *::x* and *b*
-matches the pattern ::y*.  E.g., 
+matches the pattern *::y*.  E.g., 
 
 ```clojure
 (with-rte [::x (:+ Long)
@@ -403,8 +417,9 @@ every sequence which matches one also matches the other.
 ==> [Long Long]
 ```
 
-* If you have two patterns, and you'd like to know what sequence matches one but not the other.
-For example to find a sequence which contains 1 or more `integer?` but does not contain 0 or more `Number`.
+* If you have two patterns, and you'd like to know what sequence matches one 
+but not the other. For example to find a sequence which contains 1 or more 
+`integer?` but does not contain 0 or more `Number`.
 
 ```clojure
 (let [pattern1 '(:+ integer?)
@@ -428,7 +443,8 @@ there exist a sequence which matches the first but not the second?
 ==> []
 ```
 
-We see that indeed the empty sequence matches `pattern1` but does not match `pattern2`.
+We see that indeed the empty sequence matches `pattern1` but does not match 
+`pattern2`.
 
 ## API
 
@@ -500,8 +516,8 @@ See section [Algebra of RTEs](#algebra-of-rtes) for more information.
 
 ## Debugging
 
-Once a dfa has been created with a call to `rte-compile` or `rte-to-dfa`, you may draw
-the corresponding graph using the `dfa-to-dot` function.
+Once a dfa has been created with a call to `rte-compile` or `rte-to-dfa`, you 
+may draw the corresponding graph using the `dfa-to-dot` function.
 
 ```clojure
 (clojure-rte.dot/dfa-to-dot
@@ -527,10 +543,12 @@ the corresponding graph using the `dfa-to-dot` function.
 ## Extensible types
 
 The namespace `clojure-rte.type` defines a type system which extends the
-Clojure built-in type system.   Types are sets of objects. Some types may be designated via so-called *type designators*.
+Clojure built-in type system.   Types are sets of objects. Some types may be 
+designated via so-called *type designators*.
 
-A *type designator* is defined by the following recursive definition.  If `A` and `B` are type designators and `f` is a symbol whose global value `(resolve 'f)` is a unary predicate function,
-then
+A *type designator* is defined by the following recursive definition.  If `A` 
+and `B` are type designators and `f` is a symbol whose global value 
+`(resolve 'f)` is a unary predicate function, then
 
   - Any symbol designates a type, provided it can be resolved with the function `resolve`, and the resulting value is `true` according to the `class?` predicate.  I.e., if the predicate `(fn [x] (and (symbol? x) (resolve x) (class? (resolve x))))` is returns `true`.
 
@@ -603,10 +621,11 @@ the system to reason about the new type.
 
 * `typep [value type-designator]` --- Applications defining new types
 should define a method on `typep` which decides whether a given value 
-is a member of that type.  This method will be called when the sytem has already determined that 
-the type designator is a `sequential?` whose first element is your type name e.g., `my-type`.
-Thus the logic within the method body has the task of determining whether the given 
-object `my-value` is an element of the designated type.
+is a member of that type.  This method will be called when the sytem has 
+already determined that the type designator is a `sequential?` whose first 
+element is your type name e.g., `my-type`. Thus the logic within the method 
+body has the task of determining whether the given  object `my-value` is an 
+element of the designated type.
 
 
  Example:
@@ -621,11 +640,12 @@ object `my-value` is an element of the designated type.
 ### Determine various characteristics of the new type
 
 The system reasons about types via an interface defined by the
-functions: `registered-type?`, `typep`, `inhabited?`, `disjoint?`, and `subtype?`.  While
-you are expected to add a method `registered-type?` and `typep` for your new type, you must
-not add methods to `inhabited?`, `disjoint?`, or `subtype?`.
-To fully implement a new type, you must provide several methods which
-extend some built-in multimethods:  `-inhabited?`, `-disjoint?`, and `-subtype?`.
+functions: `registered-type?`, `typep`, `inhabited?`, `disjoint?`, and 
+`subtype?`.  While you are expected to add a method `registered-type?` and 
+`typep` for your new type, you must not add methods to `inhabited?`, 
+`disjoint?`, or `subtype?`. To fully implement a new type, you must provide 
+several methods which extend some built-in multimethods:  `-inhabited?`, 
+`-disjoint?`, and `-subtype?`.
 
 These multimethods should never be called; rather each method thereof
 will be called by a mechanism different from the multimethod.  In each
@@ -645,15 +665,16 @@ the type is not `(my-type ...)` and should return `:dont-know`.  If the
 argument is `(my-type ...)`, then and only then should it examine the arguments
 and proceed making its decision to return `true` or `false`.
 
-When installing a method such as `-inhabited?`, for an application specific type,
-it is the responsibility of the method to detect whether the type designator
-syntax is correct, and return `:dont-know` or signal an error.
+When installing a method such as `-inhabited?`, for an application specific 
+type, it is the responsibility of the method to detect whether the type 
+designator syntax is correct, and return `:dont-know` or signal an error.
 If the method does not recognize the syntax, then return `:dont-know`.
 If the method recognizes the syntax to be invalid, then signal an error.
 For example, if you are implementing `my-type`, and you have determined that
-any `my-type` type designator must specify exactly one operand such as `(my-type 3)`, and
-if the given type designator is `(my-type 3 4)`, you should determine that the number
-of operands IS NOT 1, so you my signal an error such as with a call to:
+any `my-type` type designator must specify exactly one operand such as 
+`(my-type 3)`, and if the given type designator is `(my-type 3 4)`, you should 
+determine that the number of operands IS NOT 1, so you my signal an error such 
+as with a call to:
 ```clojure
 (defmethod -inhabited? 'my-type [type-designator]
   (cond
@@ -780,7 +801,8 @@ will improve run-time performance.
 
 <img src="img/ns-dep-graph.png" alt="Package dependencies" width="500"/>
 
-Package dependency graph of clojure-rte generated by [lein-ns-dep-graph](https://github.com/hilverd/lein-ns-dep-graph).
+Package dependency graph of clojure-rte generated by 
+[lein-ns-dep-graph](https://github.com/hilverd/lein-ns-dep-graph).
 
 
 ## Code test coverage
