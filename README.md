@@ -355,8 +355,8 @@ are sequences *a* and *b*, where *a* matches the pattern *x* and *b*
 matches the pattern *y*.
 
 `(with-rte [::x ... ::y ...] (rte-match '(:cat :: ::y) ...))` matches a sequence of two concatenated
-sequence *a* and *b*, where *a* matches the pattern *x* and *b*
-matches the pattern *y*.  E.g., 
+sequence *a* and *b*, where *a* matches the pattern *::x* and *b*
+matches the pattern ::y*.  E.g., 
 
 ```clojure
 (with-rte [::x (:+ Long)
