@@ -38,6 +38,9 @@
   The map associates symbols with rte expansions.
   Any tag in this table may be used in place of a type name
   in an rte pattern."
+  ;; TODO - is it interesting to allow parameterized types here?
+  ;;    E.g., these types would work similar to CL deftype,
+  ;;    we'd need a macro expander based on quasi-quote.
   {'int? '(:or Long Integer Short Byte)
    'integer? '(:or int? clojure.lang.BigInt BigInteger)
    'ratio? 'clojure.lang.Ratio
