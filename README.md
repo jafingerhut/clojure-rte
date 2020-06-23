@@ -9,7 +9,7 @@ The theory of how RTEs work can be found here:
 
 An important aspect of this implementation is that a regular type
 expression pattern is represented internally (after compilation with
-`rte-compile`) as a symbolic finite automaton.
+`rte-compile`) as a deterministic symbolic finite automaton.
 
 <img src="img/symbolic-finite-automaton.png" 
 alt="Symbolic Finite Automaton" width="300"/>
@@ -18,7 +18,7 @@ alt="Symbolic Finite Automaton" width="300"/>
 
 
 This means that after the pattern has been compiled, the time complexity of 
-matching a sequence, `rte-match`, against a pattern is `O(n)` where `n` is the 
+matching a sequence, `rte-match`, against a pattern has linear time complexity `O(n)` where `n` is the 
 length of the sequence.  I.e., the time to perform the match is not a function 
 of the complexity of the pattern; it is only a function of the sequence
 length.  On the contrary, the time to compile the pattern depends on
@@ -59,22 +59,23 @@ in sequences.  The pattern language resembles that of regular
 expressions for strings, so the user very quickly has an intuition of
 how it works.
 
-Whereas with string regular expressions, the leaf level thing you
+Whereas with string regular expressions, where the leaf level thing you
 specify is a character such as `"a*b+"` which means a string of
-characters consisting of 0 or more `'a'` characters followed by 1 or
+characters consisting of zero or more `'a'` characters followed by one or
 more `'b'` characters; with regular type expressions you specify
 type-designators, and repetition information about those types.
 Rather than using post-fix notation we use lisp-friendly prefix
-notation.  `(:* String)` means a sequence of objects consisting of 0
+notation.  `(:* String)` means a sequence of objects consisting of zero
 or more objects of type `String`.  The concept of *followed-by* is made
 explicit by the `:cat` operator such as: `(:cat (:* Long) (:+String))`
-a sequence consisting of 0 or more objects of type `Long`
+a sequence consisting of zero or more objects of type `Long`
 followed (in the same sequence) by one or more objects of type `String`.
 
 Which kinds of type designators can be used?  You may use 
 
 - Any type name which is a symbol, `T` for which `(class? (resolve T))` evaluates to Boolean true.
 - Any name which is an element of the set returned from `(supported-non-trivial-types)`, equivalently if `(registered-type? T)` returns `true`.
+- Any *quasi-type* name mentioned in `*rte-known*`.
 
 The dynamic variable `*rte-known*` is intended for applications to
 extend but comes equipped with several useful *quasi-types*. For example,
