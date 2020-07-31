@@ -68,11 +68,11 @@
     (set (map set (vals (group-by f objects))))))
 
 (defn find-eqv-class
-  "Given a sequence of sets or a set of sets, find the leaf level
-  set which contains the given element"
+  "Given a sequence of sequences, find the leaf level
+  sequence which contains the given element"
   [partition target]
   (first (filter (fn [eqv-class]
-                   (eqv-class target)) partition)))
+                   (member target eqv-class)) partition)))
 
 (defn find-hopcroft-partition
   ""
@@ -89,6 +89,7 @@
                         ;;   whose source and label are given
                         (find-eqv-class partition (delta dfa source-state label)))
                       (Phi [s]
+                        (assert (:combine-labels dfa))
                         (map (fn [[eqv-class transitions]]
                                ;; trans is a seq of transitions, each [label dst-index]
                                (reduce (:combine-labels dfa)
@@ -116,14 +117,14 @@
   [dfa]
   (let [pi-minimized (find-hopcroft-partition dfa)
         ids (map min-state pi-minimized)
+        partitions-map (zipmap ids pi-minimized)
         ids-map (zipmap pi-minimized ids)]
 
     (assert (sequential? pi-minimized))
     (letfn [(new-id [state]
+              (assert (instance? State state))
               (ids-map (find-eqv-class pi-minimized state)))]
-      (let [new-ids (vals ids)
-            new-q0-id 0
-            new-fids (mapcat (fn [id eqv-class]
+      (let [new-fids (mapcat (fn [id eqv-class]
                                ;; does there exists an s in eqv-class such that (:accepting s)
                                (if (some :accepting eqv-class)
                                  (list id)
@@ -141,27 +142,30 @@
             new-exit-map (into {}
                                (mapcat (fn [id eqv-class]
                                          (if (some :accepting eqv-class)
-                                           (list [id ((:exit-value dfa) (:index (first eqv-class)))])
-                                           nil)) ids pi-minimized))
+                                           (list [id
+                                                  ((:exit-map dfa) (:index (first eqv-class)))])
+                                           nil))
+                                       ids pi-minimized))
             ]
             
     (map->Dfa
      {:pattern (:pattern dfa)
       :canonicalized (:cononicalized dfa)
-      :exit-map new-exit-map
+      :exit-map (into {} (map (fn [id]
+                                [id ((:exit-map dfa) id)]) new-fids)) ;; map each of new-fids to the old value returned from the exit-map
       :combine-labels (:combine-labels dfa)
       :states
-      (tabulate (reduce max new-ids )
-               (fn [id]
-                 (let [transitions (grouped id)]
-                   (if (not transitions)
-                     nil
-                     (map->State
-                      {:index id
-                       :accepting (member id new-fids)
-                       :transitions (map (fn [[src-id label dst-id]]
-                                           [label dst-id])
-                                         transitions)})))))})))))
+      (tabulate (inc (reduce max ids ))
+                (fn [id]
+                  (let [transitions (grouped id)]
+                    (if (not transitions)
+                      nil
+                      (map->State
+                       {:index id
+                        :accepting (member id new-fids)
+                        :transitions (map (fn [[src-id label dst-id]]
+                                            [label dst-id])
+                                          transitions)})))))})))))
 
 (defn call-with-index-of-nil ""
   [f ar default]

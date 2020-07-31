@@ -505,7 +505,6 @@
                              (rte (:cat Double Number))
                              (rte (:* Double))))))))
 
-
 (deftest t-pattern-with-=-and-class
   (testing "pattern with ="
     (with-compile-env ()
@@ -539,3 +538,20 @@
       (is (not (rte-match '(:* (:or (= 43 ) (= 42))) [42 42 42 43 42 0 43])))
 
       )))
+
+(deftest t-rte-combine-labels
+  (testing "rte-combine-labels"
+    (is (= '(or Long String)
+           (rte-combine-labels 'Long
+                               'String)))
+    (is (= '(or Long String Double)
+           (rte-combine-labels '(or Long String)
+                               'Double)))
+    (is (= '(or Double Long String)
+           (rte-combine-labels 'Double
+                               '(or Long String))))
+    (is (= '(or Double String Long String)
+           (rte-combine-labels '(or Double String)
+                               '(or Long String))))))
+    
+

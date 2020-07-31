@@ -48,7 +48,18 @@
     (is (= (find-eqv-class #{#{1 2 3} #{4 5 6} #{7 8 9}}
                            2)
            #{1 2 3}))))
-    
-        
 
-    
+
+(deftest t-minimize-runs
+  (testing "that minimize runs"
+    (minimize (rte-to-dfa '(:* Long)))
+    (minimize (rte-to-dfa '(:or (rte (:* Number)) 
+                             (rte (:cat Double Number))
+                             (rte (:* Double)))))))
+
+(deftest t-renumber-runs
+  (testing "that minimize runs"
+    (renumber (minimize (rte-to-dfa '(:* Long))))
+    (renumber (minimize (rte-to-dfa '(:or (rte (:* Number)) 
+                                           (rte (:cat Double Number))
+                                           (rte (:* Double))))))))

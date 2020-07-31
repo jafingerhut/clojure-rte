@@ -707,7 +707,21 @@
                      (conj done pattern)
                      (concat triples new-triples)))))))))
 
-(defn rte-to-dfa 
+(defn rte-combine-labels ""
+  [label1 label2]
+  (letfn [(or? [lab]
+            (and (sequential? lab)
+                 (= (first lab) 'or)))]      
+    (cond
+      (and (or? label1)
+           (or? label2)) `(~@label1 ~@(rest label2))
+      (and (or? label1)
+           (not (or? label2))) `(~@label1 ~label2)
+      (and (not (or? label1))
+           (or? label2)) `(~(first label2) ~label1 ~@(rest label2))
+      :else `(~'or ~label1 ~label2))))
+
+(defn rte-to-dfa
   "Use the Brzozowski derivative aproach to compute a finite automaton
   representing the given rte patten.  The finite automaton is in the
   form of an array of States.  The n'th State is array[n]."
@@ -726,6 +740,8 @@
     (map->Dfa
      {:pattern given-pattern
       :canonicalized pattern
+      :exit-map (constantly true)
+      :combine-labels rte-combine-labels
       :states
       (into [] (map (fn [deriv index]
                       (let [transitions (if (and (grouped index)

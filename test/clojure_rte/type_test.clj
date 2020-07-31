@@ -41,7 +41,12 @@
       ;; if Ai is non empty subset of S
       (is (not (disjoint? '(and Long (not (member 2 3 4))) 'java.lang.Comparable)))
 
-
+      (is (not (disjoint? '(and java.lang.Number (not (= 0)) (not (member a b c 1 2 3)))
+                          'java.io.Serializable
+                          (constantly true))))
+      (is (not (disjoint? 'java.io.Serializable
+                          '(and java.lang.Number (not (= 0)) (not (member a b c 1 2 3)))
+                          (constantly true))))
       )))
 
 (deftest t-disjoint-not?
