@@ -176,7 +176,10 @@
 (defn member
   "Like cl:member.  Determines whether the given is an element of the given sequence."
   [target items]
-  (some #{target} items))
+  (cond
+    (nil? target) (some nil? items)
+    (false? target) (some false? items)
+    :else (and (some #{target} items) true)))
 
 (defn partition-by-pred 
   "Apply the predicate to every element of the sequence and return a vector of two
