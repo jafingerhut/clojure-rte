@@ -48,7 +48,7 @@
                                       fixed-point
                                       visit-permutations rte-constantly rte-identity
                                       partition-by-pred
-                                      sort-operands member]]
+                                      print-vals sort-operands member]]
             [clojure-rte.type :as ty]
             [clojure-rte.dfa]
             [clojure-rte.rte]

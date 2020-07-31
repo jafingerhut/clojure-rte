@@ -196,3 +196,30 @@
       (if (good-enough value new-value)
         value
         (recur new-value)))))
+
+(defn print-vals-helper ""
+  [pairs]
+  (let [N (count pairs)]
+    (loop [val nil
+           n 1
+           pairs pairs]
+      (if (empty? pairs)
+        val
+        (let [[[thunk1 e1] & pairs] pairs]
+          (cl-format true "~A/~A ~A~%~T -> "
+                     n N e1)
+          (let [v1 (thunk1)]
+
+          (cl-format true "~A~%"
+                     v1)
+          (recur v1 (inc n) pairs)))))))
+
+(defmacro print-vals ""
+  [& args]
+  (let [pairs (into [] (map (fn [arg]
+                              `[(fn [] ~arg) '~arg]) args))]
+    `(print-vals-helper [~@pairs])))
+
+
+
+
