@@ -707,31 +707,6 @@
                      (conj done pattern)
                      (concat triples new-triples)))))))))
 
-(defrecord State 
-  ;; :index -- the index of this state in the array
-  ;; :accepting - Boolean true/false indicating whether this state is a
-  ;;     final/accepting state.
-  ;; :pattern -- the derivative value representing an rte pattern matching
-  ;;     any tail of the input sequence which is accepting from this point
-  ;;     onward.
-  ;; :sync-state -- Boolean
-  ;; :pattern -- 
-  ;; :transitions -- A list of pairs, each pair is a 2 element array of the form
-  ;;     [type next-state], e.g., [clojure.lang.Keyword 1]
-  ;;     which means if the value at the head of the sequence is of type
-  ;;     clojure.lang.Keyword, then go to state 1.  The type is some value
-  ;;     compatible with isa?.  the state index is some index of the state
-  ;;     array representing the finite atomaton.
-  [index accepting pattern transitions])
-
-(defmethod print-method State [v w]
-  (.write w (format "#<State %d>" (:index v))))
-
-(defrecord Dfa [pattern canonicalized states])
-
-(defmethod print-method Dfa [v w]
-  (.write w (format "#<Dfa %d states>" (count (:states v)))))
-
 (defn rte-to-dfa 
   "Use the Brzozowski derivative aproach to compute a finite automaton
   representing the given rte patten.  The finite automaton is in the
