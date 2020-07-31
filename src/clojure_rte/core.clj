@@ -45,6 +45,7 @@
             [clojure.pprint :refer [cl-format]]
             [clojure-rte.cl-compat :refer [cl-cond]]
             [clojure-rte.util :refer [with-first-match call-with-collector
+                                      fixed-point
                                       visit-permutations rte-constantly rte-identity
                                       partition-by-pred
                                       sort-operands member]]

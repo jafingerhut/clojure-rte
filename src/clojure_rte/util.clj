@@ -187,3 +187,12 @@
   (let [g (group-by (fn [i]
                       (boolean (pred i))) items)]
     [(g true) (g false)]))
+
+(defn fixed-point
+  ""
+  [value f good-enough]
+  (loop [value value]
+    (let [new-value (f value)]
+      (if (good-enough value new-value)
+        value
+        (recur new-value)))))
