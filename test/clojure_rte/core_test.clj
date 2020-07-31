@@ -505,17 +505,6 @@
                              (rte (:cat Double Number))
                              (rte (:* Double))))))))
 
-(deftest t-inhabited
-  (testing "inhabited?"
-    (with-compile-env ()
-
-      (is (inhabited? 'Long))
-      (is (inhabited? '(not Long)))
-      (is (inhabited? 'Object))
-      (is (not (inhabited? '(not Object))))
-      (is (inhabited? '(rte (:+ Number))))
-      (is (not (inhabited? '(rte (:and (:+ Number)
-                                       (:+ String)))))))))
 
 (deftest t-pattern-with-=-and-class
   (testing "pattern with ="

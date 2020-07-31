@@ -20,7 +20,8 @@
 ;; WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 (ns clojure-rte.type-test
-  (:require [clojure-rte.type :refer :all]
+  (:require [clojure-rte.core :refer :all]
+            [clojure-rte.type :refer :all]
             [clojure-rte.util :refer [call-with-collector]]
             [clojure.test :refer :all]))
 
@@ -207,3 +208,15 @@
     (is (not (subtype? '(member 1 2) '(not Long))) "line 156")
     (is (subtype? '(member 1 2) '(not String)) "line 157")))
   
+
+(deftest t-inhabited
+  (testing "inhabited?"
+    (with-compile-env ()
+
+      (is (inhabited? 'Long))
+      (is (inhabited? '(not Long)))
+      (is (inhabited? 'Object))
+      (is (not (inhabited? '(not Object))))
+      (is (inhabited? '(rte (:+ Number))))
+      (is (not (inhabited? '(rte (:and (:+ Number)
+                                       (:+ String)))))))))
