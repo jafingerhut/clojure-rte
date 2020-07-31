@@ -162,3 +162,47 @@
                        :transitions (map (fn [[src-id label dst-id]]
                                            [label dst-id])
                                          transitions)})))))})))))
+
+(defn call-with-index-of-nil ""
+  [f ar default]
+  (let [len (count ar)]
+    (loop [i 0]
+      (cond
+        (= i len) default
+        (nil? (ar i)) (f i)
+        :else (recur (inc i))))))
+
+(defn renumber
+  ""
+  ([dfa]
+   (call-with-index-of-nil
+    (fn [i]
+      (renumber dfa i (dec (count (:states dfa)))))
+    (:states dfa)
+    dfa))
+  ([dfa new-id old-id] ;; old-id is being removed
+   (renumber
+    (map->Dfa
+     {:pattern (:pattern dfa)
+      :canonicalized (:cononicalized dfa)
+      :exit-map (into {} (map (fn [[key value]]
+                                (if (= key old-id)
+                                  [new-id value]
+                                  [key value])) (:exit-map dfa)))
+      :combine-labels (:combine-labels dfa)
+      :states
+      (tabulate (dec (count (:states dfa)))
+                (fn [id]
+                  (let [old-state ((:states dfa) (if (= id new-id)
+                                                   old-id
+                                                   new-id))]
+                    (map->State
+                     {:index id
+                      :accepting (:accepting old-state)
+                      :transitions (map (fn [[label dst-id]]
+                                          [label (if (= old-id dst-id)
+                                                   new-id
+                                                   dst-id)])
+                                        (:transitions old-state))}))))}))))
+  
+
