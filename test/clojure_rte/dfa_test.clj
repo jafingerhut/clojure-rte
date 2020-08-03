@@ -59,7 +59,7 @@
 
 (deftest t-renumber-runs
   (testing "that minimize runs"
-    (renumber (minimize (rte-to-dfa '(:* Long))))
-    (renumber (minimize (rte-to-dfa '(:or (rte (:* Number)) 
-                                           (rte (:cat Double Number))
-                                           (rte (:* Double))))))))
+    (minimize (rte-to-dfa '(:* Long)))
+    (minimize (rte-to-dfa '(:or (rte (:* Number)) 
+                                (rte (:cat Double Number))
+                                (rte (:* Double)))))))
