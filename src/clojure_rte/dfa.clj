@@ -47,6 +47,18 @@
 
 (defrecord Dfa [pattern canonicalized states exit-map combine-labels])
 
+(defn dfa-states-as-seq
+  "Return a sequence of states which can be iterated over"
+  [dfa]
+  (cl-cond
+   ((map? (:states dfa))
+    (vals (:states dfa)))
+   ((sequential? (:states dfa))
+    (:states dfa))
+   (:else
+    (throw (ex-info (format "invalid :states = %s" (:states dfa)))))))
+
+
 (defn delta
   "Given a state and target-label, find the destination state (object of type State)"
   [dfa source-state target-label]
@@ -55,7 +67,7 @@
     ((:states dfa) index)))
   
 (defmethod print-method Dfa [v w]
-  (.write w (format "#<Dfa %d states>" (count (:states v)))))
+  (.write w (format "#<Dfa %d states>" (count (dfa-states-as-seq v)))))
 
 (defn %partition-by
   "Given a set of objects, return a set of subsets thereof which is a partition of
@@ -77,7 +89,7 @@
 (defn find-hopcroft-partition
   ""
   [dfa]
-  (let [[finals non-finals] (map (group-by :accepting (:states dfa)) [true false])
+  (let [[finals non-finals] (map (group-by :accepting (dfa-states-as-seq dfa)) [true false])
         pi-0 (conj (%partition-by finals
                                   (fn [state]
                                     ((:exit-map dfa) (:index state))))
@@ -108,7 +120,7 @@
 (defn tabulate
   ""
   [n f]
-  (into [] (map f (range n))))
+  (into {} (map f (range n))))
 
 (defn minimize
   "Accepts an object of type Dfa, and returns a new object of type Dfa
@@ -137,7 +149,7 @@
                                                           label
                                                           (new-id ((:states dfa) dst-id))]
                                                          ) (:transitions q))))
-                                              (:states dfa)))
+                                              (dfa-states-as-seq dfa)))
             grouped (group-by (fn [[new-src-id _ _]] new-src-id) new-proto-delta)
             new-exit-map (into {}
                                (mapcat (fn [id eqv-class]
@@ -147,66 +159,25 @@
                                            nil))
                                        ids pi-minimized))
             ]
-            
-    (map->Dfa
-     {:pattern (:pattern dfa)
-      :canonicalized (:cononicalized dfa)
-      :exit-map (into {} (map (fn [id]
-                                [id ((:exit-map dfa) id)]) new-fids)) ;; map each of new-fids to the old value returned from the exit-map
-      :combine-labels (:combine-labels dfa)
-      :states
-      (tabulate (inc (reduce max ids ))
-                (fn [id]
-                  (let [transitions (grouped id)]
-                    (if (not transitions)
-                      nil
-                      (map->State
-                       {:index id
-                        :accepting (member id new-fids)
-                        :transitions (map (fn [[src-id label dst-id]]
-                                            [label dst-id])
-                                          transitions)})))))})))))
+        ;; (dfa-to-dot dfa :view true)
+        (map->Dfa
+         {:pattern (:pattern dfa)
+          :canonicalized (:cononicalized dfa)
+          :exit-map (into {} (map (fn [id]
+                                    [id ((:exit-map dfa) id)]) new-fids)) ;; map each of new-fids to the old value returned from the exit-map
+          :combine-labels (:combine-labels dfa)
+          :states
+          (tabulate (inc (reduce max ids ))
+                    (fn [id]
+                      (let [transitions (grouped id)]
+                        (if (not transitions)
+                          nil
+                          (map->State
+                           {:index id
+                            :accepting (member id new-fids)
+                            :transitions (map (fn [[src-id label dst-id]]
+                                                [label dst-id])
+                                              transitions)})))))})))))
 
-(defn call-with-index-of-nil ""
-  [f ar default]
-  (let [len (count ar)]
-    (loop [i 0]
-      (cond
-        (= i len) default
-        (nil? (ar i)) (f i)
-        :else (recur (inc i))))))
-
-(defn renumber
-  ""
-  ([dfa]
-   (call-with-index-of-nil
-    (fn [i]
-      (renumber dfa i (dec (count (:states dfa)))))
-    (:states dfa)
-    dfa))
-  ([dfa new-id old-id] ;; old-id is being removed
-   (renumber
-    (map->Dfa
-     {:pattern (:pattern dfa)
-      :canonicalized (:cononicalized dfa)
-      :exit-map (into {} (map (fn [[key value]]
-                                (if (= key old-id)
-                                  [new-id value]
-                                  [key value])) (:exit-map dfa)))
-      :combine-labels (:combine-labels dfa)
-      :states
-      (tabulate (dec (count (:states dfa)))
-                (fn [id]
-                  (let [old-state ((:states dfa) (if (= id new-id)
-                                                   old-id
-                                                   new-id))]
-                    (map->State
-                     {:index id
-                      :accepting (:accepting old-state)
-                      :transitions (map (fn [[label dst-id]]
-                                          [label (if (= old-id dst-id)
-                                                   new-id
-                                                   dst-id)])
-                                        (:transitions old-state))}))))}))))
   
 

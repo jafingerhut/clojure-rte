@@ -68,7 +68,7 @@
   (rte-inhabited? (rte-compile pattern)))
 
 (defmethod rte-inhabited? :Dfa [dfa]
-  (some :accepting (:states dfa)))
+  (some :accepting (dfa-states-as-seq dfa)))
 
 (defn rte-vacuous? [dfa]
   (not (rte-inhabited? dfa)))
