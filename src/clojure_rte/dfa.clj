@@ -58,6 +58,18 @@
    (:else
     (throw (ex-info (format "invalid :states = %s" (:states dfa)))))))
 
+(defn serialize-state
+  "Serialize a State for debugging"
+  [state]
+   [:index (:index state)
+            :accepting (:accepting state)
+            :pattern (:pattern state)
+            :transitions (:transitions state)])
+
+(defn serialize-dfa
+  "Serialize a Dfa for debugging"
+  [dfa]
+  (map serialize-state (dfa-states-as-seq dfa)))
 
 (defn delta
   "Given a state and target-label, find the destination state (object of type State)"
