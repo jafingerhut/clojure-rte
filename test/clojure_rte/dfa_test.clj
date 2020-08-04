@@ -57,19 +57,30 @@
                                  (:cat String Number)
                                  (:* Double)))
           dfa2 (minimize dfa1)]
-      (is (= 5 (count (dfa-states-as-seq dfa1))))
-      (is (= 5 (count (dfa-states-as-seq dfa2)))))))
+      (is (= 6 (count (dfa-states-as-seq dfa1))))
+      (is (= 6 (count (dfa-states-as-seq dfa2)))))))
 
 (deftest t-minimize-runs
   (testing "that minimize runs"
-    (minimize (rte-to-dfa '(:* Long)))
-    (minimize (rte-to-dfa '(:or (rte (:* Number)) 
-                             (rte (:cat Double Number))
-                             (rte (:* Double)))))))
-
-(deftest t-renumber-runs
-  (testing "that minimize runs"
-    (minimize (rte-to-dfa '(:* Long)))
-    (minimize (rte-to-dfa '(:or (rte (:* Number)) 
+    (doseq [rte ['(:* Long)
+                 '(:or (rte (:* Number)) 
                                 (rte (:cat Double Number))
-                                (rte (:* Double)))))))
+                                (rte (:* Double)))
+                 '(:or (rte (:* Number)) 
+                                (rte (:cat String Number))
+                                (rte (:* Double)))]]
+      (rte-to-dfa rte)
+      (minimize (rte-to-dfa rte)))))
+o
+(deftest t-trim-runs
+  (testing "that trim runs"
+    (doseq [rte ['(:* Long)
+                 '(:or (rte (:* Number)) 
+                                (rte (:cat Double Number))
+                                (rte (:* Double)))
+                  '(:or (rte (:* Number)) 
+                                (rte (:cat String Number))
+                                (rte (:* Double)))]]
+      (rte-to-dfa rte)
+      (trim (rte-to-dfa rte))
+      (trim       (minimize (rte-to-dfa rte))))))

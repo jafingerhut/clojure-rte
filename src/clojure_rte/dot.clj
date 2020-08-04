@@ -24,7 +24,7 @@
             [clojure.string]
             [clojure.set]
             [clojure-rte.cl-compat :refer [cl-cond]]
-            [clojure-rte.core :refer [dfa-states-as-seq]]
+            [clojure-rte.core :refer [dfa-states-as-seq find-sink-states dfa-state-by-index]]
             [clojure-rte.util :refer [member print-vals]]
             [clojure.java.shell :refer [sh]]))
 
@@ -59,18 +59,15 @@
            (sh *dot-path* "-Tpng" "-o" png-file-name
                :in dot-string)
            (when (= "Mac OS X" (System/getProperty "os.name"))
-             (sh "open" "-a" "Preview" png-file-name)))
+             (let [stat (sh "open" "-a" "Preview" png-file-name)]
+               (if (not (= 0 (:exit stat)))
+                 (println dot-string))
+               stat)))
     :else
     (let [transition-labels (distinct (mapcat (fn [q]
                                                 (map first (:transitions q)))
                                               (dfa-states-as-seq dfa)))
-          sink-states (filter (fn [q]
-                                (and (= 1 (count (:transitions q)))
-                                     (every? (fn [[label dst]] (and (= :sigma label)
-                                                                    (not (:accepting q))
-                                                                    (= dst (:index q))))
-                                             (:transitions q))))
-                              (dfa-states-as-seq dfa))
+          sink-states (find-sink-states dfa)
           abbrevs (zipmap transition-labels (range (count transition-labels)))
           indices (clojure.set/map-invert abbrevs)]
       (with-out-str
@@ -104,9 +101,8 @@
               (cl-format *out* "   H~D [label=\"\", style=invis, width=0]~%" (:index q))
               (cl-format *out* "   H~D -> q~D;~%" (:index q) (:index q)))
             (doseq [[type-desig next-state] (:transitions q)]
-              (print-vals (:states dfa))
               (cl-cond
-               ((and (member ((:states dfa) next-state) sink-states)
+               ((and (member (dfa-state-by-index dfa next-state) sink-states)
                      (not draw-sink)))
                (abbrev
                 (cl-format *out* "   q~D -> q~D [label=\"t~a\"];~%" (:index q) next-state (abbrevs type-desig)))

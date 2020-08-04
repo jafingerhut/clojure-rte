@@ -45,7 +45,13 @@
 (defmethod print-method State [v w]
   (.write w (format "#<State %d>" (:index v))))
 
+;; TODO - need to assert every time a Dfa gets created that no two states have the same :index
 (defrecord Dfa [pattern canonicalized states exit-map combine-labels])
+
+(defn dfa-state-by-index
+  "Return the State object of the Dfa whose :index is the given index."
+  [dfa index]
+  ((:states dfa) index))
 
 (defn dfa-states-as-seq
   "Return a sequence of states which can be iterated over"
@@ -76,7 +82,7 @@
   [dfa source-state target-label]
   (let [[_ index] (first (filter (fn [[label dst-index]] (= label target-label))
                                  (:transitions source-state)))]
-    ((:states dfa) index)))
+    (dfa-state-by-index dfa index)))
   
 (defmethod print-method Dfa [v w]
   (.write w (format "#<Dfa %d states>" (count (dfa-states-as-seq v)))))
@@ -132,6 +138,18 @@
   [eqv-class] ;; a set of states
   (reduce min (map :index eqv-class)))
 
+(defn find-sink-states
+  "Find the set (as sequence) of all sink states in the given Dfa.
+  A sink state is not a final state,
+  and all its transitions point to itself."
+  [dfa]
+  (filter (fn [q]
+            (and (not (:accepting q))
+                 (every? (fn [[label dst]]
+                           (= dst (:index q)))
+                         (:transitions q))))
+          (dfa-states-as-seq dfa)))
+
 (defn minimize
   "Accepts an object of type Dfa, and returns a new object of type Dfa
   implementing the minimization of the state machine according to the
@@ -164,7 +182,7 @@
                                                   (map (fn [[label dst-id]]
                                                          [new-src-id
                                                           label
-                                                          (new-id ((:states dfa) dst-id))]
+                                                          (new-id (dfa-state-by-index dfa dst-id))]
                                                          ) (:transitions q))))
                                               (dfa-states-as-seq dfa)))
             grouped (group-by (fn [[new-src-id _ _]] new-src-id) new-proto-delta)
@@ -195,3 +213,74 @@
                                :transitions (map rest transitions)})]]
                    ))) ids))
           })))))
+
+(defn group-by-mapped
+  "Like group-by but allows a second function to be mapped over each
+  of the values in the computed hash map."
+  [f1 f2 coll]
+  (into {} (map (fn [[key value]]
+                  [key (set (map f2 value))]) (group-by f1 coll))))
+
+(defn trim
+  "Creates a new Dfa from the given Dfa containing only accessible and co-accessible
+  states.  Warning, this removes the sink state if there is one.  The result is
+  that the computed Dfa may not any longer be complete."
+  [dfa]
+  (let [transition-pairs (mapcat (fn [q]
+                                     (map (fn [[_ dst-id]]
+                                            [(:index q) dst-id])
+                                          (:transitions q)))
+                                 (dfa-states-as-seq dfa))
+        forward-map (group-by-mapped first second transition-pairs)
+        backward-map (group-by-mapped second first transition-pairs)]
+    (letfn [(trace-fb [states done fb-map]
+              (loop [states states
+                     done done]
+                (if (empty? states)
+                  done
+                  (let [next-states (mapcat (fn [id]
+                                              (if (member id done)
+                                                nil
+                                                (fb-map id))) states)
+                        new-next-states (clojure.set/difference (set next-states) done)]
+                    (recur new-next-states (union done states))))))
+            (trace-forward [states done]
+              (trace-fb states done forward-map))
+            (trace-backward [states done]
+              (trace-fb states done backward-map))]
+      (let [
+            ;; Trace forward from initial state, collecting all states reached.
+            ;; These are the accessible states.
+            accessible (trace-forward #{0} #{})
+            final-accessible (clojure.set/intersection accessible
+                                                       (set (map :index (filter :accepting (dfa-states-as-seq dfa)))))
+            ;; trace backward starting from the set of all final states which are
+            ;; accessible, collecting all states.   These states are both accessible
+            ;; and co-accessible.
+            co-accessible (trace-backward final-accessible #{})
+            new-fids (filter (fn [id] (:accepting (dfa-state-by-index dfa id)))
+                             co-accessible)
+            ]
+        ;; now build a new Dfa, omitting any state not in the co-accessible list
+        ;; any transition going to a state which has being removed, gets
+        ;; diverted to the sink state.
+        (map->Dfa ;;         (conj co-accessible sink-state)
+         {:pattern (:pattern dfa)
+          :canonicalized (:cononicalized dfa)
+          :exit-map (into {} (map (fn [id]
+                                    [id ((:exit-map dfa) id)])
+                                  new-fids)) ;; map each of new-fids to the old value returned from the exit-map
+          :combine-labels (:combine-labels dfa)
+          :states
+          (into {} (map (fn [id]
+                          (let [state (dfa-state-by-index dfa id)]
+                            [id (map->State
+                                 {:index id
+                                  :pattern (:pattern state)
+                                  :accepting (member id new-fids)
+                                  :transitions (filter (fn [[label dst-id]]
+                                                         (member dst-id co-accessible))
+                                                       (:transitions state))})]))
+                        co-accessible))
+          })
+))))
