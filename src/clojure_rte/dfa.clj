@@ -81,7 +81,7 @@
 (defmethod print-method Dfa [v w]
   (.write w (format "#<Dfa %d states>" (count (dfa-states-as-seq v)))))
 
-(defn %partition-by
+(defn split-eqv-class
   "Given a set of objects, return a set of subsets thereof which is a partition of
   the given set.   Every element in any some set has the same value under f, and
   the value under f is different for any distinct subsets.  f is not called
@@ -99,10 +99,13 @@
                    (member target eqv-class)) partition)))
 
 (defn find-hopcroft-partition
-  ""
+  "Apply the Hopcroft partition algorithm to the states of the given
+  Dfa to return a set of eqv-classes.  This set of eqv-classes is a partition
+  of the initial set of states.
+  Each eqv-class is a set of states."
   [dfa]
   (let [[finals non-finals] (map (group-by :accepting (dfa-states-as-seq dfa)) [true false])
-        pi-0 (conj (%partition-by finals
+        pi-0 (conj (split-eqv-class finals
                                   (fn [state]
                                     ((:exit-map dfa) (:index state))))
                    non-finals)]
@@ -120,7 +123,7 @@
                                        (map (fn [[label _]] label) transitions)))
                              (group-by (fn [[label _]] (phi s label)) (:transitions s))))
                       (repartition [eqv-class]
-                        (%partition-by eqv-class Phi))]
+                        (split-eqv-class eqv-class Phi))]
                 (mapcat repartition partition)))]
       (fixed-point pi-0 refine =))))
 
@@ -128,11 +131,6 @@
   "Compute the minimimum :index of the given set of states"
   [eqv-class] ;; a set of states
   (reduce min (map :index eqv-class)))
-
-(defn tabulate
-  ""
-  [n f]
-  (into {} (map f (range n))))
 
 (defn minimize
   "Accepts an object of type Dfa, and returns a new object of type Dfa
@@ -143,9 +141,16 @@
         ids (map min-state pi-minimized)
         partitions-map (zipmap ids pi-minimized)
         ids-map (zipmap pi-minimized ids)]
-
     (assert (sequential? pi-minimized))
-    (letfn [(new-id [state]
+    (letfn [(pretty-or [rest-args]
+              (cl-cond
+               ((empty? rest-args)
+                :sigma)
+               ((empty? (rest rest-args))
+                (first rest-args))
+               (:else
+                (conj rest-args  :or))))
+            (new-id [state]
               (assert (instance? State state))
               (ids-map (find-eqv-class pi-minimized state)))]
       (let [new-fids (mapcat (fn [id eqv-class]
@@ -171,25 +176,22 @@
                                            nil))
                                        ids pi-minimized))
             ]
-        ;; (dfa-to-dot dfa :view true)
         (map->Dfa
          {:pattern (:pattern dfa)
           :canonicalized (:cononicalized dfa)
           :exit-map (into {} (map (fn [id]
-                                    [id ((:exit-map dfa) id)]) new-fids)) ;; map each of new-fids to the old value returned from the exit-map
+                                    [id ((:exit-map dfa) id)])
+                                  new-fids)) ;; map each of new-fids to the old value returned from the exit-map
           :combine-labels (:combine-labels dfa)
           :states
-          (tabulate (inc (reduce max ids ))
-                    (fn [id]
-                      (let [transitions (grouped id)]
-                        (if (not transitions)
-                          nil
-                          (map->State
-                           {:index id
-                            :accepting (member id new-fids)
-                            :transitions (map (fn [[src-id label dst-id]]
-                                                [label dst-id])
-                                              transitions)})))))})))))
-
-  
-
+          (into {} (mapcat (fn [id ]
+                    (let [transitions (grouped id)]
+                      (if (not transitions)
+                        nil ;; contribute nothing to the mapcat for this iteration.
+                        [[id (map->State
+                              {:index id
+                               :pattern (pretty-or (map :pattern (partitions-map id)))
+                               :accepting (member id new-fids)
+                               :transitions (map rest transitions)})]]
+                   ))) ids))
+          })))))

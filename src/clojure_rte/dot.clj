@@ -72,7 +72,7 @@
                                              (:transitions q))))
                               (dfa-states-as-seq dfa))
           abbrevs (zipmap transition-labels (range (count transition-labels)))
-          indexes (clojure.set/map-invert abbrevs)]
+          indices (clojure.set/map-invert abbrevs)]
       (with-out-str
         (cl-format *out* "digraph G {~%")
         (when title

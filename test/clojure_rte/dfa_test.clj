@@ -24,12 +24,12 @@
   (:require [clojure-rte.core :refer :all]
             [clojure.test :refer :all]))
 
-(deftest t-%partition-by
-  (testing "%partition-by"
-    (is (= (%partition-by #{1 2 3 4 5 6 7} even?)
+(deftest t-split-eqv-class
+  (testing "split-eqv-class"
+    (is (= (split-eqv-class #{1 2 3 4 5 6 7} even?)
            #{#{1 3 5 7}
              #{2 4 6}}))
-    (is (= (%partition-by #{1 2 3 4 5 6 7 8 9} #(mod % 3))
+    (is (= (split-eqv-class #{1 2 3 4 5 6 7 8 9} #(mod % 3))
            #{#{2 5 8}
              #{1 4 7}
              #{3 6 9}}))))
