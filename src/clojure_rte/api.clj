@@ -26,7 +26,8 @@
 (in-ns 'clojure-rte.core)
 
 (defn dispatch [obj caller]
-  (cond (instance? Dfa obj)
+  (cond (instance? (dfa/record-name) ;; parser cannot handle dfa/Dfa
+                   obj)
         :Dfa
 
         (sequential? obj)
@@ -68,7 +69,7 @@
   (rte-inhabited? (rte-compile pattern)))
 
 (defmethod rte-inhabited? :Dfa [dfa]
-  (some :accepting (dfa-states-as-seq dfa)))
+  (some :accepting (dfa/states-as-seq dfa)))
 
 (defn rte-vacuous? [dfa]
   (not (rte-inhabited? dfa)))
@@ -116,4 +117,5 @@
           (true) true
           (false) false
           (:accepting (state-vec final-state)))))))
+
 

@@ -22,6 +22,7 @@
 
 (ns clojure-rte.dfa-test
   (:require [clojure-rte.core :refer :all]
+            [clojure-rte.dfa :refer :all]
             [clojure.test :refer :all]))
 
 (deftest t-split-eqv-class
@@ -57,8 +58,8 @@
                                  (:cat String Number)
                                  (:* Double)))
           dfa2 (minimize dfa1)]
-      (is (= 6 (count (dfa-states-as-seq dfa1))))
-      (is (= 6 (count (dfa-states-as-seq dfa2)))))))
+      (is (= 6 (count (states-as-seq dfa1))))
+      (is (= 6 (count (states-as-seq dfa2)))))))
 
 (deftest t-minimize-runs
   (testing "that minimize runs"

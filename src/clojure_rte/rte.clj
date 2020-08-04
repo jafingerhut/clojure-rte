@@ -737,7 +737,7 @@
                        ) triples)
         grouped (group-by (fn [trip]
                             (trip 0)) triples)]
-    (map->Dfa
+    (dfa/map->Dfa
      {:pattern given-pattern
       :canonicalized pattern
       :exit-map (constantly true)
@@ -752,7 +752,7 @@
                                           (list [:sigma ((first (grouped index)) 2)])
                                           (map (fn [[_src wrt dst]]
                                                  [wrt dst]) (grouped index)))]
-                        (map->State {:index index
+                        (dfa/map->State {:index index
                                      :initial (= 0 index)
                                      :accepting (nullable deriv)
                                      :pattern deriv

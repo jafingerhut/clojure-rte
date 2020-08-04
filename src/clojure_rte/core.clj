@@ -50,7 +50,7 @@
                                       partition-by-pred
                                       print-vals sort-operands member]]
             [clojure-rte.type :as ty]
-            [clojure-rte.dfa]
+            [clojure-rte.dfa :as dfa ]
             [clojure-rte.rte]
             [clojure-rte.memoize]
             [clojure-rte.api]

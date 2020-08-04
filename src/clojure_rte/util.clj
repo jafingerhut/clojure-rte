@@ -223,6 +223,10 @@
                               `[(fn [] ~arg) '~arg]) args))]
     `(print-vals-helper [~@pairs])))
 
-
-
+(defn group-by-mapped
+  "Like group-by but allows a second function to be mapped over each
+  of the values in the computed hash map."
+  [f1 f2 coll]
+  (into {} (map (fn [[key value]]
+                  [key (set (map f2 value))]) (group-by f1 coll))))
 

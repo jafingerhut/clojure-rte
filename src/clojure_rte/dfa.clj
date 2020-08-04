@@ -20,10 +20,11 @@
 ;; WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 (ns clojure-rte.dfa
-  "Definition of records State and Dfa.")
-
-(in-ns 'clojure-rte.core)
-
+  "Definition of records State and Dfa."
+  (:require [clojure-rte.cl-compat :refer [cl-cond]]
+            [clojure-rte.util :refer [fixed-point member group-by-mapped]]
+            [clojure.set :refer [union difference]]
+))
 
 (defrecord State 
   ;; :index -- the index of this state in the array
@@ -48,12 +49,16 @@
 ;; TODO - need to assert every time a Dfa gets created that no two states have the same :index
 (defrecord Dfa [pattern canonicalized states exit-map combine-labels])
 
-(defn dfa-state-by-index
+(defn record-name
+  []
+  Dfa)
+
+(defn state-by-index
   "Return the State object of the Dfa whose :index is the given index."
   [dfa index]
   ((:states dfa) index))
 
-(defn dfa-states-as-seq
+(defn states-as-seq
   "Return a sequence of states which can be iterated over"
   [dfa]
   (cl-cond
@@ -75,17 +80,17 @@
 (defn serialize-dfa
   "Serialize a Dfa for debugging"
   [dfa]
-  (map serialize-state (dfa-states-as-seq dfa)))
+  (map serialize-state (states-as-seq dfa)))
 
 (defn delta
   "Given a state and target-label, find the destination state (object of type State)"
   [dfa source-state target-label]
   (let [[_ index] (first (filter (fn [[label dst-index]] (= label target-label))
                                  (:transitions source-state)))]
-    (dfa-state-by-index dfa index)))
+    (state-by-index dfa index)))
   
 (defmethod print-method Dfa [v w]
-  (.write w (format "#<Dfa %d states>" (count (dfa-states-as-seq v)))))
+  (.write w (format "#<Dfa %d states>" (count (states-as-seq v)))))
 
 (defn split-eqv-class
   "Given a set of objects, return a set of subsets thereof which is a partition of
@@ -110,7 +115,7 @@
   of the initial set of states.
   Each eqv-class is a set of states."
   [dfa]
-  (let [[finals non-finals] (map (group-by :accepting (dfa-states-as-seq dfa)) [true false])
+  (let [[finals non-finals] (map (group-by :accepting (states-as-seq dfa)) [true false])
         pi-0 (conj (split-eqv-class finals
                                   (fn [state]
                                     ((:exit-map dfa) (:index state))))
@@ -148,7 +153,7 @@
                  (every? (fn [[label dst]]
                            (= dst (:index q)))
                          (:transitions q))))
-          (dfa-states-as-seq dfa)))
+          (states-as-seq dfa)))
 
 (defn minimize
   "Accepts an object of type Dfa, and returns a new object of type Dfa
@@ -182,9 +187,9 @@
                                                   (map (fn [[label dst-id]]
                                                          [new-src-id
                                                           label
-                                                          (new-id (dfa-state-by-index dfa dst-id))]
+                                                          (new-id (state-by-index dfa dst-id))]
                                                          ) (:transitions q))))
-                                              (dfa-states-as-seq dfa)))
+                                              (states-as-seq dfa)))
             grouped (group-by (fn [[new-src-id _ _]] new-src-id) new-proto-delta)
             new-exit-map (into {}
                                (mapcat (fn [id eqv-class]
@@ -211,13 +216,6 @@
                                             ))) ids))
                      ))))))
 
-(defn group-by-mapped
-  "Like group-by but allows a second function to be mapped over each
-  of the values in the computed hash map."
-  [f1 f2 coll]
-  (into {} (map (fn [[key value]]
-                  [key (set (map f2 value))]) (group-by f1 coll))))
-
 (defn trim
   "Creates a new Dfa from the given Dfa containing only accessible and co-accessible
   states.  Warning, this removes the sink state if there is one.  The result is
@@ -227,7 +225,7 @@
                                      (map (fn [[_ dst-id]]
                                             [(:index q) dst-id])
                                           (:transitions q)))
-                                 (dfa-states-as-seq dfa))
+                                 (states-as-seq dfa))
         forward-map (group-by-mapped first second transition-pairs)
         backward-map (group-by-mapped second first transition-pairs)]
     (letfn [(trace-fb [states done fb-map]
@@ -239,7 +237,7 @@
                                               (if (member id done)
                                                 nil
                                                 (fb-map id))) states)
-                        new-next-states (clojure.set/difference (set next-states) done)]
+                        new-next-states (difference (set next-states) done)]
                     (recur new-next-states (union done states))))))
             (trace-forward [states done]
               (trace-fb states done forward-map))
@@ -250,12 +248,12 @@
             ;; These are the accessible states.
             accessible (trace-forward #{0} #{})
             final-accessible (clojure.set/intersection accessible
-                                                       (set (map :index (filter :accepting (dfa-states-as-seq dfa)))))
+                                                       (set (map :index (filter :accepting (states-as-seq dfa)))))
             ;; trace backward starting from the set of all final states which are
             ;; accessible, collecting all states.   These states are both accessible
             ;; and co-accessible.
             co-accessible (trace-backward final-accessible #{})
-            new-fids (filter (fn [id] (:accepting (dfa-state-by-index dfa id)))
+            new-fids (filter (fn [id] (:accepting (state-by-index dfa id)))
                              co-accessible)
             ]
         ;; now build a new Dfa, omitting any state not in the co-accessible list
@@ -268,7 +266,7 @@
                                   new-fids)) ;; map each of new-fids to the old value returned from the exit-map
           :states
           (into {} (map (fn [id]
-                          (let [state (dfa-state-by-index dfa id)]
+                          (let [state (state-by-index dfa id)]
                             [id (map->State
                                  (assoc state
                                         :index id
@@ -278,3 +276,4 @@
                                                              (:transitions state))))]))
                         co-accessible))))
 ))))
+
