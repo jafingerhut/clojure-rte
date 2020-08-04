@@ -228,9 +228,9 @@
                                  (states-as-seq dfa))
         forward-map (group-by-mapped first second transition-pairs)
         backward-map (group-by-mapped second first transition-pairs)]
-    (letfn [(trace-fb [states done fb-map]
+    (letfn [(trace-fb [states fb-map]
               (loop [states states
-                     done done]
+                     done #{}]
                 (if (empty? states)
                   done
                   (let [next-states (mapcat (fn [id]
@@ -239,20 +239,19 @@
                                                 (fb-map id))) states)
                         new-next-states (difference (set next-states) done)]
                     (recur new-next-states (union done states))))))
-            (trace-forward [states done]
-              (trace-fb states done forward-map))
-            (trace-backward [states done]
-              (trace-fb states done backward-map))]
+            (trace-forward [states]
+              (trace-fb states forward-map))
+            (trace-backward [states]
+              (trace-fb states backward-map))]
       (let [
             ;; Trace forward from initial state, collecting all states reached.
             ;; These are the accessible states.
-            accessible (trace-forward #{0} #{})
+            accessible (trace-forward #{0})
             final-accessible (clojure.set/intersection accessible
                                                        (set (map :index (filter :accepting (states-as-seq dfa)))))
             ;; trace backward starting from the set of all final states which are
-            ;; accessible, collecting all states.   These states are both accessible
-            ;; and co-accessible.
-            co-accessible (trace-backward final-accessible #{})
+            ;; co-accessible, collecting all states.  
+            co-accessible (trace-backward final-accessible)
             useful (intersection co-accessible accessible)
             new-fids (filter (fn [id] (:accepting (state-by-index dfa id)))
                              useful)
