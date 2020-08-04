@@ -23,7 +23,7 @@
   "Definition of records State and Dfa."
   (:require [clojure-rte.cl-compat :refer [cl-cond]]
             [clojure-rte.util :refer [fixed-point member group-by-mapped]]
-            [clojure.set :refer [union difference]]
+            [clojure.set :refer [union difference intersection]]
 ))
 
 (defrecord State 
@@ -253,8 +253,9 @@
             ;; accessible, collecting all states.   These states are both accessible
             ;; and co-accessible.
             co-accessible (trace-backward final-accessible #{})
+            useful (intersection co-accessible accessible)
             new-fids (filter (fn [id] (:accepting (state-by-index dfa id)))
-                             co-accessible)
+                             useful)
             ]
         ;; now build a new Dfa, omitting any state not in the co-accessible list
         ;; any transition going to a state which has being removed, gets
@@ -274,6 +275,6 @@
                                         :transitions (filter (fn [[label dst-id]]
                                                                (member dst-id co-accessible))
                                                              (:transitions state))))]))
-                        co-accessible))))
+                        useful))))
 ))))
 
