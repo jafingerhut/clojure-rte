@@ -22,7 +22,8 @@
 (ns clojure-rte.dfa
   "Definition of records State and Dfa."
   (:require [clojure-rte.cl-compat :refer [cl-cond]]
-            [clojure-rte.util :refer [fixed-point member group-by-mapped]]
+            [clojure-rte.util :refer [fixed-point member group-by-mapped print-vals]]
+            [clojure-rte.type :as ty]
             [clojure.set :refer [union difference intersection]]
 ))
 
@@ -210,6 +211,7 @@
                                             nil ;; contribute nothing to the mapcat for this iteration.
                                             [[id (map->State
                                                   {:index id
+                                                   :initial (= 0 id)
                                                    :pattern (pretty-or (map :pattern (partitions-map id)))
                                                    :accepting (member id new-fids)
                                                    :transitions (map rest transitions)})]]
@@ -271,9 +273,102 @@
                                  (assoc state
                                         :index id
                                         :accepting (member id new-fids)
+                                        :initial (= id 0)
                                         :transitions (filter (fn [[label dst-id]]
                                                                (member dst-id co-accessible))
                                                              (:transitions state))))]))
                         useful))))
 ))))
 
+(defn intersect-labels
+  ""
+  [label-1 label-2]
+  (letfn [(and? [label]
+            (and (sequential? label)
+                 (= 'and (first label))))
+          (pretty-and [rest-args]
+            (cond
+              (empty? rest-args)
+              :empty-set
+              
+              (empty? (rest rest-args))
+              (first rest-args)
+              
+              (= (distinct rest-args) rest-args)
+              (concat (list 'and) rest-args)
+              
+              :else
+              (pretty-and (distinct rest-args))))]
+              
+    (cl-cond
+     ((= label-1 :sigma)
+      label-2)
+     ((= label-2 :sigma)
+      label-1)
+     ((= label-1 :empty-set)
+      :empty-set)
+     ((= label-2 :empty-set)
+      :empty-set)
+     ((= label-1 label-2)
+      label-1)
+     ((and (and? label-1)
+           (and? label-2))
+      (pretty-and (concat (rest label-1) (rest label-2))))
+     ((and? label-1)
+      (pretty-and (conj (rest label-1) label-2)))
+     ((and? label-2)
+      (pretty-and (conj (rest label-2) label-1)))
+     (:else
+      (pretty-and (list label-1 label-2))))))
+   
+
+(defn synchronized-product
+  [dfa-1 dfa-2 f-arbitrate-accepting f-arbitrate-exit-value]
+  "Assuming that the given Dfas are complete, we compute the syncronized cross product SXP
+  of the two Dfas."
+  (letfn [
+          (find-reachable [state-pairs]
+            (loop [state-pairs state-pairs
+                   done #{}]
+              (if (empty? state-pairs)
+                done
+                (let [next (set (for [[id-1 id-2] state-pairs
+                                      [_ dst-1] (:transitions (state-by-index dfa-1 id-1))
+                                      [_ dst-2] (:transitions (state-by-index dfa-2 id-2))]
+                                  [dst-1 dst-2]))]
+                  (recur (difference next done)
+                         (union state-pairs done))))))]
+    (let [sxp-pairs (sort (fn [[a b] [x y]]
+                            (cond
+                              (= a x)
+                              (< b y)
+                              :else
+                              (< a x)))
+                          (find-reachable #{[0 0]}))
+          state-ident-map  (zipmap sxp-pairs (range))
+          ident-state-map  (zipmap (range) sxp-pairs)
+          accepting-ids (for [[id [id-1 id-2]] ident-state-map
+                              :when (f-arbitrate-accepting (:accepting (state-by-index dfa-1 id-1))
+                                                           (:accepting (state-by-index dfa-2 id-2)))]
+                          id)
+          ]
+      (assert (= 0 (state-ident-map [0 0])))
+      (assert (= [0 0] (ident-state-map 0)))
+
+      (map->Dfa (assoc dfa-1
+                       :exit-map (into {} (for [[id [id-1 id-2]] ident-state-map
+                                                :when (member id accepting-ids)]
+                                            [id (f-arbitrate-exit-value
+                                                 (:exit-value (state-by-index dfa-1 id-1))
+                                                 (:exit-value (state-by-index dfa-2 id-2)))]))
+                       
+                       :states (into {} (for [[id [id-1 id-2]] ident-state-map]
+                                          [id (map->State {:index id
+                                                           :initial (print-vals id (= 0 id))
+                                                           :accepting (member id accepting-ids)
+                                                           :transitions
+                                                           (for [[label-1 dst-1] (:transitions (state-by-index dfa-1 id-1))
+                                                                 [label-2 dst-2] (:transitions (state-by-index dfa-2 id-2))
+                                                                 :let [label-sxp (intersect-labels label-1 label-2)]
+                                                                 :when (not (ty/disjoint? label-1 label-2 (constantly true)))]
+                                                             [label-sxp (state-ident-map [dst-1 dst-2])])})])))))))

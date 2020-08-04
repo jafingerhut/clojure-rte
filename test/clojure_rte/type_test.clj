@@ -225,3 +225,4 @@
       (is (inhabited? '(rte (:+ Number))))
       (is (not (inhabited? '(rte (:and (:+ Number)
                                        (:+ String)))))))))
+

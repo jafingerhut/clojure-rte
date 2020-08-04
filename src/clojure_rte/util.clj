@@ -105,7 +105,7 @@
 
 (defn rte-constantly
   "Return a binary function, similar to constanty, but the binary
-   function ignors its second argument.  This function is useful as a
+   function ignores its second argument.  This function is useful as a
    callback function used to extend *traversal-functions*, as each
    such callback function must be a binary function."
   [x]
