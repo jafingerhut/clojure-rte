@@ -195,24 +195,21 @@
                                        ids pi-minimized))
             ]
         (map->Dfa
-         {:pattern (:pattern dfa)
-          :canonicalized (:cononicalized dfa)
-          :exit-map (into {} (map (fn [id]
-                                    [id ((:exit-map dfa) id)])
-                                  new-fids)) ;; map each of new-fids to the old value returned from the exit-map
-          :combine-labels (:combine-labels dfa)
-          :states
-          (into {} (mapcat (fn [id ]
-                    (let [transitions (grouped id)]
-                      (if (not transitions)
-                        nil ;; contribute nothing to the mapcat for this iteration.
-                        [[id (map->State
-                              {:index id
-                               :pattern (pretty-or (map :pattern (partitions-map id)))
-                               :accepting (member id new-fids)
-                               :transitions (map rest transitions)})]]
-                   ))) ids))
-          })))))
+         (assoc dfa :exit-map (into {} (map (fn [id]
+                                               [id ((:exit-map dfa) id)])
+                                             new-fids)) ;; map each of new-fids to the old value returned from the exit-map
+                     :states
+                     (into {} (mapcat (fn [id ]
+                                        (let [transitions (grouped id)]
+                                          (if (not transitions)
+                                            nil ;; contribute nothing to the mapcat for this iteration.
+                                            [[id (map->State
+                                                  {:index id
+                                                   :pattern (pretty-or (map :pattern (partitions-map id)))
+                                                   :accepting (member id new-fids)
+                                                   :transitions (map rest transitions)})]]
+                                            ))) ids))
+                     ))))))
 
 (defn group-by-mapped
   "Like group-by but allows a second function to be mapped over each
@@ -264,23 +261,20 @@
         ;; now build a new Dfa, omitting any state not in the co-accessible list
         ;; any transition going to a state which has being removed, gets
         ;; diverted to the sink state.
-        (map->Dfa ;;         (conj co-accessible sink-state)
-         {:pattern (:pattern dfa)
-          :canonicalized (:cononicalized dfa)
+        (map->Dfa
+         (assoc dfa
           :exit-map (into {} (map (fn [id]
                                     [id ((:exit-map dfa) id)])
                                   new-fids)) ;; map each of new-fids to the old value returned from the exit-map
-          :combine-labels (:combine-labels dfa)
           :states
           (into {} (map (fn [id]
                           (let [state (dfa-state-by-index dfa id)]
                             [id (map->State
-                                 {:index id
-                                  :pattern (:pattern state)
-                                  :accepting (member id new-fids)
-                                  :transitions (filter (fn [[label dst-id]]
-                                                         (member dst-id co-accessible))
-                                                       (:transitions state))})]))
-                        co-accessible))
-          })
+                                 (assoc state
+                                        :index id
+                                        :accepting (member id new-fids)
+                                        :transitions (filter (fn [[label dst-id]]
+                                                               (member dst-id co-accessible))
+                                                             (:transitions state))))]))
+                        co-accessible))))
 ))))

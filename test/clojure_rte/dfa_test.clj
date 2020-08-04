@@ -71,7 +71,7 @@
                                 (rte (:* Double)))]]
       (rte-to-dfa rte)
       (minimize (rte-to-dfa rte)))))
-o
+
 (deftest t-trim-runs
   (testing "that trim runs"
     (doseq [rte ['(:* Long)
