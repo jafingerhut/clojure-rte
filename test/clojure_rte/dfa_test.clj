@@ -50,6 +50,16 @@
            #{1 2 3}))))
 
 
+(deftest t-minimize
+  (testing "minimize"
+    ;; first example, a dfa already minimum
+    (let [dfa1 (rte-to-dfa '(:or (:* Number)
+                                 (:cat String Number)
+                                 (:* Double)))
+          dfa2 (minimize dfa1)]
+      (is (= 5 (count (dfa-states-as-seq dfa1))))
+      (is (= 5 (count (dfa-states-as-seq dfa2)))))))
+
 (deftest t-minimize-runs
   (testing "that minimize runs"
     (minimize (rte-to-dfa '(:* Long)))

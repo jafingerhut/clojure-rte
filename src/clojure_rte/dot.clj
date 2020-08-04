@@ -24,7 +24,8 @@
             [clojure.string]
             [clojure.set]
             [clojure-rte.cl-compat :refer [cl-cond]]
-            [clojure-rte.util :refer [member]]
+            [clojure-rte.core :refer [dfa-states-as-seq]]
+            [clojure-rte.util :refer [member print-vals]]
             [clojure.java.shell :refer [sh]]))
 
 (def ^:dynamic *dot-path*
@@ -58,7 +59,7 @@
            (sh *dot-path* "-Tpng" "-o" png-file-name
                :in dot-string)
            (when (= "Mac OS X" (System/getProperty "os.name"))
-             (sh "open" png-file-name)))
+             (sh "open" "-a" "Preview" png-file-name)))
     :else
     (let [transition-labels (distinct (mapcat (fn [q]
                                                 (map first (:transitions q)))
@@ -80,9 +81,13 @@
         (cl-format *out* "  fontname=courier;~%")
         (when abbrev
           (cl-format *out* "  label=\"~a\\l\"~%"
-                     (clojure.string/join "" (map (fn [index]
-                                                    (cl-format false "\\lt~a=~a" index (indexes index)))
-                                                  (range (count (keys indexes)))))))
+                     (clojure.string/join "" (concat (map (fn [index]
+                                                            (cl-format false "\\lt~a= ~a" index (indices index)))
+                                                          (range (count (keys indices))))
+                                                     ["\\l"]
+                                                     (map (fn [q] (cl-format false "\\lq~a= ~a"
+                                                                             (:index q) (:pattern q))) (dfa-states-as-seq dfa))
+))))
         (cl-format *out* "  graph [labeljust=l,nojustify=true];~%")
         (cl-format *out* "  node [fontname=Arial, fontsize=25];~%")
         (cl-format *out* "  edge [fontname=Helvetica, fontsize=20];~%")
@@ -94,17 +99,18 @@
 
            (:else
             (when (:accepting q)
-              (cl-format *out* "   ~D [shape=doublecircle] ;~%" (:index q)))
+              (cl-format *out* "   q~D [shape=doublecircle] ;~%" (:index q)))
             (when (:initial q)
               (cl-format *out* "   H~D [label=\"\", style=invis, width=0]~%" (:index q))
-              (cl-format *out* "   H~D -> ~D;~%" (:index q) (:index q)))
+              (cl-format *out* "   H~D -> q~D;~%" (:index q) (:index q)))
             (doseq [[type-desig next-state] (:transitions q)]
+              (print-vals (:states dfa))
               (cl-cond
                ((and (member ((:states dfa) next-state) sink-states)
                      (not draw-sink)))
                (abbrev
-                (cl-format *out* "   ~D -> ~D [label=\"t~a\"];~%" (:index q) next-state (abbrevs type-desig)))
+                (cl-format *out* "   q~D -> q~D [label=\"t~a\"];~%" (:index q) next-state (abbrevs type-desig)))
                (:else
-                (cl-format *out* "   ~D -> ~D [label=\"~a\"];~%" (:index q) next-state type-desig)))))))
+                (cl-format *out* "   q~D -> q~D [label=\"~a\"];~%" (:index q) next-state type-desig)))))))
         
         (cl-format *out* "}~%")))))
