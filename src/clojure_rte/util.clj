@@ -105,7 +105,7 @@
 
 (defn rte-constantly
   "Return a binary function, similar to constanty, but the binary
-   function ignors its second argument.  This function is useful as a
+   function ignores its second argument.  This function is useful as a
    callback function used to extend *traversal-functions*, as each
    such callback function must be a binary function."
   [x]
@@ -176,7 +176,10 @@
 (defn member
   "Like cl:member.  Determines whether the given is an element of the given sequence."
   [target items]
-  (some #{target} items))
+  (boolean (cond
+             (nil? target) (some nil? items)
+             (false? target) (some false? items)
+             :else (some #{target} items))))
 
 (defn partition-by-pred 
   "Apply the predicate to every element of the sequence and return a vector of two
@@ -187,3 +190,43 @@
   (let [g (group-by (fn [i]
                       (boolean (pred i))) items)]
     [(g true) (g false)]))
+
+(defn fixed-point
+  ""
+  [value f good-enough]
+  (loop [value value]
+    (let [new-value (f value)]
+      (if (good-enough value new-value)
+        value
+        (recur new-value)))))
+
+(defn print-vals-helper ""
+  [pairs]
+  (let [N (count pairs)]
+    (loop [val nil
+           n 1
+           pairs pairs]
+      (if (empty? pairs)
+        val
+        (let [[[thunk1 e1] & pairs] pairs]
+          (cl-format true "~A/~A ~A~%~T -> "
+                     n N e1)
+          (let [v1 (thunk1)]
+
+          (cl-format true "~A~%"
+                     v1)
+          (recur v1 (inc n) pairs)))))))
+
+(defmacro print-vals ""
+  [& args]
+  (let [pairs (into [] (map (fn [arg]
+                              `[(fn [] ~arg) '~arg]) args))]
+    `(print-vals-helper [~@pairs])))
+
+(defn group-by-mapped
+  "Like group-by but allows a second function to be mapped over each
+  of the values in the computed hash map."
+  [f1 f2 coll]
+  (into {} (map (fn [[key value]]
+                  [key (set (map f2 value))]) (group-by f1 coll))))
+

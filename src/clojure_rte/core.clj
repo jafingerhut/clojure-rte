@@ -45,10 +45,12 @@
             [clojure.pprint :refer [cl-format]]
             [clojure-rte.cl-compat :refer [cl-cond]]
             [clojure-rte.util :refer [with-first-match call-with-collector
+                                      fixed-point
                                       visit-permutations rte-constantly rte-identity
                                       partition-by-pred
-                                      sort-operands member]]
+                                      print-vals sort-operands member]]
             [clojure-rte.type :as ty]
+            [clojure-rte.dfa :as dfa ]
             [clojure-rte.rte]
             [clojure-rte.memoize]
             [clojure-rte.api]

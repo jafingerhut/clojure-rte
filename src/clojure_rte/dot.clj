@@ -23,6 +23,10 @@
   (:require [clojure.pprint :refer [cl-format]]
             [clojure.string]
             [clojure.set]
+            [clojure-rte.cl-compat :refer [cl-cond]]
+            [clojure-rte.core]
+            [clojure-rte.dfa :as dfa]
+            [clojure-rte.util :refer [member print-vals]]
             [clojure.java.shell :refer [sh]]))
 
 (def ^:dynamic *dot-path*
@@ -45,22 +49,36 @@
   rte-compile, or rte-to-dfa.
   For Mac OS, the :view option may be used to display the image
   interactively."
-  [dfa & {:keys [title view abbrev]
+  [dfa & {:keys [title view abbrev draw-sink verbose]
           :or {title "no-title"
+               draw-sink false
                abbrev true
-               view false}}]
+               view false
+               verbose false}}]
   (cond
-    view (let [png-file-name (str *dot-tmp-dir* "/" title ".png")]
+    view (let [png-file-name (str *dot-tmp-dir* "/" title ".png")
+               dot-string (dfa-to-dot dfa :draw-sink draw-sink :title title :view false :abbrev abbrev)]
+           (if verbose
+             (println [:draw-sink draw-sink :dot-string dot-string]))
            (sh *dot-path* "-Tpng" "-o" png-file-name
-               :in (dfa-to-dot dfa :title title :view false :abbrev abbrev))
+               :in dot-string)
            (when (= "Mac OS X" (System/getProperty "os.name"))
-             (sh "open" png-file-name)))
+             (let [stat (sh "open" "-a" "Preview" png-file-name)]
+               (if (not (= 0 (:exit stat)))
+                 (println dot-string))
+               stat)))
     :else
-    (let [transition-labels (distinct (mapcat (fn [q]
-                                                (map first (:transitions q)))
-                                              dfa))
+    (let [sink-states (dfa/find-sink-states dfa)
+          visible-states (if draw-sink
+                         (dfa/states-as-seq dfa)
+                         (remove (fn [q] (member q sink-states)) (dfa/states-as-seq dfa)))
+          visible-state-ids (map :index visible-states)
+          transition-labels (distinct (for [q visible-states
+                                            [label dst-id] (:transitions q)
+                                            :when (member dst-id visible-state-ids)]
+                                        label))          
           abbrevs (zipmap transition-labels (range (count transition-labels)))
-          indexes (clojure.set/map-invert abbrevs)]
+          indices (clojure.set/map-invert abbrevs)]
       (with-out-str
         (cl-format *out* "digraph G {~%")
         (when title
@@ -69,23 +87,36 @@
         (cl-format *out* "  fontname=courier;~%")
         (when abbrev
           (cl-format *out* "  label=\"~a\\l\"~%"
-                     (clojure.string/join "" (map (fn [index]
-                                                    (cl-format false "\\lt~a=~a" index (indexes index)))
-                                                  (range (count (keys indexes)))))))
+                     (clojure.string/join
+                      "" (concat (map (fn [index]
+                                        (cl-format false "\\lt~a= ~a" index (indices index)))
+                                      (range (count (keys indices))))
+                                 ["\\l"]
+                                 (map (fn [q] (cl-format false "\\lq~a= ~a"
+                                                         (:index q) (:pattern q)))
+                                      visible-states)))))
         (cl-format *out* "  graph [labeljust=l,nojustify=true];~%")
         (cl-format *out* "  node [fontname=Arial, fontsize=25];~%")
         (cl-format *out* "  edge [fontname=Helvetica, fontsize=20];~%")
 
-        (doseq [q dfa]
-          (when (:initial q)
-            (cl-format *out* "   H~D [label=\"\", style=invis, width=0]~%" (:index q))
-            (cl-format *out* "   H~D -> ~D;~%" (:index q) (:index q)))
-          (when (:accepting q)
-            (cl-format *out* "   ~D [shape=doublecircle] ;~%" (:index q)))
-          (doseq [[type-desig next-state] (:transitions q)]
-            (if abbrev
-              (cl-format *out* "   ~D -> ~D [label=\"t~a\"];~%" (:index q) next-state (abbrevs type-desig))
-              (cl-format *out* "   ~D -> ~D [label=\"~a\"];~%" (:index q) next-state type-desig))))
+        (doseq [q (dfa/states-as-seq dfa)]
+          (cl-cond
+           ((and (member q sink-states)
+                 (not draw-sink)))
+
+           (:else
+            (when (:accepting q)
+              (cl-format *out* "   q~D [shape=doublecircle] ;~%" (:index q)))
+            (when (:initial q)
+              (cl-format *out* "   H~D [label=\"\", style=invis, width=0]~%" (:index q))
+              (cl-format *out* "   H~D -> q~D;~%" (:index q) (:index q)))
+            (doseq [[type-desig next-state] (:transitions q)]
+              (cl-cond
+               ((and (member (dfa/state-by-index dfa next-state) sink-states)
+                     (not draw-sink)))
+               (abbrev
+                (cl-format *out* "   q~D -> q~D [label=\"t~a\"];~%" (:index q) next-state (abbrevs type-desig)))
+               (:else
+                (cl-format *out* "   q~D -> q~D [label=\"~a\"];~%" (:index q) next-state type-desig)))))))
         
         (cl-format *out* "}~%")))))
-

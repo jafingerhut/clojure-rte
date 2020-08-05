@@ -258,21 +258,22 @@
   "Determine whether the given rational type expression is nullable.
   I.e., does the empty-word satisfy the expression."
   [expr]
-  (traverse-pattern expr
-                    (assoc *traversal-functions*
-                           :empty-set (rte-constantly false)
-                           :epsilon (rte-constantly true)
-                           :sigma   (rte-constantly false)
-                           :type (rte-constantly false)
-                           :* (rte-constantly true)
-                           :cat (fn [operands _functions]
-                                  (every? nullable operands))
-                           :and (fn [operands _functions]
-                                  (every? nullable operands))
-                           :or (fn [operands _functions]
-                                 (some nullable operands))
-                           :not (fn [operand _functions]
-                                  (not (nullable operand))))))
+  (boolean
+   (traverse-pattern expr
+                     (assoc *traversal-functions*
+                            :empty-set (rte-constantly false)
+                            :epsilon (rte-constantly true)
+                            :sigma   (rte-constantly false)
+                            :type (rte-constantly false)
+                            :* (rte-constantly true)
+                            :cat (fn [operands _functions]
+                                   (every? nullable operands))
+                            :and (fn [operands _functions]
+                                   (every? nullable operands))
+                            :or (fn [operands _functions]
+                                  (some nullable operands))
+                            :not (fn [operand _functions]
+                                   (not (nullable operand)))))))
 
 (defn first-types 
   "Return a possibly empty set of types (i.e., object which can be
@@ -707,36 +708,27 @@
                      (conj done pattern)
                      (concat triples new-triples)))))))))
 
-(defrecord State 
-  ;; :index -- the index of this state in the array
-  ;; :accepting - Boolean true/false indicating whether this state is a
-  ;;     final/accepting state.
-  ;; :pattern -- the derivative value representing an rte pattern matching
-  ;;     any tail of the input sequence which is accepting from this point
-  ;;     onward.
-  ;; :sync-state -- Boolean
-  ;; :pattern -- 
-  ;; :transitions -- A list of pairs, each pair is a 2 element array of the form
-  ;;     [type next-state], e.g., [clojure.lang.Keyword 1]
-  ;;     which means if the value at the head of the sequence is of type
-  ;;     clojure.lang.Keyword, then go to state 1.  The type is some value
-  ;;     compatible with isa?.  the state index is some index of the state
-  ;;     array representing the finite atomaton.
-  [index accepting pattern transitions])
+(defn rte-combine-labels ""
+  [label1 label2]
+  (letfn [(or? [lab]
+            (and (sequential? lab)
+                 (= (first lab) 'or)))]      
+    (cond
+      (and (or? label1)
+           (or? label2)) `(~@label1 ~@(rest label2))
+      (and (or? label1)
+           (not (or? label2))) `(~@label1 ~label2)
+      (and (not (or? label1))
+           (or? label2)) `(~(first label2) ~label1 ~@(rest label2))
+      :else `(~'or ~label1 ~label2))))
 
-(defmethod print-method State [v w]
-  (.write w (format "#<State %d>" (:index v))))
-
-(defrecord Dfa [pattern canonicalized states])
-
-(defmethod print-method Dfa [v w]
-  (.write w (format "#<Dfa %d states>" (count (:states v)))))
-
-(defn rte-to-dfa 
+(defn rte-to-dfa
   "Use the Brzozowski derivative aproach to compute a finite automaton
   representing the given rte patten.  The finite automaton is in the
   form of an array of States.  The n'th State is array[n]."
-  [pattern]
+  ([pattern]
+   (rte-to-dfa pattern true))
+  ([pattern exit-value]
 
   (let [given-pattern pattern
         pattern (canonicalize-pattern pattern)
@@ -748,9 +740,11 @@
                        ) triples)
         grouped (group-by (fn [trip]
                             (trip 0)) triples)]
-    (map->Dfa
+    (dfa/map->Dfa
      {:pattern given-pattern
       :canonicalized pattern
+      :exit-map (constantly exit-value)
+      :combine-labels rte-combine-labels
       :states
       (into [] (map (fn [deriv index]
                       (let [transitions (if (and (grouped index)
@@ -761,10 +755,11 @@
                                           (list [:sigma ((first (grouped index)) 2)])
                                           (map (fn [[_src wrt dst]]
                                                  [wrt dst]) (grouped index)))]
-                        (map->State {:index index
+                        (dfa/map->State {:index index
                                      :initial (= 0 index)
                                      :accepting (nullable deriv)
                                      :pattern deriv
                                      :sync-state (and (some #{[:sigma index]} transitions) true)
                                      :transitions transitions})))
-                    derivatives (range (count derivatives))))})))
+                    derivatives (range (count derivatives))))}))))
+

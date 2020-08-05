@@ -290,3 +290,9 @@
   (testing "sort-operands 5"
     (sort-operands
      test-data)))
+
+(deftest t-fixed-point
+  (testing "fixed-point"
+    (is (= (fixed-point 1 identity =) 1))
+    (is (= (fixed-point 10 (fn [n] (if (> n 0) (- n 1) n)) =) 0))))
+

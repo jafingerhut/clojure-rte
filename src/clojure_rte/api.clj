@@ -26,7 +26,8 @@
 (in-ns 'clojure-rte.core)
 
 (defn dispatch [obj caller]
-  (cond (instance? Dfa obj)
+  (cond (instance? (dfa/record-name) ;; parser cannot handle dfa/Dfa
+                   obj)
         :Dfa
 
         (sequential? obj)
@@ -68,7 +69,7 @@
   (rte-inhabited? (rte-compile pattern)))
 
 (defmethod rte-inhabited? :Dfa [dfa]
-  (some :accepting (:states dfa)))
+  (some :accepting (dfa/states-as-seq dfa)))
 
 (defn rte-vacuous? [dfa]
   (not (rte-inhabited? dfa)))
@@ -92,12 +93,13 @@
 
 (defmethod rte-match :Dfa
   [dfa items]
-  (let [state-vec (:states dfa)]
+  (let [state-vec (:states dfa)
+        sink-states (set (dfa/find-sink-states dfa))]
     (letfn [(consume [state-index item]
               (let [state-obj (state-vec state-index)]
                 (cl-cond
-                 ((:sync-state state-obj)
-                  (reduced (:accepting state-obj)))
+                 ((member state-obj sink-states)
+                  (reduced false))
                  ((some (fn [[type next-state-index]]
                           (if (ty/typep item type)
                             next-state-index
@@ -105,15 +107,16 @@
                         (:transitions state-obj)))
                  (:else (reduced false)))))]
       (let [final-state (reduce consume 0 items)]
-        ;; final-state may be integer disgnating the state which was
+        ;; final-state may be integer desgnating the state which was
         ;;  reached on iterating successfully through the input
-        ;;  sequence, items.  Or final-state may true or false, if the
+        ;;  sequence, items.  Or final-state may false, if the
         ;;  iteration finished without iterating through the entire
-        ;;  sequence.  Two such cases, we found ourselves in a
+        ;;  sequence, either because we found ourselves in a
         ;;  sync-state, or we encountered a item for which no transition
         ;;  was possible.
-        (case final-state 
-          (true) true
-          (false) false
-          (:accepting (state-vec final-state)))))))
+        (cond
+          (= false final-state) false
+          (:accepting (state-vec final-state)) ((:exit-map dfa) final-state)
+          :else false)))))
+
 
