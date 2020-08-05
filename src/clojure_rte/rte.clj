@@ -726,7 +726,9 @@
   "Use the Brzozowski derivative aproach to compute a finite automaton
   representing the given rte patten.  The finite automaton is in the
   form of an array of States.  The n'th State is array[n]."
-  [pattern]
+  ([pattern]
+   (rte-to-dfa pattern true))
+  ([pattern exit-value]
 
   (let [given-pattern pattern
         pattern (canonicalize-pattern pattern)
@@ -741,7 +743,7 @@
     (dfa/map->Dfa
      {:pattern given-pattern
       :canonicalized pattern
-      :exit-map (constantly true)
+      :exit-map (constantly exit-value)
       :combine-labels rte-combine-labels
       :states
       (into [] (map (fn [deriv index]
@@ -759,5 +761,5 @@
                                      :pattern deriv
                                      :sync-state (and (some #{[:sigma index]} transitions) true)
                                      :transitions transitions})))
-                    derivatives (range (count derivatives))))})))
+                    derivatives (range (count derivatives))))}))))
 

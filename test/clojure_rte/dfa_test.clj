@@ -19,7 +19,6 @@
 ;; OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
 ;; WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-
 (ns clojure-rte.dfa-test
   (:require [clojure-rte.core :refer :all]
             [clojure-rte.dfa :refer :all]
@@ -49,7 +48,6 @@
     (is (= (find-eqv-class #{#{1 2 3} #{4 5 6} #{7 8 9}}
                            2)
            #{1 2 3}))))
-
 
 (deftest t-minimize
   (testing "minimize"
@@ -85,3 +83,73 @@
       (rte-to-dfa rte)
       (trim (rte-to-dfa rte))
       (trim       (minimize (rte-to-dfa rte))))))
+
+(deftest t-rte-match-min
+  (testing "same results from matching minimized"
+    (let [rte '(:* Long)
+          dfa (rte-to-dfa rte)
+          dfa-min (minimize dfa)
+          seq [4.0]]
+      (is (= (rte-match dfa seq)
+             (rte-match dfa-min seq))))))
+
+
+(deftest t-acceptance
+  (testing "acceptance:  testing whether rte-match works same on dfa when trimmed and minimized."
+    (doseq [exit-value [42 true -1]
+            rte '((:* Long)
+                  (:* Short)
+                  (:* (:cat String Long))
+                  (:* (:cat String Short))
+                  (:or (:* (:cat String Long))
+                       (:* (:cat String Short)))
+                  (:or (:* (:cat String Long))
+                       (:not (:* (:cat String Short))))
+                  (:+ Long)
+                  (:+ Short)
+                  (:+ (:cat String Long))
+                  (:+ (:cat String Short))
+                  (:or (:+ (:cat String Long))
+                       (:* (:cat String Short)))
+                  (:or (:* (:cat String Long))
+                       (:+ (:cat String Short)))
+                  (:or (:* (:cat String Long))
+                       (:not (:* (:cat String Short))))
+                  (:or (:+ (:cat String Long))
+                       (:not (:* (:cat String Short))))
+                  (:or (:* (:cat String Long))
+                       (:not (:+ (:cat String Short)))))
+            :let [dfa (rte-to-dfa rte exit-value)
+                  dfa-trim (trim dfa)
+                  dfa-min (minimize dfa)
+                  dfa-min-trim (trim dfa-min)]
+            seq-root '([]
+                       [1]
+                       [1 2 3 4]
+                       [1 2 3.0 4.0]
+                       [1 "two" "3.0"]
+
+                       ["hello"]
+                       ["hello" 1.0]
+                       ["hello" 42]
+                       ["hello" 42 1.0]
+                       ["hello" 1.0 42]
+                       ["hello" 1.0 "world"]
+                       ["hello" 42 "world"])
+            reps (range 5)
+            :let [seq-long (reduce concat (repeat reps seq-root))
+                  match? (rte-match dfa seq-long)]
+            ]
+      (do 
+        (is (= match?
+               (rte-match dfa-trim seq-long))
+            (format "case 1: rte=%s seq=%s got %s from dfa, got %s from dfa-trim"
+                    rte (pr-str seq-long) match? (rte-match dfa-trim seq-long)))y
+        (is (= match?
+               (rte-match dfa-min seq-long))
+            (format "case 2: rte=%s seq=%s got %s from dfa, got %s from dfa-min"
+                    rte (pr-str seq-long) match? (rte-match dfa-min seq-long)))
+        (is (= match?
+               (rte-match dfa-min-trim seq-long))
+            (format "case 3: rte=%s seq=%s got %s from dfa, got %s from dfa-min-trim"
+                    rte (pr-str seq-long) match? (rte-match dfa-min-trim seq-long)))))))

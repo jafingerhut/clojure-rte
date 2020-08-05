@@ -109,15 +109,14 @@
       (let [final-state (reduce consume 0 items)]
         ;; final-state may be integer desgnating the state which was
         ;;  reached on iterating successfully through the input
-        ;;  sequence, items.  Or final-state may true or false, if the
+        ;;  sequence, items.  Or final-state may false, if the
         ;;  iteration finished without iterating through the entire
-        ;;  sequence.  Two such cases, we found ourselves in a
+        ;;  sequence, either because we found ourselves in a
         ;;  sync-state, or we encountered a item for which no transition
         ;;  was possible.
-        (case final-state 
-          (true) true
-          (false) false
+        (cond
+          (= false final-state) false
           (:accepting (state-vec final-state)) ((:exit-map dfa) final-state)
-          false)))))
+          :else false)))))
 
 

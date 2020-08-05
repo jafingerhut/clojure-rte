@@ -60,7 +60,7 @@
   ((:states dfa) index))
 
 (defn states-as-seq
-  "Return a sequence of states which can be iterated over"
+  "Return a sequence of states which can be iterated over."
   [dfa]
   (cl-cond
    ((map? (:states dfa))
@@ -69,6 +69,11 @@
     (:states dfa))
    (:else
     (throw (ex-info (format "invalid :states = %s" (:states dfa)))))))
+
+(defn ids-as-seq
+  "Return a sequence of ids of the states which can be iterated over."
+  [dfa]
+  (map :index (states-as-seq dfa)))
 
 (defn serialize-state
   "Serialize a State for debugging"
@@ -167,7 +172,9 @@
         partitions-map (zipmap ids pi-minimized)
         ids-map (zipmap pi-minimized ids)]
     (assert (sequential? pi-minimized))
-    (letfn [(pretty-or [rest-args]
+    (letfn [(exit-value [id]
+              ((:exit-map dfa) id))
+            (pretty-or [rest-args]
               (cl-cond
                ((empty? rest-args)
                 :sigma)
@@ -203,20 +210,22 @@
             ]
         (map->Dfa
          (assoc dfa :exit-map (into {} (map (fn [id]
-                                               [id ((:exit-map dfa) id)])
-                                             new-fids)) ;; map each of new-fids to the old value returned from the exit-map
+                                              [id (exit-value id)])
+                                            new-fids))
                      :states
-                     (into {} (mapcat (fn [id ]
-                                        (let [transitions (grouped id)]
-                                          (if (not transitions)
-                                            nil ;; contribute nothing to the mapcat for this iteration.
-                                            [[id (map->State
-                                                  {:index id
-                                                   :initial (= 0 id)
-                                                   :pattern (pretty-or (map :pattern (partitions-map id)))
-                                                   :accepting (member id new-fids)
-                                                   :transitions (map rest transitions)})]]
-                                            ))) ids))
+                     (into {} (for [id ids
+                                    :let [transitions (grouped id)]
+                                    :when transitions
+                                    :let [new-transitions (filter (fn [[_ dst-id]]
+                                                                    (member dst-id ids))
+                                                                  (map rest transitions))]
+                                    ]
+                                [id (map->State
+                                     {:index id
+                                      :initial (= 0 id)
+                                      :pattern (pretty-or (map :pattern (partitions-map id)))
+                                      :accepting (member id new-fids)
+                                      :transitions new-transitions})]))
                      ))))))
 
 (defn trim
@@ -256,7 +265,7 @@
             ;; co-accessible, collecting all states.  But do not traverse into
             ;; states which are not accessible.  This computes the set
             ;; of states which are both accessible and co-accessible
-            useful (trace-backward final-accessible (difference (set (keys (:states dfa)))
+            useful (trace-backward final-accessible (difference (set (ids-as-seq dfa))
                                                                 accessible))
             new-fids (filter (fn [id] (:accepting (state-by-index dfa id)))
                              useful)
