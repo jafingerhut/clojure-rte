@@ -153,10 +153,12 @@
 (defn find-sink-states
   "Find the set (as sequence) of all sink states in the given Dfa.
   A sink state is not a final state,
+  is not an initial state,
   and all its transitions point to itself."
   [dfa]
   (filter (fn [q]
             (and (not (:accepting q))
+                 (not (= 0 (:index q)))
                  (every? (fn [[label dst]]
                            (= dst (:index q)))
                          (:transitions q))))
