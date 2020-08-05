@@ -93,12 +93,13 @@
 
 (defmethod rte-match :Dfa
   [dfa items]
-  (let [state-vec (:states dfa)]
+  (let [state-vec (:states dfa)
+        sink-states (set (dfa/find-sink-states dfa))]
     (letfn [(consume [state-index item]
               (let [state-obj (state-vec state-index)]
                 (cl-cond
-                 ((:sync-state state-obj)
-                  (reduced (:accepting state-obj)))
+                 ((member state-obj sink-states)
+                  (reduced false))
                  ((some (fn [[type next-state-index]]
                           (if (ty/typep item type)
                             next-state-index
@@ -106,7 +107,7 @@
                         (:transitions state-obj)))
                  (:else (reduced false)))))]
       (let [final-state (reduce consume 0 items)]
-        ;; final-state may be integer disgnating the state which was
+        ;; final-state may be integer desgnating the state which was
         ;;  reached on iterating successfully through the input
         ;;  sequence, items.  Or final-state may true or false, if the
         ;;  iteration finished without iterating through the entire
@@ -116,6 +117,7 @@
         (case final-state 
           (true) true
           (false) false
-          (:accepting (state-vec final-state)))))))
+          (:accepting (state-vec final-state)) ((:exit-map dfa) final-state)
+          false)))))
 
 
