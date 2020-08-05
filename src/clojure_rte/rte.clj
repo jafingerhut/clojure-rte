@@ -258,21 +258,22 @@
   "Determine whether the given rational type expression is nullable.
   I.e., does the empty-word satisfy the expression."
   [expr]
-  (traverse-pattern expr
-                    (assoc *traversal-functions*
-                           :empty-set (rte-constantly false)
-                           :epsilon (rte-constantly true)
-                           :sigma   (rte-constantly false)
-                           :type (rte-constantly false)
-                           :* (rte-constantly true)
-                           :cat (fn [operands _functions]
-                                  (every? nullable operands))
-                           :and (fn [operands _functions]
-                                  (every? nullable operands))
-                           :or (fn [operands _functions]
-                                 (some nullable operands))
-                           :not (fn [operand _functions]
-                                  (not (nullable operand))))))
+  (boolean
+   (traverse-pattern expr
+                     (assoc *traversal-functions*
+                            :empty-set (rte-constantly false)
+                            :epsilon (rte-constantly true)
+                            :sigma   (rte-constantly false)
+                            :type (rte-constantly false)
+                            :* (rte-constantly true)
+                            :cat (fn [operands _functions]
+                                   (every? nullable operands))
+                            :and (fn [operands _functions]
+                                   (every? nullable operands))
+                            :or (fn [operands _functions]
+                                  (some nullable operands))
+                            :not (fn [operand _functions]
+                                   (not (nullable operand)))))))
 
 (defn first-types 
   "Return a possibly empty set of types (i.e., object which can be

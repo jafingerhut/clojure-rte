@@ -116,7 +116,8 @@
   of the initial set of states.
   Each eqv-class is a set of states."
   [dfa]
-  (let [[finals non-finals] (map (group-by :accepting (states-as-seq dfa)) [true false])
+  (let [[finals non-finals] (map (group-by (comp boolean :accepting)
+                                           (states-as-seq dfa)) [true false])
         pi-0 (conj (split-eqv-class finals
                                   (fn [state]
                                     ((:exit-map dfa) (:index state))))
