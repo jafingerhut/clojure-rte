@@ -45,7 +45,7 @@
   [index accepting pattern transitions])
 
 (defmethod print-method State [v w]
-  (.write w (format "#<State %d>" (:index v))))
+  (.write w (format "#<State %s>" (:index v))))
 
 ;; TODO - need to assert every time a Dfa gets created that no two states have the same :index
 (defrecord Dfa [pattern canonicalized states exit-map combine-labels])
@@ -210,30 +210,34 @@
                                            nil))
                                        ids pi-minimized))
             ]
-        (map->Dfa
-         (assoc dfa :exit-map (into {} (map (fn [id]
-                                              [id (exit-value id)])
-                                            new-fids))
-                     :states
-                     (into {} (for [id ids
-                                    :let [transitions (grouped id)]
-                                    :when transitions
-                                    :let [new-transitions (filter (fn [[_ dst-id]]
-                                                                    (member dst-id ids))
-                                                                  (map rest transitions))]
-                                    ]
-                                [id (map->State
-                                     {:index id
-                                      :initial (= 0 id)
-                                      :pattern (pretty-or (map :pattern (partitions-map id)))
-                                      :accepting (member id new-fids)
-                                      :transitions new-transitions})]))
-                     ))))))
+        (let [new-states (for [id ids
+                               :let [transitions (grouped id)]
+                               :when (or transitions
+                                         (= 0 id))
+                               :let [new-transitions (filter (fn [[_ dst-id]]
+                                                               (member dst-id ids))
+                                                             (map rest transitions))]
+                               ]
+                           
+                           [id (map->State
+                                {:index id
+                                 :initial (= 0 id)
+                                 :pattern (pretty-or (map :pattern (partitions-map id)))
+                                 :accepting (member id new-fids)
+                                 :transitions new-transitions})])]
+          (map->Dfa
+           (assoc dfa :exit-map (into {} (map (fn [id]
+                                                [id (exit-value id)])
+                                              new-fids))
+                  :states
+                  (into {} new-states)
+                  )))))))
 
 (defn trim
   "Creates a new Dfa from the given Dfa containing only accessible and co-accessible
   states.  Warning, this removes the sink state if there is one.  The result is
-  that the computed Dfa may not any longer be complete."
+  that the computed Dfa may not any longer be complete.
+  Don't remove the initial state."
   [dfa]
   (let [transition-pairs (mapcat (fn [q]
                                      (map (fn [[_ dst-id]]
@@ -267,11 +271,13 @@
             ;; co-accessible, collecting all states.  But do not traverse into
             ;; states which are not accessible.  This computes the set
             ;; of states which are both accessible and co-accessible
-            useful (trace-backward final-accessible (difference (set (ids-as-seq dfa))
+            useful (conj (trace-backward final-accessible (difference (set (ids-as-seq dfa))
                                                                 accessible))
+                         0)
             new-fids (filter (fn [id] (:accepting (state-by-index dfa id)))
                              useful)
             ]
+        (assert (not (= 0 (count useful))))
         ;; now build a new Dfa, omitting any state not in the co-accessible list
         ;; any transition going to a state which has being removed, gets
         ;; diverted to the sink state.
@@ -283,6 +289,7 @@
           :states
           (into {} (map (fn [id]
                           (let [state (state-by-index dfa id)]
+                            (assert state)
                             [id (map->State
                                  (assoc state
                                         :index id
@@ -377,7 +384,7 @@
                        
                        :states (into {} (for [[id [id-1 id-2]] ident-state-map]
                                           [id (map->State {:index id
-                                                           :initial (print-vals id (= 0 id))
+                                                           :initial (= 0 id)
                                                            :accepting (member id accepting-ids)
                                                            :transitions
                                                            (for [[label-1 dst-1] (:transitions (state-by-index dfa-1 id-1))
