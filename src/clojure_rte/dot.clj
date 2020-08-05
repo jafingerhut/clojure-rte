@@ -49,14 +49,17 @@
   rte-compile, or rte-to-dfa.
   For Mac OS, the :view option may be used to display the image
   interactively."
-  [dfa & {:keys [title view abbrev draw-sink]
+  [dfa & {:keys [title view abbrev draw-sink verbose]
           :or {title "no-title"
                draw-sink false
                abbrev true
-               view false}}]
+               view false
+               verbose false}}]
   (cond
     view (let [png-file-name (str *dot-tmp-dir* "/" title ".png")
-               dot-string (dfa-to-dot dfa :title title :view false :abbrev abbrev)]
+               dot-string (dfa-to-dot dfa :draw-sink draw-sink :title title :view false :abbrev abbrev)]
+           (if verbose
+             (println [:draw-sink draw-sink :dot-string dot-string]))
            (sh *dot-path* "-Tpng" "-o" png-file-name
                :in dot-string)
            (when (= "Mac OS X" (System/getProperty "os.name"))
@@ -65,10 +68,15 @@
                  (println dot-string))
                stat)))
     :else
-    (let [transition-labels (distinct (mapcat (fn [q]
-                                                (map first (:transitions q)))
-                                              (dfa/states-as-seq dfa)))
-          sink-states (dfa/find-sink-states dfa)
+    (let [sink-states (dfa/find-sink-states dfa)
+          visible-states (if draw-sink
+                         (dfa/states-as-seq dfa)
+                         (remove (fn [q] (member q sink-states)) (dfa/states-as-seq dfa)))
+          visible-state-ids (map :index visible-states)
+          transition-labels (distinct (for [q visible-states
+                                            [label dst-id] (:transitions q)
+                                            :when (member dst-id visible-state-ids)]
+                                        label))          
           abbrevs (zipmap transition-labels (range (count transition-labels)))
           indices (clojure.set/map-invert abbrevs)]
       (with-out-str
@@ -79,13 +87,14 @@
         (cl-format *out* "  fontname=courier;~%")
         (when abbrev
           (cl-format *out* "  label=\"~a\\l\"~%"
-                     (clojure.string/join "" (concat (map (fn [index]
-                                                            (cl-format false "\\lt~a= ~a" index (indices index)))
-                                                          (range (count (keys indices))))
-                                                     ["\\l"]
-                                                     (map (fn [q] (cl-format false "\\lq~a= ~a"
-                                                                             (:index q) (:pattern q))) (dfa/states-as-seq dfa))
-))))
+                     (clojure.string/join
+                      "" (concat (map (fn [index]
+                                        (cl-format false "\\lt~a= ~a" index (indices index)))
+                                      (range (count (keys indices))))
+                                 ["\\l"]
+                                 (map (fn [q] (cl-format false "\\lq~a= ~a"
+                                                         (:index q) (:pattern q)))
+                                      visible-states)))))
         (cl-format *out* "  graph [labeljust=l,nojustify=true];~%")
         (cl-format *out* "  node [fontname=Arial, fontsize=25];~%")
         (cl-format *out* "  edge [fontname=Helvetica, fontsize=20];~%")
