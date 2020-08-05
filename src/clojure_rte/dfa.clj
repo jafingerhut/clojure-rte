@@ -230,7 +230,7 @@
                                  (states-as-seq dfa))
         forward-map (group-by-mapped first second transition-pairs)
         backward-map (group-by-mapped second first transition-pairs)]
-    (letfn [(trace-fb [states fb-map]
+    (letfn [(trace-fb [states fb-map skip]
               (loop [states states
                      done #{}]
                 (if (empty? states)
@@ -239,12 +239,12 @@
                                               (if (member id done)
                                                 nil
                                                 (fb-map id))) states)
-                        new-next-states (difference (set next-states) done)]
+                        new-next-states (difference (set next-states) done skip)]
                     (recur new-next-states (union done states))))))
             (trace-forward [states]
-              (trace-fb states forward-map))
-            (trace-backward [states]
-              (trace-fb states backward-map))]
+              (trace-fb states forward-map {}))
+            (trace-backward [states skip]
+              (trace-fb states backward-map skip))]
       (let [
             ;; Trace forward from initial state, collecting all states reached.
             ;; These are the accessible states.
@@ -252,9 +252,11 @@
             final-accessible (clojure.set/intersection accessible
                                                        (set (map :index (filter :accepting (states-as-seq dfa)))))
             ;; trace backward starting from the set of all final states which are
-            ;; co-accessible, collecting all states.  
-            co-accessible (trace-backward final-accessible)
-            useful (intersection co-accessible accessible)
+            ;; co-accessible, collecting all states.  But do not traverse into
+            ;; states which are not accessible.  This computes the set
+            ;; of states which are both accessible and co-accessible
+            useful (trace-backward final-accessible (difference (set (keys (:states dfa)))
+                                                                accessible))
             new-fids (filter (fn [id] (:accepting (state-by-index dfa id)))
                              useful)
             ]
@@ -275,7 +277,7 @@
                                         :accepting (member id new-fids)
                                         :initial (= id 0)
                                         :transitions (filter (fn [[label dst-id]]
-                                                               (member dst-id co-accessible))
+                                                               (member dst-id useful))
                                                              (:transitions state))))]))
                         useful))))
 ))))
@@ -320,7 +322,6 @@
       (pretty-and (conj (rest label-2) label-1)))
      (:else
       (pretty-and (list label-1 label-2))))))
-   
 
 (defn synchronized-product
   [dfa-1 dfa-2 f-arbitrate-accepting f-arbitrate-exit-value]
