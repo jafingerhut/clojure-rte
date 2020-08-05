@@ -105,6 +105,13 @@
                        (:* (:cat String Short)))
                   (:or (:* (:cat String Long))
                        (:not (:* (:cat String Short))))
+
+                  (:and (:not (= 1))
+                        Long)
+                  (:and (:not (= 1))
+                        (:* Long))
+                  (:* (:and (:not (= 1))
+                            Long))
                   (:+ Long)
                   (:+ Short)
                   (:+ (:cat String Long))
@@ -125,8 +132,11 @@
                   dfa-min-trim (trim dfa-min)]
             seq-root '([]
                        [1]
+                       [3]
                        [1 2 3 4]
+                       [2 3 4]
                        [1 2 3.0 4.0]
+                       [2 3.0 4.0]
                        [1 "two" "3.0"]
 
                        ["hello"]
@@ -144,7 +154,7 @@
         (is (= match?
                (rte-match dfa-trim seq-long))
             (format "case 1: rte=%s seq=%s got %s from dfa, got %s from dfa-trim"
-                    rte (pr-str seq-long) match? (rte-match dfa-trim seq-long)))y
+                    rte (pr-str seq-long) match? (rte-match dfa-trim seq-long)))
         (is (= match?
                (rte-match dfa-min seq-long))
             (format "case 2: rte=%s seq=%s got %s from dfa, got %s from dfa-min"
