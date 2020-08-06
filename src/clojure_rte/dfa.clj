@@ -239,7 +239,7 @@
                                         [new-src-id
                                          label
                                          (new-id (state-by-index dfa dst-id))]))
-                                            
+            
             grouped (group-by (fn [[new-src-id _ _]] new-src-id) new-proto-delta)
             new-exit-map (into {}
                                (mapcat (fn [id eqv-class]
