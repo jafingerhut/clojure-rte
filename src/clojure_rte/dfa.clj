@@ -34,7 +34,6 @@
   ;; :pattern -- the derivative value representing an rte pattern matching
   ;;     any tail of the input sequence which is accepting from this point
   ;;     onward.
-  ;; :sync-state -- Boolean -- TODO, I'm not sure whether this is trustable, need to check in all Dfa creation interfaces.
   ;; :pattern -- 
   ;; :transitions -- A list of pairs, each pair is a 2 element array of the form
   ;;     [type next-state], e.g., [clojure.lang.Keyword 1]

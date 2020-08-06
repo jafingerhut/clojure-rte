@@ -759,7 +759,6 @@
                                      :initial (= 0 index)
                                      :accepting (nullable deriv)
                                      :pattern deriv
-                                     :sync-state (and (some #{[:sigma index]} transitions) true)
                                      :transitions transitions})))
                     derivatives (range (count derivatives))))}))))
 

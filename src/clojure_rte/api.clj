@@ -112,7 +112,7 @@
         ;;  sequence, items.  Or final-state may false, if the
         ;;  iteration finished without iterating through the entire
         ;;  sequence, either because we found ourselves in a
-        ;;  sync-state, or we encountered a item for which no transition
+        ;;  sink-state, or we encountered a item for which no transition
         ;;  was possible.
         (cond
           (= false final-state) false
