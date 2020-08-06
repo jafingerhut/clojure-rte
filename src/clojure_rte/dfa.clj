@@ -55,25 +55,6 @@
   Dfa)
 
 
-(defn check-dfa
-  [dfa]
-  (let [ids (set (map :index (states-as-seq dfa)))]
-    (doseq [q (states-as-seq dfa)
-            [label dst-id] (:transitions q)]
-      (assert (member dst-id ids) (format "transition %s leads to invalid state: states are %s"
-                                          [label dst-id]
-                                          ids)))
-    dfa))
-
-(defn make-dfa
-  "Dfa factory function, which checks consistency"
-  ([map]
-   (make-dfa {} map))
-  ([old-dfa new-attribute-map]
-   (let [new-dfa (map->Dfa (merge old-dfa new-attribute-map))]
-     (check-dfa new-dfa)
-     new-dfa)))
-
 (defn exit-value
   "Given a Dfa and either a State or state-id (integer), compute the exit value of
   the state by calling the function :exit-map in the dfa."
@@ -98,10 +79,30 @@
    (:else
     (throw (ex-info (format "invalid :states = %s" (:states dfa)))))))
 
+
 (defn ids-as-seq
   "Return a sequence of ids of the states which can be iterated over."
   [dfa]
   (map :index (states-as-seq dfa)))
+
+(defn check-dfa
+  [dfa]
+  (let [ids (set (ids-as-seq dfa))]
+    (doseq [q (states-as-seq dfa)
+            [label dst-id] (:transitions q)]
+      (assert (member dst-id ids) (format "transition %s leads to invalid state: states are %s"
+                                          [label dst-id]
+                                          ids)))
+    dfa))
+
+(defn make-dfa
+  "Dfa factory function, which checks consistency"
+  ([map]
+   (make-dfa {} map))
+  ([old-dfa new-attribute-map]
+   (let [new-dfa (map->Dfa (merge old-dfa new-attribute-map))]
+     (check-dfa new-dfa)
+     new-dfa)))
 
 (defn serialize-state
   "Serialize a State for debugging"
