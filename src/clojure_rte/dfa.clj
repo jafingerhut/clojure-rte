@@ -54,6 +54,26 @@
   []
   Dfa)
 
+
+(defn check-dfa
+  [dfa]
+  (let [ids (set (map :index (states-as-seq dfa)))]
+    (doseq [q (states-as-seq dfa)
+            [label dst-id] (:transitions q)]
+      (assert (member dst-id ids) (format "transition %s leads to invalid state: states are %s"
+                                          [label dst-id]
+                                          ids)))
+    dfa))
+
+(defn make-dfa
+  "Dfa factory function, which checks consistency"
+  ([map]
+   (make-dfa {} map))
+  ([old-dfa new-attribute-map]
+   (let [new-dfa (map->Dfa (merge old-dfa new-attribute-map))]
+     (check-dfa new-dfa)
+     new-dfa)))
+
 (defn exit-value
   "Given a Dfa and either a State or state-id (integer), compute the exit value of
   the state by calling the function :exit-map in the dfa."
@@ -231,13 +251,11 @@
                                  :pattern (pretty-or (map :pattern (partitions-map id)))
                                  :accepting (member id new-fids)
                                  :transitions new-transitions})])]
-          (map->Dfa
-           (assoc dfa :exit-map (into {} (map (fn [id]
-                                                [id (exit-value dfa id)])
-                                              new-fids))
-                  :states
-                  (into {} new-states)
-                  )))))))
+          (make-dfa dfa { :exit-map (into {} (map (fn [id]
+                                                    [id (exit-value dfa id)])
+                                                  new-fids))
+                         :states
+                         (into {} new-states)}))))))
 
 (defn trim
   "Creates a new Dfa from the given Dfa containing only accessible and co-accessible
@@ -287,24 +305,23 @@
         ;; now build a new Dfa, omitting any state not in the co-accessible list
         ;; any transition going to a state which has being removed, gets
         ;; diverted to the sink state.
-        (map->Dfa
-         (assoc dfa
-          :exit-map (into {} (map (fn [id]
-                                    [id (exit-value dfa id)])
-                                  new-fids)) ;; map each of new-fids to the old value returned from the exit-map
-          :states
-          (into {} (map (fn [id]
-                          (let [state (state-by-index dfa id)]
-                            (assert state)
-                            [id (map->State
-                                 (assoc state
-                                        :index id
-                                        :accepting (member id new-fids)
-                                        :initial (= id 0)
-                                        :transitions (filter (fn [[label dst-id]]
-                                                               (member dst-id useful))
-                                                             (:transitions state))))]))
-                        useful))))
+        (make-dfa dfa
+                  {:exit-map (into {} (map (fn [id]
+                                             [id (exit-value dfa id)])
+                                           new-fids)) ;; map each of new-fids to the old value returned from the exit-map
+                   :states
+                   (into {} (map (fn [id]
+                                   (let [state (state-by-index dfa id)]
+                                     (assert state)
+                                     [id (map->State
+                                          (assoc state
+                                                 :index id
+                                                 :accepting (member id new-fids)
+                                                 :initial (= id 0)
+                                                 :transitions (filter (fn [[label dst-id]]
+                                                                        (member dst-id useful))
+                                                                      (:transitions state))))]))
+                                 useful))})
 ))))
 
 (defn intersect-labels
@@ -381,8 +398,7 @@
       (assert (= 0 (state-ident-map [0 0])))
       (assert (= [0 0] (ident-state-map 0)))
 
-      (map->Dfa (assoc dfa-1
-                       :exit-map (into {} (for [[id [id-1 id-2]] ident-state-map
+      (make-dfa dfa-1 {:exit-map (into {} (for [[id [id-1 id-2]] ident-state-map
                                                 :when (member id accepting-ids)]
                                             [id (f-arbitrate-exit-value
                                                  (exit-value dfa-1 id-1)
@@ -396,4 +412,4 @@
                                                                  [label-2 dst-2] (:transitions (state-by-index dfa-2 id-2))
                                                                  :let [label-sxp (intersect-labels label-1 label-2)]
                                                                  :when (not (ty/disjoint? label-1 label-2 (constantly true)))]
-                                                             [label-sxp (state-ident-map [dst-1 dst-2])])})])))))))
+                                                             [label-sxp (state-ident-map [dst-1 dst-2])])})]))}))))
