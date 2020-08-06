@@ -54,6 +54,14 @@
   []
   Dfa)
 
+(defn exit-value
+  "Given a Dfa and either a State or state-id (integer), compute the exit value of
+  the state by calling the function :exit-map in the dfa."
+  [dfa state]
+  (if (instance? State state)
+    (exit-value dfa (:index state))
+    ((:exit-map dfa) state)))
+
 (defn state-by-index
   "Return the State object of the Dfa whose :index is the given index."
   [dfa index]
@@ -125,7 +133,7 @@
                                            (states-as-seq dfa)) [true false])
         pi-0 (conj (split-eqv-class finals
                                   (fn [state]
-                                    ((:exit-map dfa) (:index state))))
+                                    (exit-value dfa state)))
                    non-finals)]
     (letfn [(refine [partition]
               (letfn [(phi [source-state label]
@@ -174,9 +182,7 @@
         partitions-map (zipmap ids pi-minimized)
         ids-map (zipmap pi-minimized ids)]
     (assert (sequential? pi-minimized))
-    (letfn [(exit-value [id]
-              ((:exit-map dfa) id))
-            (pretty-or [rest-args]
+    (letfn [(pretty-or [rest-args]
               (cl-cond
                ((empty? rest-args)
                 :sigma)
@@ -227,7 +233,7 @@
                                  :transitions new-transitions})])]
           (map->Dfa
            (assoc dfa :exit-map (into {} (map (fn [id]
-                                                [id (exit-value id)])
+                                                [id (exit-value dfa id)])
                                               new-fids))
                   :states
                   (into {} new-states)
@@ -284,7 +290,7 @@
         (map->Dfa
          (assoc dfa
           :exit-map (into {} (map (fn [id]
-                                    [id ((:exit-map dfa) id)])
+                                    [id (exit-value dfa id)])
                                   new-fids)) ;; map each of new-fids to the old value returned from the exit-map
           :states
           (into {} (map (fn [id]
@@ -379,9 +385,8 @@
                        :exit-map (into {} (for [[id [id-1 id-2]] ident-state-map
                                                 :when (member id accepting-ids)]
                                             [id (f-arbitrate-exit-value
-                                                 (:exit-value (state-by-index dfa-1 id-1))
-                                                 (:exit-value (state-by-index dfa-2 id-2)))]))
-                       
+                                                 (exit-value dfa-1 id-1)
+                                                 (exit-value dfa-2 id-2))]))                       
                        :states (into {} (for [[id [id-1 id-2]] ident-state-map]
                                           [id (map->State {:index id
                                                            :initial (= 0 id)
