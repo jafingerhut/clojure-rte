@@ -49,17 +49,20 @@
   rte-compile, or rte-to-dfa.
   For Mac OS, the :view option may be used to display the image
   interactively."
-  [dfa & {:keys [title view abbrev draw-sink verbose]
+  [dfa & {:keys [title view abbrev draw-sink verbose state-legend]
           :or {title "no-title"
                draw-sink false
                abbrev true
                view false
-               verbose false}}]
+               verbose false
+               state-legend true}}]
   (cond
     view (let [png-file-name (str *dot-tmp-dir* "/" title ".png")
-               dot-string (dfa-to-dot dfa :draw-sink draw-sink :title title :view false :abbrev abbrev)]
+               dot-string (dfa-to-dot dfa :draw-sink draw-sink :title title :view false :abbrev abbrev
+                                      :state-legend state-legend)]
            (if verbose
-             (println [:title title :dfa dfa :draw-sink draw-sink :dot-string dot-string]))
+             (println [:title title :dfa dfa :draw-sink draw-sink
+                       :dot-string dot-string :state-legend state-legend]))
            (sh *dot-path* "-Tpng" "-o" png-file-name
                :in dot-string)
            (when (= "Mac OS X" (System/getProperty "os.name"))
@@ -92,10 +95,12 @@
                                         (cl-format false "\\lt~a= ~a" index (indices index)))
                                       (range (count (keys indices))))
                                  ["\\l"]
-                                 (for [q visible-states
-                                       :when (boolean (:pattern q))]
-                                   (cl-format false "\\lq~a= ~a"
-                                              (:index q) (:pattern q)))))))
+                                 (if state-legend
+                                   (for [q visible-states
+                                         :when (boolean (:pattern q))]
+                                     (cl-format false "\\lq~a= ~a"
+                                                (:index q) (:pattern q)))
+                                   "")))))
         (cl-format *out* "  graph [labeljust=l,nojustify=true];~%")
         (cl-format *out* "  node [fontname=Arial, fontsize=25];~%")
         (cl-format *out* "  edge [fontname=Helvetica, fontsize=20];~%")
