@@ -205,6 +205,55 @@
                          (:transitions q))))
           (states-as-seq dfa)))
 
+(defn complete-state?
+  [state]
+  (let [labels (map first (:transitions state))]
+    (and (not (empty? labels))
+         (or (member :sigma labels)
+             (ty/subtype? :sigma (cons 'or labels) (constantly false))))))
+
+(defn find-incomplete-states
+  [dfa]
+  (filter complete-state? (states-as-seq dfa)))
+
+(defn complete
+  "Render complete the given Dfa.
+  If it is already complete, then simply return it,
+  otherwise compute a new Dfa which has been completed, but
+  adding a sink state if necessary and add at most one transition
+  per state to the sink state."
+  ([dfa]
+   (let [incomplete (find-incomplete-states dfa)]
+     (if (empty? incomplete)
+       dfa
+       (complete dfa incomplete))))
+  ([dfa incomplete]
+   (let [sink-state (or (first (find-sink-states dfa))
+                        (let [sink-id (first (filter (fn [id]
+                                                       (not ((:states dfa) id))) (range)))]
+                          (map->State :index sink-id
+                                      :accepting false
+                                      :transitions (list [:sigma sink-id]))))]
+     (make-dfa dfa
+               {:states
+                (let [current-states (states-as-seq dfa)
+                      extended-states (if (member sink-state current-states)
+                                        current-states
+                                        (conj current-states sink-state))]
+                  (into {}
+                        (for [q extended-states]
+                          [(:index q)
+                           (if (member q incomplete)
+                             (let [existing-labels (map first (:transitions q))
+                                   new-label (if (empty? existing-labels)
+                                               :sigma
+                                               `(~'and :sigma (~'not (~'or ~@existing-labels))))]
+                               (map->State
+                                (assoc q
+                                       :transitions (conj (:transitions q)
+                                                          [new-label (:index sink-state)]))))
+                             q)])))}))))
+
 (defn minimize
   "Accepts an object of type Dfa, and returns a new object of type Dfa
   implementing the minimization of the state machine according to the
