@@ -106,7 +106,10 @@
                  (not draw-sink)))
            (:else
             (when (:accepting q)
-              (cl-format *out* "   q~D [shape=doublecircle] ;~%" (:index q)))
+              (cl-format *out* "   q~D [shape=doublecircle] ;~%" (:index q))
+              (cl-format *out* "   X~D [label=\"~A\", shape=rarrow]~%" ;; or plaintext ?
+                         (:index q) ((:exit-map dfa) (:index q)))
+              (cl-format *out* "   q~D -> X~D ;~%" (:index q) (:index q)))
             (when (:initial q)
               (cl-format *out* "   H~D [label=\"\", style=invis, width=0]~%" (:index q))
               (cl-format *out* "   H~D -> q~D;~%" (:index q) (:index q)))
