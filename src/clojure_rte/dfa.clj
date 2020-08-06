@@ -53,7 +53,6 @@
   []
   Dfa)
 
-
 (defn exit-value
   "Given a Dfa and either a State or state-id (integer), compute the exit value of
   the state by calling the function :exit-map in the dfa."
@@ -78,7 +77,6 @@
    (:else
     (throw (ex-info (format "invalid :states = %s" (:states dfa)))))))
 
-
 (defn ids-as-seq
   "Return a sequence of ids of the states which can be iterated over."
   [dfa]
@@ -87,12 +85,20 @@
 (defn check-dfa
   "assert that no transition references an invalid state"
   [dfa]
+  (assert (:combine-labels dfa) (format "missing :combine-labels in Dfa %s" dfa))
   (let [ids (set (ids-as-seq dfa))]
-    (doseq [q (states-as-seq dfa)
-            [label dst-id] (:transitions q)]
+    (doseq [q (states-as-seq dfa)]
       (assert (:index q) (format "state %s has emtpy :index" q))
       (assert (= q (state-by-index dfa (:index q)))
               (format "state %s disagrees with its index %s" q (:index q)))
+
+      (doseq [:let [trans-labels (map first (:transitions q))]
+              [label freq] (frequencies trans-labels)]
+        (assert (= 1 freq)
+                (format "label %s appears %d times in transitions of %s" label freq q))))
+
+    (doseq [q (states-as-seq dfa)
+            [label dst-id] (:transitions q)]
       (assert (member dst-id ids) (format "transition %s leads to invalid state: states are %s"
                                           [label dst-id]
                                           ids)))
@@ -151,13 +157,16 @@
   "Apply the Hopcroft partition algorithm to the states of the given
   Dfa to return a set of eqv-classes.  This set of eqv-classes is a partition
   of the initial set of states.
-  Each eqv-class is a set of states."
+  Each eqv-class is a set of states.
+  This function returns a sequence of sets, where each set contains
+  State's, not state-id's, E.g., ( ... #{#<State 9> #<State 2>} #{#<State 0} ...),
+  not (... #{9 2} #{0} ...)"
   [dfa]
   (let [[finals non-finals] (map (group-by (comp boolean :accepting)
                                            (states-as-seq dfa)) [true false])
         pi-0 (conj (split-eqv-class finals
-                                  (fn [state]
-                                    (exit-value dfa state)))
+                                    (fn [state]
+                                      (exit-value dfa state)))
                    non-finals)]
     (letfn [(refine [partition]
               (letfn [(phi [source-state label]
@@ -165,13 +174,14 @@
                         ;;   which contains the destination state of the transition
                         ;;   whose source and label are given
                         (find-eqv-class partition (delta dfa source-state label)))
+                      (Phi-prime [s]
+                        (for [[label _dst-id] (:transitions s)]
+                          [label (phi s label)]))
                       (Phi [s]
-                        (assert (:combine-labels dfa))
-                        (map (fn [[eqv-class transitions]]
-                               ;; trans is a seq of transitions, each [label dst-index]
-                               (reduce (:combine-labels dfa)
-                                       (map (fn [[label _]] label) transitions)))
-                             (group-by (fn [[label _]] (phi s label)) (:transitions s))))
+                        (for [[k pairs] (group-by second (Phi-prime s))
+                              :let [labels (map first pairs)
+                                    label (reduce (:combine-labels dfa) labels)]]
+                          [label k]))
                       (repartition [eqv-class]
                         (split-eqv-class eqv-class Phi))]
                 (mapcat repartition partition)))]
@@ -223,14 +233,14 @@
                                  (list id)
                                  nil))
                              ids pi-minimized)
-            new-proto-delta (distinct (mapcat (fn [q]
-                                                (let [new-src-id (new-id q)]
-                                                  (map (fn [[label dst-id]]
-                                                         [new-src-id
-                                                          label
-                                                          (new-id (state-by-index dfa dst-id))]
-                                                         ) (:transitions q))))
-                                              (states-as-seq dfa)))
+            new-proto-delta (distinct (for [q (states-as-seq dfa)
+                                            :let [new-src-id (new-id q)]
+                                            [label dst-id] (:transitions q)
+                                            ]
+                                        [new-src-id
+                                         label
+                                         (new-id (state-by-index dfa dst-id))]))
+                                            
             grouped (group-by (fn [[new-src-id _ _]] new-src-id) new-proto-delta)
             new-exit-map (into {}
                                (mapcat (fn [id eqv-class]
@@ -252,7 +262,8 @@
                                      new-transitions (filter (fn [[_ dst-id]]
                                                                (member dst-id new-state-ids))
                                                              (map rest transitions))]
-                               ]                           
+                               ]
+                           
                            [id (map->State
                                 {:index id
                                  :initial (= 0 id)
