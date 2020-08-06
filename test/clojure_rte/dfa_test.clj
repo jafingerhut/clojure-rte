@@ -93,7 +93,6 @@
       (is (= (rte-match dfa seq)
              (rte-match dfa-min seq))))))
 
-
 (deftest t-acceptance
   (testing "acceptance:  testing whether rte-match works same on dfa when trimmed and minimized."
     (doseq [exit-value [42 true -1]
@@ -125,27 +124,45 @@
                   (:or (:+ (:cat String Long))
                        (:not (:* (:cat String Short))))
                   (:or (:* (:cat String Long))
-                       (:not (:+ (:cat String Short)))))
+                       (:not (:+ (:cat String Short))))
+                  (:+ (:cat String (:? Long)))
+                  (:cat (:* String) Long)
+                  (:and (:+ (:cat String (:? Long)))
+                        (:cat (:* String) Long)))
+            
             :let [dfa (rte-to-dfa rte exit-value)
                   dfa-trim (trim dfa)
                   dfa-min (minimize dfa)
-                  dfa-min-trim (trim dfa-min)]
+                  dfa-min-trim (trim dfa-min)
+                  dfa-trim-min (minimize dfa-trim)]
             seq-root '([]
                        [1]
                        [3]
                        [1 2 3 4]
+                       [1 2 3]
                        [2 3 4]
                        [1 2 3.0 4.0]
                        [2 3.0 4.0]
-                       [1 "two" "3.0"]
 
-                       ["hello"]
-                       ["hello" 1.0]
-                       ["hello" 42]
-                       ["hello" 42 1.0]
-                       ["hello" 1.0 42]
+                       
+                       ["hello" "world" 1 "hello" "there" "world" 2]
+                       ["hello" "world" 1 "hello" "world" 2]
+                       ["hello" "world" 2]
+                       ["hello" "world"]
+                       ["hello" 1 "world" 2]
+                       ["hello" 1 "world"]
                        ["hello" 1.0 "world"]
-                       ["hello" 42 "world"])
+                       ["hello" 1.0 42]
+                       ["hello" 1.0]
+                       ["hello" 1]
+                       ["hello" 42 "world"]
+                       ["hello" 42 1.0]
+                       ["hello" 42]
+                       ["hello"]
+                       [1 "two" "3.0"]
+                       [42 "two" "3.0"]
+                       [1.0 "two" "3.0"]
+                       )
             reps (range 5)
             :let [seq-long (reduce concat (repeat reps seq-root))
                   match? (rte-match dfa seq-long)]
@@ -162,4 +179,63 @@
         (is (= match?
                (rte-match dfa-min-trim seq-long))
             (format "case 3: rte=%s seq=%s got %s from dfa, got %s from dfa-min-trim"
-                    rte (pr-str seq-long) match? (rte-match dfa-min-trim seq-long)))))))
+                    rte (pr-str seq-long) match? (rte-match dfa-min-trim seq-long)))
+        (is (= match?
+               (rte-match dfa-trim-min seq-long))
+            (format "case 4: rte=%s seq=%s got %s from dfa, got %s from dfa-trim-min"
+                    rte (pr-str seq-long) match? (rte-match dfa-trim-min seq-long)))))))
+
+(deftest t-test-1
+  (testing "particular case which was failing"
+    (let [dfa-1 (rte-to-dfa '(:+ (:cat String (:? Long)))
+                            1)
+          dfa-2 (rte-to-dfa  '(:cat (:* String) Long)
+                             2)
+          dfa-sxp (synchronized-product dfa-1 dfa-2 
+                                        (fn [a b]
+                                          (and a b))
+                                        (fn [a b]
+                                          a))
+          dfa-sxp-trim (trim dfa-sxp)
+          dfa-sxp-min (minimize dfa-sxp)
+          dfa-sxp-trim-min (minimize dfa-sxp-trim)
+          dfa-sxp-min-trim (trim dfa-sxp-min)
+          seqs [[]
+                [1]
+                [1 2 3]
+                ["hello"]
+                ["hello" "world"]
+                ["hello" 1]
+                ["hello" 1 "world"]
+                ["hello" 1 "world" 2]
+                ["hello" "world" 2]
+                ["hello" "world" 1 "hello" "world" 2]
+                ["hello" "world" 1 "hello" "there" "world" 2]
+                ]
+          ]
+      (doseq [s seqs
+              :let [m-1 (rte-match dfa-1 s)
+                    m-2 (rte-match dfa-2 s)
+                    m-dfa-sxp (rte-match dfa-sxp s)]]
+        (assert (= (boolean (and m-1 m-2))
+                   (boolean m-dfa-sxp))
+                (format "dfa-1 => %s and dfa-2 => %s but dfa-sxp => %s, on sequence %s"
+                        m-1 m-2 m-dfa-sxp s))))))
+
+
+;; (defn testing-function ;; function for demo
+;;   []
+;;   (let [dfa-1 (rte-to-dfa '(:* Long) 
+;;                           1)
+;;         dfa-2 (rte-to-dfa '(:or (:+ (:cat String Short))
+;;                                 (:+ (:cat String Long))) 
+;;                           2)
+;;         dfa-sxp (dfa/synchronized-product dfa-1 dfa-2 
+;;                                           (fn [a b]
+;;                                             (and a b))
+;;                                           (fn [a b]
+;;                                             a))]
+;;     (dot/dfa-to-dot  dfa-sxp :title "sxp" :view true)
+;;     (dot/dfa-to-dot (dfa/trim dfa-sxp) :title "sxp-trim" :view true)
+;;     (dot/dfa-to-dot (dfa/minimize dfa-sxp) :title "sxp-min" :view true)
+;;     (dot/dfa-to-dot (dfa/minimize (dfa/trim dfa-sxp)) :title "sxp-trim-min" :view true :verbose true)))
