@@ -236,12 +236,18 @@
                                            nil))
                                        ids pi-minimized))
             ]
-        (let [new-states (for [id ids
+        (let [new-state-ids (for [id ids
+                               :let [transitions (grouped id)]
+                               :when (or transitions
+                                         (= 0 id))
+                                  ]
+                              id)
+              new-states (for [id new-state-ids
                                :let [transitions (grouped id)]
                                :when (or transitions
                                          (= 0 id))
                                :let [new-transitions (filter (fn [[_ dst-id]]
-                                                               (member dst-id ids))
+                                                               (member dst-id new-state-ids))
                                                              (map rest transitions))]
                                ]
                            
