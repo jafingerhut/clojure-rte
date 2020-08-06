@@ -47,7 +47,6 @@
 (defmethod print-method State [v w]
   (.write w (format "#<State %s>" (:index v))))
 
-;; TODO - need to assert every time a Dfa gets created that no two states have the same :index
 (defrecord Dfa [pattern canonicalized states exit-map combine-labels])
 
 (defn record-name
@@ -86,10 +85,14 @@
   (map :index (states-as-seq dfa)))
 
 (defn check-dfa
+  "assert that no transition references an invalid state"
   [dfa]
   (let [ids (set (ids-as-seq dfa))]
     (doseq [q (states-as-seq dfa)
             [label dst-id] (:transitions q)]
+      (assert (:index q) (format "state %s has emtpy :index" q))
+      (assert (= q (state-by-index dfa (:index q)))
+              (format "state %s disagrees with its index %s" q (:index q)))
       (assert (member dst-id ids) (format "transition %s leads to invalid state: states are %s"
                                           [label dst-id]
                                           ids)))
