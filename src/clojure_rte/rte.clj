@@ -126,6 +126,18 @@
   by typep, but that may not yet be the case."
   (clojure.set/difference (set (keys (methods registered-type?)))  #{:default}))
 
+(defmulti rte-expand
+  "macro-like facility for rte" first)
+
+(defn invalid-pattern [pattern]  
+  (throw (ex-info (format "invalid pattern %s" pattern)
+                  {:error-type :rte-expand-error
+                   :keyword (first pattern)
+                   :pattern pattern
+                   })))
+
+(defmethod rte-expand :default [pattern]
+  (invalid-pattern pattern))
 (defn traverse-pattern
   "Workhorse function for walking an rte pattern.
    This function is the master of understanding the syntax of an rte
@@ -169,11 +181,7 @@
                   ((:type functions) pattern functions)
 
                   :else
-                  (throw (ex-info (format "%s in pattern %s not implemented" keyword pattern)
-                                  {:error-type :type-not-yet-implemented
-                                   :pattern pattern
-                                   :functions functions
-                                   }))))))
+                  (traverse-pattern (rte-expand pattern) functions)))))
           (if-exactly-one-operand []
             (let [[token operand] pattern]
               (case token
@@ -202,11 +210,7 @@
                 ;;case-else
                 (if (registered-type? (first pattern))
                   ((:type functions) pattern functions)
-                  (throw (ex-info (format "unary type %s in %s not yet implemented" token pattern)
-                                  {:error-type :type-not-yet-implemented
-                                   :pattern pattern
-                                   :functions functions
-                                   }))))))
+                  (traverse-pattern (rte-expand pattern) functions)))))
           (if-multiple-operands []
             (let [[token & operands] pattern]
               (case token
@@ -233,12 +237,7 @@
                 ;;case-else
                 (if (registered-type? token)
                   ((:type functions) pattern functions)
-                  (throw (ex-info (format "variadic type %s in %s not yet implemented, expecting one of %s"
-                                          token pattern (supported-nontrivial-types))
-                                  {:error-type :type-not-yet-implemented
-                                   :pattern pattern
-                                   :functions functions
-                                   }))))))]
+                  (traverse-pattern (rte-expand pattern) functions)))))]
     (cond (not (seq? pattern))
           (if-atom)
 
