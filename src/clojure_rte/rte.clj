@@ -159,10 +159,12 @@
            ([] :epsilon)
            ([operand] operand)
            ([_ _ & _]
-            (cons :or (call-with-collector (fn [collect]
-                                             (visit-permutations
-                                              (fn [perm]
-                                                (collect (cons :cat perm))) (rest pattern)))))))
+            (let [operands (for [operand (rest pattern)]
+                             (traverse-pattern operand functions))]
+              (cons :or (call-with-collector (fn [collect]
+                                               (visit-permutations
+                                                (fn [perm]
+                                                  (collect (cons :cat perm))) operands)))))))
          (rest pattern)))
 
 (defmethod rte-expand :exp [pattern functions]
