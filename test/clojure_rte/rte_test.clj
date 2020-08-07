@@ -395,6 +395,15 @@
                (is (rte-match rte data) (format "n=%s" n))))
            (range 10)))))
 
+(deftest t-contains-any
+  (testing ":contains-any"
+    (with-compile-env ()
+      (is (rte-match '(:contains-any Long String Boolean) [[] [] [] 42 "hello" true [] [] []]))
+      (is (rte-match '(:contains-any Long String Boolean) [[] [] [] 42 [] [] []]))
+      (is (rte-match '(:contains-any Long String Boolean) [[] "hello" [] 42 []]))
+      (is (rte-match '(:contains-any Long String Boolean) [[] true []]))
+      (is (not (rte-match '(:contains-any Long String) [[] true [] false []]))))))
+
 (deftest t-typep-rte
   (testing "typep rte"
     (with-compile-env ()

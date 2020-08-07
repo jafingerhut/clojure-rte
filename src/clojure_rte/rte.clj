@@ -167,6 +167,17 @@
                                                   (collect (cons :cat perm))) operands)))))))
          (rest pattern)))
 
+(defmethod rte-expand :contains-any [pattern functions]
+  (apply (fn
+           ([] :epsilon)
+           ([operand] operand)
+           ([_ _ & _]
+            (let [operands (for [operand (rest pattern)]
+                             (traverse-pattern operand functions))]
+              `(:cat (:* :sigma)
+                     (:or ~@operands)
+                     (:* :sigma)))))
+         (rest pattern)))
 (defmethod rte-expand :exp [pattern functions]
   (letfn [(expand [n m pattern]
             (assert (>= n 0) (format "pattern %s is limited to n >= 0, not %s" pattern n))
