@@ -333,6 +333,18 @@
       (is (rte-match '(:? Long) []))
       (is (not (rte-match '(:? Long) [42 43])))
       (is (not (rte-match '(:? Long) ["hello"]))))))
+
+(deftest t-+
+  (testing "rte :+"
+    (with-compile-env []
+      (is (rte-match '(:+ Long) [42]))
+      (is (rte-match '(:+ Long) [42 43]))
+      (is (rte-match '(:+ Long) [42 43 44]))
+      (is (not (rte-match '(:+ Long) [])))
+      (is (not (rte-match '(:+ Long) ["hello"])))
+      (is (not (rte-match '(:+ Long) ["hello" "hello"])))
+      (is (not (rte-match '(:+ Long) ["hello" 42])))
+      (is (not (rte-match '(:+ Long) [42 "hello"]))))))
 (deftest t-exp
   (testing "exp"
     (map (fn [n] 

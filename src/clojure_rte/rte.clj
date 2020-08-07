@@ -145,6 +145,13 @@
            ([operand] `(:or :epsilon ~operand))
            ([_ _ & _] (invalid-pattern pattern)))
          (rest pattern)))
+
+(defmethod rte-expand :+ [pattern]
+  (apply (fn
+           ([] (invalid-pattern pattern))
+           ([operand] `(:cat ~operand (:* ~operand)))
+           ([_ _ & _] (invalid-pattern pattern)))
+         (rest pattern)))
 (defn traverse-pattern
   "Workhorse function for walking an rte pattern.
    This function is the master of understanding the syntax of an rte
@@ -152,7 +159,7 @@
    such as derivative, nullable, first-types, or canonicalize-pattern
    may call traverse-pattern with an augmented map of
    *traversal-functions*, indicating the callbacks for each rte
-   keyword such as :* :+ :cat etc.  The philosophy is that no other
+   keyword such as :* :cat etc.  The philosophy is that no other
    function needs to understand how to walk an rte pattern."
   [pattern functions]
 
@@ -172,7 +179,6 @@
                 (:permute) (traverse-pattern :epsilon functions)
                 (:not
                  :*
-                 :+
                  :exp) (throw (ex-info (format "invalid pattern %s, expecting exactly one operand" pattern)
                                        {:error-type :rte-syntax-error
                                         :keyword keyword
@@ -205,10 +211,6 @@
                   (assert (>= n 0))
                   (traverse-pattern `(:cat ~@repeated-operand) functions))
 
-                (:+)
-                (traverse-pattern `(:cat ~operand
-                                         (:* ~operand)) functions)
-                
                 ;;case-else
                 (if (registered-type? (first pattern))
                   ((:type functions) pattern functions)
@@ -249,10 +251,10 @@
           (empty? (rest pattern)) ;; singleton list, (:and), (:or) etc
           (if-singleton-list)
 
-          (empty? (rest (rest pattern))) ;; (:and x) (:+ x)
+          (empty? (rest (rest pattern))) ;; (:and x)
           (if-exactly-one-operand)
 
-          ;; cond-else (:keyword args) or list-expr ;; (:and x y) (:+ x y)
+          ;; cond-else (:keyword args) or list-expr ;; (:and x y)
           :else (if-multiple-operands))))
 
 (defn nullable 
