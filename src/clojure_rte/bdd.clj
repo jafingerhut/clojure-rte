@@ -48,6 +48,11 @@
   [[] & body]
   `(call-with-bdd-hash (fn [] ~@body)))
 
+(defn type-index [type-designator]
+  (or (@*label-to-index* type-designator)
+      (do (swap! *label-to-index* assoc type-designator (count @*label-to-index*))
+          (@*label-to-index* type-designator))))
+
 (defn bdd
   ""
   ([type-designator]
@@ -59,13 +64,25 @@
    (assert (ty/typep negative '(or Boolean Bdd)))
    (assert (ty/valid-type? type-designator))
 
-   (let [try-bdd (Bdd. type-designator positive negative)
-         cached-bdd (@*bdd-hash* try-bdd)]
-     (or cached-bdd
-         (do (swap! *bdd-hash* assoc try-bdd try-bdd)
-             (or (@*label-to-index* type-designator)
-                 (swap! *label-to-index* assoc type-designator (count @*label-to-index*)))
-             try-bdd)))))
+   (cond
+     (= positive negative)
+     positive
+     :else
+     (let [try-bdd (Bdd. type-designator positive negative)
+           cached-bdd (@*bdd-hash* try-bdd)]
+       (or cached-bdd
+           (do (swap! *bdd-hash* assoc try-bdd try-bdd)
+               
+               (assert (or (instance? Boolean positive)
+                           (< (type-index type-designator)
+                              (type-index (:label positive))))
+                       (format "parent %s must be < positive %s" type-designator (:label positive)))
+               (assert (or (instance? Boolean negative)
+                           (< (type-index type-designator)
+                              (type-index (:label negative))))
+                       (format "parent %s must be < negative %s" type-designator (:label negative)))
+               
+               try-bdd))))))
 
 (defn bdd-op
   ""
@@ -74,8 +91,8 @@
     (bdd (:label bdd1)
          (op (:positive bdd1) (:positive bdd1))
          (op (:negative bdd1) (:negative bdd1)))
-    (let [label-index-1 (@*label-to-index* (:label bdd1))
-          label-index-2 (@*label-to-index* (:label bdd2))]
+    (let [label-index-1 (type-index (:label bdd1))
+          label-index-2 (type-index (:label bdd2))]
       (assert (ty/typep Long label-index-1))
       (assert (ty/typep Long label-index-2))
       (if (< label-index-1 label-index-2)
