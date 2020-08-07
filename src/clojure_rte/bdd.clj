@@ -128,3 +128,24 @@
 (defn bdd-not [bdd1]
   (bdd-and-not true bdd1))
 
+(defn bdd-random []
+  (let [r (rand)]
+    (cond
+      (< r 0.25)
+      (if (< (rand) 0.5)
+        true
+        false)
+      (< r 0.5)
+      (bdd (rand-nth '(Long Double String Boolean Character Short
+                            java.io.Serializable java.lang.Comparable)))
+      :else
+      (let [bdd-1 (bdd-random)
+            bdd-2 (bdd-random)
+            r (rand)]
+        (cond
+          (> r 0.66)
+          (bdd-and bdd-1 bdd-2)
+          (> r 0.33)
+          (bdd-or bdd-1 bdd-2)
+          :else
+          (bdd-and-not bdd-1 bdd-2))))))        
