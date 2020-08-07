@@ -149,3 +149,12 @@
           (bdd-or bdd-1 bdd-2)
           :else
           (bdd-and-not bdd-1 bdd-2))))))        
+
+(defn bdd-typep [value bdd]
+  (cond
+    (= true bdd) true
+    (= false bdd) false
+    :else (bdd-typep value
+                     (if (ty/typep value (:label bdd))
+                         (:positive bdd)
+                         (:negative bdd)))))
