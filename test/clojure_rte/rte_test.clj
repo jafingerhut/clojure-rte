@@ -379,13 +379,21 @@
 
 (deftest t-exp
   (testing "exp"
-    (map (fn [n] 
-           (let [data (map (constantly 12) (range n))
-                 pattern `(:cat (:exp (~n (:? Long))) (:exp (~n Long)))
-                 rte (rte-compile pattern)]
+    (with-compile-env ()
+      (is (rte-match '(:exp 3 Long) [42 42 42]))
+      (is (not (rte-match '(:exp 3 Long) [42 42 42 42])))
+      (is (not (rte-match '(:exp 3 5 Long) [42 42])))
+      (is (rte-match '(:exp 3 5 Long) [42 42 42]))
+      (is (rte-match '(:exp 3 5 Long) [42 42 42 42]))
+      (is (rte-match '(:exp 3 5 Long) [42 42 42 42 42]))
+      (is (rte-match '(:exp 3 5 Long) [42 42 42 42 42 42]))
+      (map (fn [n] 
+             (let [data (repeat 12 n)
+                   pattern `(:cat (:exp ~n (:? Long)) (:exp ~n Long))
+                   rte (rte-compile pattern)]
 
-             (is (rte-match rte data) (format "n=%s" n))))
-         (range 10))))
+               (is (rte-match rte data) (format "n=%s" n))))
+           (range 10)))))
 
 (deftest t-typep-rte
   (testing "typep rte"

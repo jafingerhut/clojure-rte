@@ -150,12 +150,12 @@ Example
   )
 ```
 
-* `(:exp (n ...))` --- This has a syntax different than the rest.  `:exp` takes exactly one argument which is a parenthesized pair, indicating the number of occurances, and a pattern.
+* `(:exp n pattern)` ---  `:exp` takes exactly two arguments, indicating the number of occurances, and a pattern.
 
 Example --- to match a sequence 0 to 5 Integers,
 
 ```clojure
-(let [rte (rte-compile '(:exp (5 (:? integer?))))]
+(let [rte (rte-compile '(:exp 5 (:? integer?)))]
    (rte-match rte []) ;; true
    (rte-match rte [1 2 3]) ;; true
    (rte-match rte [1 2 3 3 4 5 6]) ;; false
