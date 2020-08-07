@@ -178,6 +178,17 @@
                      (:or ~@operands)
                      (:* :sigma)))))
          (rest pattern)))
+
+(defmethod rte-expand :contains-every [pattern functions]
+  (apply (fn
+           ([] :epsilon)
+           ([operand] operand)
+           ([_ _ & _]
+            (let [wrapped (for [operand (rest pattern)
+                                 :let [traversed (traverse-pattern operand functions)]]
+                             `(:cat (:* :sigma) ~traversed (:* :sigma)))]
+              `(:and ~@wrapped))))
+         (rest pattern)))
 (defmethod rte-expand :exp [pattern functions]
   (letfn [(expand [n m pattern]
             (assert (>= n 0) (format "pattern %s is limited to n >= 0, not %s" pattern n))

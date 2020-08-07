@@ -395,6 +395,14 @@
                (is (rte-match rte data) (format "n=%s" n))))
            (range 10)))))
 
+(deftest t-contains-every
+  (testing ":contains-every"
+    (with-compile-env ()
+      (is (rte-match '(:contains-every Long String Boolean) [[] [] [] 42 "hello" true [] [] []]))
+      (is (rte-match '(:contains-every Long String Boolean) [[] "hello" [] 42 [] true []]))
+      (is (rte-match '(:contains-every Long String Boolean) [[] true [] 42 [] "hello" []]))
+      (is (not (rte-match '(:contains-every Long String Boolean) [[] true [] true [] "hello" []]))))))
+
 (deftest t-contains-any
   (testing ":contains-any"
     (with-compile-env ()
