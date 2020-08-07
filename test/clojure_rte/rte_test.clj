@@ -386,7 +386,7 @@
       (is (rte-match '(:exp 3 5 Long) [42 42 42]))
       (is (rte-match '(:exp 3 5 Long) [42 42 42 42]))
       (is (rte-match '(:exp 3 5 Long) [42 42 42 42 42]))
-      (is (rte-match '(:exp 3 5 Long) [42 42 42 42 42 42]))
+      (is (not (rte-match '(:exp 3 5 Long) [42 42 42 42 42 42])))
       (map (fn [n] 
              (let [data (repeat 12 n)
                    pattern `(:cat (:exp ~n (:? Long)) (:exp ~n Long))
@@ -411,6 +411,16 @@
       (is (rte-match '(:contains-any Long String Boolean) [[] "hello" [] 42 []]))
       (is (rte-match '(:contains-any Long String Boolean) [[] true []]))
       (is (not (rte-match '(:contains-any Long String) [[] true [] false []]))))))
+
+
+(deftest t-contains-none
+  (testing ":contains-none"
+    (with-compile-env ()
+      (is (not (rte-match '(:contains-none Long String Boolean) [[] [] [] 42 "hello" true [] [] []])))
+      (is (not (rte-match '(:contains-none Long String Boolean) [[] [] [] 42 [] [] []])))
+      (is (not (rte-match '(:contains-none Long String Boolean) [[] "hello" [] 42 []])))
+      (is (not (rte-match '(:contains-none Long String Boolean) [[] true []])))
+      (is (rte-match '(:contains-none Long String) [[] true [] false []])))))
 
 (deftest t-typep-rte
   (testing "typep rte"

@@ -189,6 +189,12 @@
                              `(:cat (:* :sigma) ~traversed (:* :sigma)))]
               `(:and ~@wrapped))))
          (rest pattern)))
+
+(defmethod rte-expand :contains-none [pattern _functions]
+  ;; TODO, not sure what (:contains-none) should mean with no arguments.
+  ;;    as implemented it is equivalent to (:not :epsilon) which seems wierd.
+  `(:not (:contains-any ~@(rest pattern))))
+
 (defmethod rte-expand :exp [pattern functions]
   (letfn [(expand [n m pattern]
             (assert (>= n 0) (format "pattern %s is limited to n >= 0, not %s" pattern n))
