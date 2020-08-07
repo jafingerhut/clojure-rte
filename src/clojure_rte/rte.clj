@@ -138,6 +138,13 @@
 
 (defmethod rte-expand :default [pattern]
   (invalid-pattern pattern))
+
+(defmethod rte-expand :? [pattern]
+  (apply (fn
+           ([] (invalid-pattern pattern))
+           ([operand] `(:or :epsilon ~operand))
+           ([_ _ & _] (invalid-pattern pattern)))
+         (rest pattern)))
 (defn traverse-pattern
   "Workhorse function for walking an rte pattern.
    This function is the master of understanding the syntax of an rte
@@ -165,7 +172,6 @@
                 (:permute) (traverse-pattern :epsilon functions)
                 (:not
                  :*
-                 :?
                  :+
                  :exp) (throw (ex-info (format "invalid pattern %s, expecting exactly one operand" pattern)
                                        {:error-type :rte-syntax-error
@@ -203,10 +209,6 @@
                 (traverse-pattern `(:cat ~operand
                                          (:* ~operand)) functions)
                 
-                (:?)
-                (traverse-pattern `(:or :epsilon
-                                        ~operand) functions)
-
                 ;;case-else
                 (if (registered-type? (first pattern))
                   ((:type functions) pattern functions)
@@ -225,7 +227,7 @@
                  :cat)
                 ((functions token) operands functions)
 
-                (:not :* :+ :? :exp)
+                (:not :* :exp)
                 (throw (ex-info (format "invalid pattern %s, expecting exactly one operand" pattern)
                                 {:error-type :rte-syntax-error
                                  :keyword keyword

@@ -326,6 +326,13 @@
                `(~'and java.lang.Exception (~'not clojure.lang.ExceptionInfo))
                'clojure.lang.ExceptionInfo})))))
 
+(deftest t-?
+  (testing "rte :?"
+    (with-compile-env []
+      (is (rte-match '(:? Long) [42]))
+      (is (rte-match '(:? Long) []))
+      (is (not (rte-match '(:? Long) [42 43])))
+      (is (not (rte-match '(:? Long) ["hello"]))))))
 (deftest t-exp
   (testing "exp"
     (map (fn [n] 
