@@ -73,56 +73,62 @@
 
 (defn bdd-op
   ""
-  ([op bdd1 bdd2]
-   (if (= (:label bdd1) (:label bdd2))
-     (bdd (:label bdd1)
-          (op (:positive bdd1) (:positive bdd1))
-          (op (:negative bdd1) (:negative bdd1)))
-     (let [label-index-1 (@*label-to-index* (:label bdd1))
-           label-index-2 (@*label-to-index* (:label bdd2))]
-       (assert (ty/typep Long label-index-1))
-       (assert (ty/typep Long label-index-2))
-       (if (< label-index-1 label-index-2)
-         (bdd (:label bdd1)
-              (op (:positive bdd1) bdd2)
-              (op (:negative bdd1) bdd2))
-         (bdd (:label bdd2)
-              (op bdd1 (:positive bdd2))
-              (op bdd1 (:negative bdd2)))))))
+  [op bdd1 bdd2]
+  (if (= (:label bdd1) (:label bdd2))
+    (bdd (:label bdd1)
+         (op (:positive bdd1) (:positive bdd1))
+         (op (:negative bdd1) (:negative bdd1)))
+    (let [label-index-1 (@*label-to-index* (:label bdd1))
+          label-index-2 (@*label-to-index* (:label bdd2))]
+      (assert (ty/typep Long label-index-1))
+      (assert (ty/typep Long label-index-2))
+      (if (< label-index-1 label-index-2)
+        (bdd (:label bdd1)
+             (op (:positive bdd1) bdd2)
+             (op (:negative bdd1) bdd2))
+        (bdd (:label bdd2)
+             (op bdd1 (:positive bdd2))
+             (op bdd1 (:negative bdd2)))))))
   
-  ([op bdd1 bdd2 & bdds]
-   (reduce op (apply cons bdd1 bdd2 bdds))))
-  
-(defn bdd-and [bdd1 bdd2]
-  (cond
-    (= false bdd1) false
-    (= false bdd2) false
-    (= true bdd1) bdd2
-    (= true bdd2) bdd1
-    (= bdd1 bdd2) bdd1
-    :else (bdd-op bdd-and bdd1 bdd2)))
+(defn bdd-and
+  ([bdd1 bdd2]
+   (cond
+     (= false bdd1) false
+     (= false bdd2) false
+     (= true bdd1) bdd2
+     (= true bdd2) bdd1
+     (= bdd1 bdd2) bdd1
+     :else (bdd-op bdd-and bdd1 bdd2)))
+  ([bdd1 bdd2 & bdds]
+   (reduce bdd-and (apply cons bdd1 bdd2 bdds))))
 
-(defn bdd-or [bdd1 bdd2]
-  (cond
-    (= false bdd1) bdd1
-    (= false bdd2) bdd2
-    (= true bdd1) true
-    (= true bdd2) true
-    (= bdd1 bdd2) bdd1
-    :else (bdd-op bdd-or bdd1 bdd2)))
+(defn bdd-or
+  ([bdd1 bdd2]
+   (cond
+     (= false bdd1) bdd1
+     (= false bdd2) bdd2
+     (= true bdd1) true
+     (= true bdd2) true
+     (= bdd1 bdd2) bdd1
+     :else (bdd-op bdd-or bdd1 bdd2)))
+  ([bdd1 bdd2 & bdds]
+   (reduce bdd-or (apply cons bdd1 bdd2 bdds))))
 
-(defn bdd-and-not [bdd1 bdd2]
-  (cond
-    (= bdd1 bdd2) false
-    (= bdd1 false) false
-    (= bdd2 true) false
-    (and (= bdd1 true)
-         (= bdd2 false)) true
-    (= bdd1 true) (bdd (:label bdd2)
-                       (bdd-and-not true (:positive bdd2))
-                       (bdd-and-not true (:negative bdd2)))
-    :else (bdd-op bdd-and-not bdd1 bdd2)))
+(defn bdd-and-not
+  ([bdd1 bdd2]
+   (cond
+     (= bdd1 bdd2) false
+     (= bdd1 false) false
+     (= bdd2 true) false
+     (and (= bdd1 true)
+          (= bdd2 false)) true
+     (= bdd1 true) (bdd (:label bdd2)
+                        (bdd-and-not true (:positive bdd2))
+                        (bdd-and-not true (:negative bdd2)))
+     :else (bdd-op bdd-and-not bdd1 bdd2)))
+  ([bdd1 bdd2 & bdds]
+   (reduce bdd-and (apply cons bdd1 bdd2 bdds))))
 
 (defn bdd-not [bdd1]
   (bdd-and-not true bdd1))
-    
+
