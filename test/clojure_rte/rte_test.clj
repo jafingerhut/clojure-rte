@@ -98,16 +98,18 @@
                     java.lang.Comparable))
              (canonicalize-pattern '(:and (:or java.io.Serializable java.lang.Comparable)
                                           clojure.lang.IMeta clojure.lang.IReduceInit)))
-          "and-distribute")
+          "and-distribute"))))
+
+(deftest t-canonicalize-pattern-14b
+  (when (and (resolve 'java.lang.Comparable))
+    (testing "canonicalize-pattern 14b"
       (is (= (canonicalize-pattern '(:permute java.lang.Comparable java.io.Serializable java.lang.Comparable ))
            (canonicalize-pattern '(:or (:cat java.lang.Comparable java.io.Serializable java.lang.Comparable )
                                        (:cat java.lang.Comparable java.lang.Comparable  java.io.Serializable)
                                        (:cat java.io.Serializable java.lang.Comparable java.lang.Comparable )
                                        (:cat java.io.Serializable java.lang.Comparable  java.lang.Comparable)
                                        (:cat java.lang.Comparable  java.io.Serializable java.lang.Comparable)
-                                       (:cat java.lang.Comparable java.lang.Comparable java.io.Serializable)))) "permute 3 args")
-      
-      )))
+                                       (:cat java.lang.Comparable java.lang.Comparable java.io.Serializable)))) "permute 3 args"))))
 
 
 (deftest t-canonicalize-pattern
@@ -345,6 +347,36 @@
       (is (not (rte-match '(:+ Long) ["hello" "hello"])))
       (is (not (rte-match '(:+ Long) ["hello" 42])))
       (is (not (rte-match '(:+ Long) [42 "hello"]))))))
+
+(deftest t-permute
+  (testing "rte :permute"
+    (with-compile-env []
+      (is (rte-match '(:permute) []))
+      (is (not (rte-match '(:permute) [1])))
+
+      (is (rte-match '(:permute Long) [42]))
+      (is (not (rte-match '(:permute Long) [42 43])))
+      (is (not (rte-match '(:permute Long) [])))
+
+      (is (rte-match '(:permute Long String) [42 "hello"]))
+      (is (rte-match '(:permute Long String) ["hello" 42]))
+      (is (not (rte-match '(:permute Long String) [42 "hello" 42])))
+      (is (not (rte-match '(:permute Long String) ["hello" 42 42])))
+      (is (not (rte-match '(:permute Long String) [])))
+      
+      (is (rte-match '(:permute Long String Boolean) [42 "hello" false]))
+      (is (rte-match '(:permute Long String Boolean) [42 false "hello"]))
+      (is (rte-match '(:permute Long String Boolean) [false 42 "hello"]))
+      (is (rte-match '(:permute Long String Boolean) [false "hello" 42]))
+      (is (rte-match '(:permute Long String Boolean) ["hello" 42 false]))
+      (is (rte-match '(:permute Long String Boolean) ["hello" false 42]))
+      (is (not (rte-match '(:permute Long String Boolean) [42 "hello"])))
+      (is (not (rte-match '(:permute Long String Boolean) [42 false "hello" 42])))
+      (is (not (rte-match '(:permute Long String Boolean) [])))
+      (is (not (rte-match '(:permute Long String Boolean) [false false "hello"])))
+      (is (not (rte-match '(:permute Long String Boolean) ["hello" "hello" 42])))
+      (is (not (rte-match '(:permute Long String Boolean) [false]))))))
+
 (deftest t-exp
   (testing "exp"
     (map (fn [n] 

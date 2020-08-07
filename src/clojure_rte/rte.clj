@@ -152,6 +152,18 @@
            ([operand] `(:cat ~operand (:* ~operand)))
            ([_ _ & _] (invalid-pattern pattern)))
          (rest pattern)))
+
+(defmethod rte-expand :permute [pattern]
+  (apply (fn
+           ([] :epsilon)
+           ([operand] operand)
+           ([_ _ & _]
+            (cons :or (call-with-collector (fn [collect]
+                                             (visit-permutations
+                                              (fn [perm]
+                                                (collect (cons :cat perm))) (rest pattern)))))))
+         (rest pattern)))
+  
 (defn traverse-pattern
   "Workhorse function for walking an rte pattern.
    This function is the master of understanding the syntax of an rte
@@ -176,7 +188,6 @@
                 (:or)  (traverse-pattern :empty-set functions)
                 (:and) (traverse-pattern :sigma functions)
                 (:cat) (traverse-pattern :epsilon functions)
-                (:permute) (traverse-pattern :epsilon functions)
                 (:not
                  :*
                  :exp) (throw (ex-info (format "invalid pattern %s, expecting exactly one operand" pattern)
@@ -197,7 +208,7 @@
           (if-exactly-one-operand []
             (let [[token operand] pattern]
               (case token
-                (:or :and :cat :permute)
+                (:or :and :cat)
                 (traverse-pattern operand functions)
                 
                 (:not :*)
@@ -218,12 +229,6 @@
           (if-multiple-operands []
             (let [[token & operands] pattern]
               (case token
-                (:permute)
-                (cons :or (call-with-collector (fn [collect]
-                                                 (visit-permutations
-                                                  (fn [perm]
-                                                    (collect (cons :cat perm))) operands))))
-
                 (:or
                  :and
                  :cat)
