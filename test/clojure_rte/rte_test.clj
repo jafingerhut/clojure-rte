@@ -98,16 +98,18 @@
                     java.lang.Comparable))
              (canonicalize-pattern '(:and (:or java.io.Serializable java.lang.Comparable)
                                           clojure.lang.IMeta clojure.lang.IReduceInit)))
-          "and-distribute")
+          "and-distribute"))))
+
+(deftest t-canonicalize-pattern-14b
+  (when (and (resolve 'java.lang.Comparable))
+    (testing "canonicalize-pattern 14b"
       (is (= (canonicalize-pattern '(:permute java.lang.Comparable java.io.Serializable java.lang.Comparable ))
            (canonicalize-pattern '(:or (:cat java.lang.Comparable java.io.Serializable java.lang.Comparable )
                                        (:cat java.lang.Comparable java.lang.Comparable  java.io.Serializable)
                                        (:cat java.io.Serializable java.lang.Comparable java.lang.Comparable )
                                        (:cat java.io.Serializable java.lang.Comparable  java.lang.Comparable)
                                        (:cat java.lang.Comparable  java.io.Serializable java.lang.Comparable)
-                                       (:cat java.lang.Comparable java.lang.Comparable java.io.Serializable)))) "permute 3 args")
-      
-      )))
+                                       (:cat java.lang.Comparable java.lang.Comparable java.io.Serializable)))) "permute 3 args"))))
 
 
 (deftest t-canonicalize-pattern
@@ -326,15 +328,99 @@
                `(~'and java.lang.Exception (~'not clojure.lang.ExceptionInfo))
                'clojure.lang.ExceptionInfo})))))
 
+(deftest t-?
+  (testing "rte :?"
+    (with-compile-env []
+      (is (rte-match '(:? Long) [42]))
+      (is (rte-match '(:? Long) []))
+      (is (not (rte-match '(:? Long) [42 43])))
+      (is (not (rte-match '(:? Long) ["hello"]))))))
+
+(deftest t-+
+  (testing "rte :+"
+    (with-compile-env []
+      (is (rte-match '(:+ Long) [42]))
+      (is (rte-match '(:+ Long) [42 43]))
+      (is (rte-match '(:+ Long) [42 43 44]))
+      (is (not (rte-match '(:+ Long) [])))
+      (is (not (rte-match '(:+ Long) ["hello"])))
+      (is (not (rte-match '(:+ Long) ["hello" "hello"])))
+      (is (not (rte-match '(:+ Long) ["hello" 42])))
+      (is (not (rte-match '(:+ Long) [42 "hello"]))))))
+
+(deftest t-permute
+  (testing "rte :permute"
+    (with-compile-env []
+      (is (rte-match '(:permute) []))
+      (is (not (rte-match '(:permute) [1])))
+
+      (is (rte-match '(:permute Long) [42]))
+      (is (not (rte-match '(:permute Long) [42 43])))
+      (is (not (rte-match '(:permute Long) [])))
+
+      (is (rte-match '(:permute Long String) [42 "hello"]))
+      (is (rte-match '(:permute Long String) ["hello" 42]))
+      (is (not (rte-match '(:permute Long String) [42 "hello" 42])))
+      (is (not (rte-match '(:permute Long String) ["hello" 42 42])))
+      (is (not (rte-match '(:permute Long String) [])))
+      
+      (is (rte-match '(:permute Long String Boolean) [42 "hello" false]))
+      (is (rte-match '(:permute Long String Boolean) [42 false "hello"]))
+      (is (rte-match '(:permute Long String Boolean) [false 42 "hello"]))
+      (is (rte-match '(:permute Long String Boolean) [false "hello" 42]))
+      (is (rte-match '(:permute Long String Boolean) ["hello" 42 false]))
+      (is (rte-match '(:permute Long String Boolean) ["hello" false 42]))
+      (is (not (rte-match '(:permute Long String Boolean) [42 "hello"])))
+      (is (not (rte-match '(:permute Long String Boolean) [42 false "hello" 42])))
+      (is (not (rte-match '(:permute Long String Boolean) [])))
+      (is (not (rte-match '(:permute Long String Boolean) [false false "hello"])))
+      (is (not (rte-match '(:permute Long String Boolean) ["hello" "hello" 42])))
+      (is (not (rte-match '(:permute Long String Boolean) [false]))))))
+
 (deftest t-exp
   (testing "exp"
-    (map (fn [n] 
-           (let [data (map (constantly 12) (range n))
-                 pattern `(:cat (:exp (~n (:? Long))) (:exp (~n Long)))
-                 rte (rte-compile pattern)]
+    (with-compile-env ()
+      (is (rte-match '(:exp 3 Long) [42 42 42]))
+      (is (not (rte-match '(:exp 3 Long) [42 42 42 42])))
+      (is (not (rte-match '(:exp 3 5 Long) [42 42])))
+      (is (rte-match '(:exp 3 5 Long) [42 42 42]))
+      (is (rte-match '(:exp 3 5 Long) [42 42 42 42]))
+      (is (rte-match '(:exp 3 5 Long) [42 42 42 42 42]))
+      (is (not (rte-match '(:exp 3 5 Long) [42 42 42 42 42 42])))
+      (map (fn [n] 
+             (let [data (repeat 12 n)
+                   pattern `(:cat (:exp ~n (:? Long)) (:exp ~n Long))
+                   rte (rte-compile pattern)]
 
-             (is (rte-match rte data) (format "n=%s" n))))
-         (range 10))))
+               (is (rte-match rte data) (format "n=%s" n))))
+           (range 10)))))
+
+(deftest t-contains-every
+  (testing ":contains-every"
+    (with-compile-env ()
+      (is (rte-match '(:contains-every Long String Boolean) [[] [] [] 42 "hello" true [] [] []]))
+      (is (rte-match '(:contains-every Long String Boolean) [[] "hello" [] 42 [] true []]))
+      (is (rte-match '(:contains-every Long String Boolean) [[] true [] 42 [] "hello" []]))
+      (is (not (rte-match '(:contains-every Long String Boolean) [[] true [] true [] "hello" []]))))))
+
+(deftest t-contains-any
+  (testing ":contains-any"
+    (with-compile-env ()
+      (is (rte-match '(:contains-any Long String Boolean) [[] [] [] 42 "hello" true [] [] []]))
+      (is (rte-match '(:contains-any Long String Boolean) [[] [] [] 42 [] [] []]))
+      (is (rte-match '(:contains-any Long String Boolean) [[] "hello" [] 42 []]))
+      (is (rte-match '(:contains-any Long String Boolean) [[] true []]))
+      (is (not (rte-match '(:contains-any Long String) [[] true [] false []]))))))
+
+
+(deftest t-contains-none
+  (testing ":contains-none"
+    (with-compile-env ()
+      (is (not (rte-match '(:contains-none Long String Boolean) [[] [] [] 42 "hello" true [] [] []])))
+      (is (not (rte-match '(:contains-none Long String Boolean) [[] [] [] 42 [] [] []])))
+      (is (not (rte-match '(:contains-none Long String Boolean) [[] "hello" [] 42 []])))
+      (is (not (rte-match '(:contains-none Long String Boolean) [[] true []])))
+      (is (rte-match '(:contains-none Long String) [[] true [] false []])))))
 
 (deftest t-typep-rte
   (testing "typep rte"

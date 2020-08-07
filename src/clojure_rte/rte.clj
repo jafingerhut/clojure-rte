@@ -126,6 +126,95 @@
   by typep, but that may not yet be the case."
   (clojure.set/difference (set (keys (methods registered-type?)))  #{:default}))
 
+(defmulti rte-expand
+  "macro-like facility for rte" (fn [pattern _functions] (first pattern)))
+
+(defn invalid-pattern [pattern functions]
+  (throw (ex-info (format "invalid pattern %s" pattern)
+                  {:error-type :rte-expand-error
+                   :keyword (first pattern)
+                   :pattern pattern
+                   :functions functions
+                   })))
+
+(defmethod rte-expand :default [pattern functions]
+  (invalid-pattern pattern functions))
+
+(defmethod rte-expand :? [pattern functions]
+  (apply (fn
+           ([] (invalid-pattern pattern functions))
+           ([operand] `(:or :epsilon ~operand))
+           ([_ _ & _] (invalid-pattern pattern functions)))
+         (rest pattern)))
+
+(defmethod rte-expand :+ [pattern functions]
+  (apply (fn
+           ([] (invalid-pattern pattern functions))
+           ([operand] `(:cat ~operand (:* ~operand)))
+           ([_ _ & _] (invalid-pattern pattern functions)))
+         (rest pattern)))
+
+(defmethod rte-expand :permute [pattern functions]
+  (apply (fn
+           ([] :epsilon)
+           ([operand] operand)
+           ([_ _ & _]
+            (let [operands (for [operand (rest pattern)]
+                             (traverse-pattern operand functions))]
+              (cons :or (call-with-collector (fn [collect]
+                                               (visit-permutations
+                                                (fn [perm]
+                                                  (collect (cons :cat perm))) operands)))))))
+         (rest pattern)))
+
+(defmethod rte-expand :contains-any [pattern functions]
+  (apply (fn
+           ([] :epsilon)
+           ([operand] operand)
+           ([_ _ & _]
+            (let [operands (for [operand (rest pattern)]
+                             (traverse-pattern operand functions))]
+              `(:cat (:* :sigma)
+                     (:or ~@operands)
+                     (:* :sigma)))))
+         (rest pattern)))
+
+(defmethod rte-expand :contains-every [pattern functions]
+  (apply (fn
+           ([] :epsilon)
+           ([operand] operand)
+           ([_ _ & _]
+            (let [wrapped (for [operand (rest pattern)
+                                 :let [traversed (traverse-pattern operand functions)]]
+                             `(:cat (:* :sigma) ~traversed (:* :sigma)))]
+              `(:and ~@wrapped))))
+         (rest pattern)))
+
+(defmethod rte-expand :contains-none [pattern _functions]
+  ;; TODO, not sure what (:contains-none) should mean with no arguments.
+  ;;    as implemented it is equivalent to (:not :epsilon) which seems wierd.
+  `(:not (:contains-any ~@(rest pattern))))
+
+(defmethod rte-expand :exp [pattern functions]
+  (letfn [(expand [n m pattern]
+            (assert (>= n 0) (format "pattern %s is limited to n >= 0, not %s" pattern n))
+            (assert (<= n m) (format "pattern %s is limited to n <= m, got %s > %s" pattern n m))
+            (let [operand (traverse-pattern pattern functions)
+                  repeated-operand (repeat n operand)
+                  optional-operand (repeat (- m n) `(:? ~operand))
+                  ]
+              (traverse-pattern `(:cat ~@repeated-operand ~@optional-operand) functions)))]
+    (apply (fn
+             ([] (invalid-pattern pattern functions))
+             ([_] (invalid-pattern pattern functions))
+             ([n pattern]
+              (expand n n pattern))
+             ([n m pattern] 
+              (expand n m pattern))
+             ([_ _ _ _ & _] 
+              (invalid-pattern pattern functions)))
+           (rest pattern))))
+  
 (defn traverse-pattern
   "Workhorse function for walking an rte pattern.
    This function is the master of understanding the syntax of an rte
@@ -133,7 +222,7 @@
    such as derivative, nullable, first-types, or canonicalize-pattern
    may call traverse-pattern with an augmented map of
    *traversal-functions*, indicating the callbacks for each rte
-   keyword such as :* :+ :cat etc.  The philosophy is that no other
+   keyword such as :* :cat etc.  The philosophy is that no other
    function needs to understand how to walk an rte pattern."
   [pattern functions]
 
@@ -144,18 +233,14 @@
               ((:type functions) pattern functions)))
           (if-nil []
             ((:type functions) () functions))
-          (if-singleton-list []
+          (if-singleton-list [] ;; (:or)  (:and)
             (let [[keyword] pattern]
               (case keyword
                 (:or)  (traverse-pattern :empty-set functions)
                 (:and) (traverse-pattern :sigma functions)
                 (:cat) (traverse-pattern :epsilon functions)
-                (:permute) (traverse-pattern :epsilon functions)
                 (:not
-                 :*
-                 :?
-                 :+
-                 :exp) (throw (ex-info (format "invalid pattern %s, expecting exactly one operand" pattern)
+                 :*) (throw (ex-info (format "invalid pattern %s, expecting exactly one operand" pattern)
                                        {:error-type :rte-syntax-error
                                         :keyword keyword
                                         :pattern pattern
@@ -169,59 +254,29 @@
                   ((:type functions) pattern functions)
 
                   :else
-                  (throw (ex-info (format "%s in pattern %s not implemented" keyword pattern)
-                                  {:error-type :type-not-yet-implemented
-                                   :pattern pattern
-                                   :functions functions
-                                   }))))))
-          (if-exactly-one-operand []
+                  (traverse-pattern (rte-expand pattern functions) functions)))))
+          (if-exactly-one-operand [] ;; (:or Long) (:* Long)
             (let [[token operand] pattern]
               (case token
-                (:or :and :cat :permute)
+                (:or :and :cat)
                 (traverse-pattern operand functions)
                 
                 (:not :*)
                 ((functions token) operand functions)
-                
-                (:exp)
-                (let [[n operand] operand
-                      operand (traverse-pattern operand functions)
-                      repeated-operand (map (fn [_]
-                                              operand) (range n))]
-                  (assert (>= n 0))
-                  (traverse-pattern `(:cat ~@repeated-operand) functions))
-
-                (:+)
-                (traverse-pattern `(:cat ~operand
-                                         (:* ~operand)) functions)
-                
-                (:?)
-                (traverse-pattern `(:or :epsilon
-                                        ~operand) functions)
 
                 ;;case-else
                 (if (registered-type? (first pattern))
                   ((:type functions) pattern functions)
-                  (throw (ex-info (format "unary type %s in %s not yet implemented" token pattern)
-                                  {:error-type :type-not-yet-implemented
-                                   :pattern pattern
-                                   :functions functions
-                                   }))))))
+                  (traverse-pattern (rte-expand pattern functions) functions)))))
           (if-multiple-operands []
             (let [[token & operands] pattern]
               (case token
-                (:permute)
-                (cons :or (call-with-collector (fn [collect]
-                                                 (visit-permutations
-                                                  (fn [perm]
-                                                    (collect (cons :cat perm))) operands))))
-
                 (:or
                  :and
                  :cat)
                 ((functions token) operands functions)
 
-                (:not :* :+ :? :exp)
+                (:not :*)
                 (throw (ex-info (format "invalid pattern %s, expecting exactly one operand" pattern)
                                 {:error-type :rte-syntax-error
                                  :keyword keyword
@@ -233,12 +288,7 @@
                 ;;case-else
                 (if (registered-type? token)
                   ((:type functions) pattern functions)
-                  (throw (ex-info (format "variadic type %s in %s not yet implemented, expecting one of %s"
-                                          token pattern (supported-nontrivial-types))
-                                  {:error-type :type-not-yet-implemented
-                                   :pattern pattern
-                                   :functions functions
-                                   }))))))]
+                  (traverse-pattern (rte-expand pattern functions) functions)))))]
     (cond (not (seq? pattern))
           (if-atom)
 
@@ -248,10 +298,10 @@
           (empty? (rest pattern)) ;; singleton list, (:and), (:or) etc
           (if-singleton-list)
 
-          (empty? (rest (rest pattern))) ;; (:and x) (:+ x)
+          (empty? (rest (rest pattern))) ;; (:and x)
           (if-exactly-one-operand)
 
-          ;; cond-else (:keyword args) or list-expr ;; (:and x y) (:+ x y)
+          ;; cond-else (:keyword args) or list-expr ;; (:and x y)
           :else (if-multiple-operands))))
 
 (defn nullable 
