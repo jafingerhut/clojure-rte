@@ -774,29 +774,8 @@ For more information, see the documentation in the source code.
 
 ## Not yet implemented
 
-There are several important extensions we would like to implement.
-
-
-1. Internal to the RTE code we have implemented a type designator
-  notation (a DSL) inspired by that of Common Lisp.  In Common Lisp they are
-  referred to as [type
-  specifiers](https://www.cs.cmu.edu/Groups/AI/html/cltl/clm/node44.html).
-  We would like to make these *type designators* part of the public interface to RTE.
-  In order to do so we must fully implement, test, and document the DSL.
-  
-  - `(satisfies f)` is a type designator, designating the set of values, `x` for which `(f x)` returns Boolean *true*.  It is assumed that `f` may be called with any value, always returns, and has no side effects.
-
-2. We have made no attempts to minimize the DFA which is produced.
-For example the image shown in section [Debugging](#debugging) is no
-minimized.  States 2, 4 and 5 can be combined into a single state, and
-also states 1 and 3 can be combined.  If states 1 and 3 are combined
-the labels 0 -> 3 and 0 -> 1 can be unioned to the type `(not String)` which
-will improve run-time performance.
-
-```
-(or Long (and (not Long) (not String))) = (not String)
-```
-
+There are several outstanding issues.  
+[See them here](https://gitlab.lrde.epita.fr/jnewton/clojure-rte/-/issues).
 
 ## Package dependencies overview
 
