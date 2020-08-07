@@ -144,21 +144,21 @@
   (apply (fn
            ([] (invalid-pattern pattern functions))
            ([operand] `(:or :epsilon ~operand))
-           ([_ _ & _] (invalid-pattern pattern functions)))
+           ([_ & _] (invalid-pattern pattern functions)))
          (rest pattern)))
 
 (defmethod rte-expand :+ [pattern functions]
   (apply (fn
            ([] (invalid-pattern pattern functions))
            ([operand] `(:cat ~operand (:* ~operand)))
-           ([_ _ & _] (invalid-pattern pattern functions)))
+           ([_ & _] (invalid-pattern pattern functions)))
          (rest pattern)))
 
 (defmethod rte-expand :permute [pattern functions]
   (apply (fn
            ([] :epsilon)
            ([operand] operand)
-           ([_ _ & _]
+           ([_ & _]
             (let [operands (for [operand (rest pattern)]
                              (traverse-pattern operand functions))]
               (cons :or (call-with-collector (fn [collect]
@@ -171,7 +171,7 @@
   (apply (fn
            ([] :epsilon)
            ([operand] operand)
-           ([_ _ & _]
+           ([_ & _]
             (let [operands (for [operand (rest pattern)]
                              (traverse-pattern operand functions))]
               `(:cat (:* :sigma)
@@ -183,7 +183,7 @@
   (apply (fn
            ([] :epsilon)
            ([operand] operand)
-           ([_ _ & _]
+           ([_ & _]
             (let [wrapped (for [operand (rest pattern)
                                  :let [traversed (traverse-pattern operand functions)]]
                              `(:cat (:* :sigma) ~traversed (:* :sigma)))]
@@ -211,7 +211,7 @@
               (expand n n pattern))
              ([n m pattern] 
               (expand n m pattern))
-             ([_ _ _ _ & _] 
+             ([_ _ _ & _] 
               (invalid-pattern pattern functions)))
            (rest pattern))))
   
