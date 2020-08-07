@@ -89,7 +89,7 @@ extend but comes equipped with several useful *quasi-types*. For example,
 
 ## Options
 
-RTE supports the following keywords `:cat`, `:+`, `:*`, `:?`, `:exp`, `:and`, `:or`, `:permute`, 
+RTE supports the following keywords `:cat`, `:+`, `:*`, `:?`, `:exp`, `:and`, `:or`, `:permute`, `:contains-any`, `:contains-every`, `:contains-none`, 
 `:empty-set`, `:sigma`, `:epsilon`, and `:not`.
 
 
@@ -209,6 +209,56 @@ slow, and perhaps exhaust virtual memory.
   )
 ```
 
+* `(:contains-any ...)` ---  Takes 0 or more operands.  Matches a sequence if it contains a factor which 
+matches any of the given patterns.  A *factor* is a consecutive subsequence: `[1 2 3]` is a factor of `[0 1 2 3 4]`
+but `[2 4]` is not a factor.
+
+```clojure
+(let [rte (rte-compile '(:contains-any integer?))]
+  (rte-match rte [1 2 "hello"]) ;; true
+  (rte-match rte ["hello" 2 "world"]) ;; true
+  )
+
+(let [rte (rte-compile '(:contains-any integer? String))]
+  (rte-match rte [1 2 "hello"]) ;; true
+  (rte-match rte ["hello" 2 "world"]) ;; true
+  (rte-match rte [1 2 false]) ;; true
+  (rte-match rte [true "hello" false]) ;; true
+  )
+
+(let [rte (rte-compile '(:contains-any (:cat Long Long) (:cat Double Double)))]
+  (rte-match rte [1 2 "hello"]) ;; true because it contains (:cat Long Long)
+  (rte-match rte ["hello" 2.0 3.0 "world"]) ;; true (:cat Double Double)
+  (rte-match rte [1 false 2 false 1.0 false 2.0]) ;; false
+  )
+```
+
+* `(:contains-every ...)` ---  Takes 0 or more operands.  Matches a sequence if it for each pattern
+the sequence contains a factor which matches the pattern.
+
+```clojure
+(let [rte (rte-compile '(:contains-every integer?))]
+  (rte-match rte [1 2 "hello"]) ;; true
+  (rte-match rte ["hello" 2 "world"]) ;; true
+  )
+
+(let [rte (rte-compile '(:contains-every integer? String))]
+  (rte-match rte [1 2 "hello"]) ;; true
+  (rte-match rte ["hello" 2 "world"]) ;; true
+  (rte-match rte [1 2 false]) ;; false because it does not contains String
+  (rte-match rte [true "hello" false]) ;; false because it does not contain integer?
+  )
+
+(let [rte (rte-compile '(:contains-any (:cat Long Long) (:cat Double Double)))]
+  (rte-match rte [false 1 2 "hello" 1.0 2.0]) ;; true because it contains (:cat Long Long) and also (:cat Double Double)
+  (rte-match rte [1 2 "hello"]) ;; false because it does not contain (:cat Double Double)
+  (rte-match rte ["hello" 2.0 3.0 "world"]) ;; false because it does not contain (:cat Long Long)
+  )
+```
+
+* `(:contains-none ...)` ---  Takes 0 or more operands.  This is the same as `(:not (:contains-any ...))`.
+Warning, `(:contains-any)` with no arguments is the same as `:epsilon`, so `(:contains-none)` is the
+same as `(:not :epsilon)`.
 
 * `:empty-set` --- identity for `:or`.
 
