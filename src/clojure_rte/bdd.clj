@@ -33,14 +33,6 @@
 (defmethod print-method Bdd [bdd w]
   (.write w (format "#<Bdd %s>" (:label bdd))))
 
-(defn make-bdd
-  "low level Bdd constructor which ignores the cache but validates its arguments"
-  [type-designator positive negative]
-  (assert (ty/typep positive '(or Boolean Bdd)))
-  (assert (ty/typep negative '(or Boolean Bdd)))
-  (assert (ty/valid-type? type-designator))
-  (Bdd. type-designator positive negative))
-
 (def ^:dynamic *bdd-hash* false)
 (def ^:dynamic *label-to-index* false)
 
@@ -63,7 +55,11 @@
   ([type-designator positive negative]
    (assert (map? @*bdd-hash*) "attempt to allocate a Bdd outside dynamically extend of call-with-bdd-hash")
    (assert (map? @*label-to-index*) "attempt to allocate a Bdd outside dynamically extend of call-with-bdd-hash")
-   (let [try-bdd (make-bdd type-designator positive negative)
+   (assert (ty/typep positive '(or Boolean Bdd)))
+   (assert (ty/typep negative '(or Boolean Bdd)))
+   (assert (ty/valid-type? type-designator))
+
+   (let [try-bdd (Bdd. type-designator positive negative)
          cached-bdd (@*bdd-hash* try-bdd)]
      (or cached-bdd
          (do (swap! *bdd-hash* assoc try-bdd try-bdd)
