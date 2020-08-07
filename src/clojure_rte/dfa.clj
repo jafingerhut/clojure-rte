@@ -173,11 +173,11 @@
                         ;;   which contains the destination state of the transition
                         ;;   whose source and label are given
                         (find-eqv-class partition (delta dfa source-state label)))
-                      (Phi-prime [s]
+                      (Phi' [s]
                         (for [[label _dst-id] (:transitions s)]
                           [label (phi s label)]))
                       (Phi [s]
-                        (for [[k pairs] (group-by second (Phi-prime s))
+                        (for [[k pairs] (group-by second (Phi' s))
                               :let [labels (map first pairs)
                                     label (reduce (:combine-labels dfa) labels)]]
                           [label k]))
