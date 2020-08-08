@@ -135,7 +135,7 @@
      (sequential? type-designator)
      (case (first type-designator)
        (and) (reduce bdd-and (map bdd (rest type-designator)))
-       (or)  (reduce bdd-and (map bdd (rest type-designator)))
+       (or)  (reduce bdd-or (map bdd (rest type-designator)))
        (not) (apply bdd-not (map bdd (rest type-designator)))
        (bdd type-designator true false))
      :else
