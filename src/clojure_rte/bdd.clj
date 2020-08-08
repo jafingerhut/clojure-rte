@@ -33,8 +33,8 @@
 (defmethod print-method Bdd [bdd w]
   (.write w (format "#<Bdd %s>" (:label bdd))))
 
-(def ^:dynamic *bdd-hash* false)
-(def ^:dynamic *label-to-index* false)
+(def ^:dynamic *bdd-hash* (atom false))
+(def ^:dynamic *label-to-index* (atom false))
 
 (defn call-with-bdd-hash
   ""
