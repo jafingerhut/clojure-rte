@@ -60,8 +60,8 @@
   ([type-designator positive negative]
    (assert (map? @*bdd-hash*) "attempt to allocate a Bdd outside dynamically extend of call-with-bdd-hash")
    (assert (map? @*label-to-index*) "attempt to allocate a Bdd outside dynamically extend of call-with-bdd-hash")
-   (assert (ty/typep positive '(or Boolean Bdd)))
-   (assert (ty/typep negative '(or Boolean Bdd)))
+   (assert (ty/typep positive '(or Boolean clojure_rte.bdd.Bdd)))
+   (assert (ty/typep negative '(or Boolean clojure_rte.bdd.Bdd)))
    (assert (ty/valid-type? type-designator))
 
    (cond
@@ -93,8 +93,8 @@
          (op (:negative bdd1) (:negative bdd1)))
     (let [label-index-1 (type-index (:label bdd1))
           label-index-2 (type-index (:label bdd2))]
-      (assert (ty/typep Long label-index-1))
-      (assert (ty/typep Long label-index-2))
+      (assert (integer? label-index-1) (format "expecting integer got %s" (type label-index-1)))
+      (assert (integer? label-index-2) (format "expecting integer got %s" (type label-index-2)))
       (if (< label-index-1 label-index-2)
         (bdd (:label bdd1)
              (op (:positive bdd1) bdd2)
