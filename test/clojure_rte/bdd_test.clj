@@ -64,8 +64,8 @@
   (testing "testing Boolean operations commutativity"
     (with-bdd-hash []
       (doseq [n (range num-random-samples)
-              :let [bdd1 (bdd-random)
-                    bdd2 (bdd-random)]]
+              :let [bdd1 (gen-random)
+                    bdd2 (gen-random)]]
         (is (= (bdd-or bdd1 bdd2)
                (bdd-or bdd2 bdd1)))
         (is (= (bdd-and bdd1 bdd2)
@@ -75,9 +75,9 @@
   (testing "testing Boolean operations associativity"
     (with-bdd-hash []
       (doseq [n (range num-random-samples)
-              :let [bdd1 (bdd-random)
-                    bdd2 (bdd-random)
-                    bdd3 (bdd-random)]]
+              :let [bdd1 (gen-random)
+                    bdd2 (gen-random)
+                    bdd3 (gen-random)]]
         (is (= (bdd-or (bdd-or bdd1 bdd2) bdd3)
                (bdd-or bdd1 (bdd-or bdd2 bdd3))))
         (is (= (bdd-and (bdd-and bdd1 bdd2) bdd3)
@@ -114,7 +114,7 @@
   (testing "testing Boolean idempotence"
     (with-bdd-hash []
       (doseq [n (range num-random-samples)
-              :let [bdd (bdd-random)]]
+              :let [bdd (gen-random)]]
 
         (is (= bdd (bdd-and bdd bdd)))
         (is (= bdd (bdd-or bdd bdd)))
@@ -135,8 +135,8 @@
   (testing "bdd de morgan's theorem"
     (with-bdd-hash []
       (doseq [n (range num-random-samples)
-              :let [bdd1 (bdd-random)
-                    bdd2 (bdd-random)]]
+              :let [bdd1 (gen-random)
+                    bdd2 (gen-random)]]
         (is (= (bdd-not (bdd-or bdd1 bdd2))
                (bdd-and (bdd-not bdd1) (bdd-not bdd2))))
         (is (= (bdd-not (bdd-and bdd1 bdd2))
@@ -165,7 +165,7 @@
         (is (= (not a)
                (bdd-not a))))
       (doseq [n (range num-random-samples)
-              :let [bdd (bdd-random)]]
+              :let [bdd (gen-random)]]
         (is (= bdd (bdd-not (bdd-not bdd)))
     )))))
 
@@ -186,7 +186,7 @@
   (testing "dnf by serialization out and in"
     (with-bdd-hash []
       (doseq [n (range num-random-samples)
-              :let [bdd1 (bdd-random)
+              :let [bdd1 (gen-random)
                     serialized (dnf bdd1)
                     bdd2 (bdd serialized)
                     ]]
@@ -199,7 +199,7 @@
   (testing "itenf by serialization out and in"
     (with-bdd-hash []
       (doseq [n (range num-random-samples)
-              :let [bdd1 (bdd-random)
+              :let [bdd1 (gen-random)
                     serialized (itenf bdd1)
                     bdd2 (bdd serialized)
                     ]]

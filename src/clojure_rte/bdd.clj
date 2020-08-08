@@ -238,9 +238,9 @@
 (defn bdd-not [bdd1]
   (bdd-and-not true bdd1))
 
-(defn bdd-random
+(defn gen-random
   "Generate a random Bdd"
-  ([] (bdd-random 15))
+  ([] (gen-random 15))
   ([max-depth]
    (if (<= max-depth 0)
      (rand-nth '(true false))
@@ -254,8 +254,8 @@
                                java.io.Serializable java.lang.Comparable)))
          
          :else
-         (let [bdd-1 (bdd-random (dec max-depth))
-               bdd-2 (bdd-random (dec max-depth))
+         (let [bdd-1 (gen-random (dec max-depth))
+               bdd-2 (gen-random (dec max-depth))
                r (rand-int 3)]
            (cond
              (= r 0)
