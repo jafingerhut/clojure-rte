@@ -119,6 +119,8 @@
   `(call-with-bdd-hash (fn [] ~@body)))
 
 (defn type-index [type-designator]
+  ;; TODO make sure two differnet symbols representing the same class
+  ;; result in the same index.  eg. Double vs java.lang.Double
   (or (@*label-to-index* type-designator)
       (do (swap! *label-to-index* assoc type-designator (count @*label-to-index*))
           (@*label-to-index* type-designator))))
