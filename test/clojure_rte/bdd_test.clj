@@ -176,8 +176,11 @@
             b [true false]]
         (is (= (not (and a b))
                (bdd-and a b))))
-
-      )))
+      (doseq [n (range num-random-samples)
+              :let [bdd1 (gen-random)
+                    bdd2 (gen-random)]]
+        (is (= (bdd-and-not bdd1 bdd2)
+               (bdd-and bdd1 (bdd-not bdd2))))))))
 
 (deftest t-dnf
   ;; convert bdd to dnf
@@ -198,10 +201,21 @@
   ;; compare them
   (testing "itenf by serialization out and in"
     (with-bdd-hash []
-      (doseq [n (range num-random-samples)
+      (doseq [_ (range num-random-samples)
               :let [bdd1 (gen-random)
                     serialized (itenf bdd1)
                     bdd2 (bdd serialized)
                     ]]
         (is (= bdd1 bdd2) (cl-format false "itenf serialization failed on ~a" serialized))))))
+
+(deftest t-eq
+  (testing "that bdds which are equal are also eq"
+    (with-bdd-hash []
+      (doseq [_ (range num-random-samples)
+              :let [bdd-1 (gen-random)
+                    bdd-2 (bdd (itenf bdd-1))
+                    bdd-3 (bdd (dnf bdd-1))]]
+        (is (identical? bdd-1 bdd-2))
+        (is (identical? bdd-1 bdd-3))))))
+            
 

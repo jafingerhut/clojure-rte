@@ -156,7 +156,7 @@
    (assert (ty/valid-type? type-designator))
 
    (cond
-     (= positive negative)
+     (identical? positive negative)
      positive
      :else
      (let [try-bdd (Bdd. type-designator positive negative)
@@ -202,7 +202,7 @@
      (= false bdd2) false
      (= true bdd1) bdd2
      (= true bdd2) bdd1
-     (= bdd1 bdd2) bdd1
+     (identical? bdd1 bdd2) bdd1
      :else (binary-op bdd-and bdd1 bdd2)))
   ([bdd1 bdd2 & bdds]
    (reduce bdd-and (apply cons bdd1 bdd2 bdds))))
@@ -216,7 +216,7 @@
      (= false bdd2) bdd1
      (= true bdd1) true
      (= true bdd2) true
-     (= bdd1 bdd2) bdd1
+     (identical? bdd1 bdd2) bdd1
      :else (binary-op bdd-or bdd1 bdd2)))
   ([bdd1 bdd2 & bdds]
    (reduce bdd-or (apply cons bdd1 bdd2 bdds))))
@@ -224,7 +224,7 @@
 (defn bdd-and-not
   ([bdd1 bdd2]
    (cond
-     (= bdd1 bdd2) false
+     (identical? bdd1 bdd2) false
      (= bdd1 false) false
      (= bdd2 true) false
      (= bdd2 false) bdd1
