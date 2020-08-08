@@ -24,6 +24,25 @@
   (:require [clojure-rte.bdd :refer :all]
             [clojure.test :refer :all]))
 
+(deftest t-typep
+  (testing "bdd and-not"
+    (with-bdd-hash []
+      (is (bdd-typep 42 (bdd 'Long)))
+      (is (not (bdd-typep 42 (bdd 'String))))
+      (is (not (bdd-typep "42" (bdd 'Long))))
+      (is (bdd-typep "42" (bdd 'String)))
+      (is (bdd-typep 42 (bdd-or (bdd 'Long)
+                                (bdd 'String))))
+      (is (bdd-typep "hello" (bdd-or (bdd 'Long)
+                                     (bdd 'String))))
+      (is (bdd-typep 42 (bdd-and-not (bdd 'Long)
+                                     (bdd 'String))))
+      (is (not (bdd-typep "hello" (bdd-not (bdd 'Long)))))
+      (is (not (bdd-typep 42 (bdd-and-not (bdd 'String)
+                                          (bdd 'Long)))))
+      (is (bdd-typep "hello" (bdd-and-not (bdd 'String)
+                                          (bdd 'Long)))))))
+
 (deftest t-construct
   (testing "bdd construction"
     (with-bdd-hash []
@@ -71,25 +90,7 @@
                (bdd-and a b)))))
     ))
 
-(deftest t-typep
-  (testing "bdd and-not"
-    (with-bdd-hash []
-      (is (bdd-typep 42 (Bdd. 'Long)))
-      (is (not (bdd-typep 42 (Bdd. 'String))))
-      (is (not (bdd-typep "42" (Bdd. 'Long))))
-      (is (bdd-typep "42" (Bdd. 'String)))
-      (is (bdd-typep 42 (bdd-or (Bdd. 'Long)
-                                (Bdd. 'String))))
-      (is (bdd-typep "hello" (bdd-or (Bdd. 'Long)
-                                     (Bdd. 'String))))
-      (is (bdd-typep 42 (bdd-and-not (Bdd. 'Long)
-                                 (Bdd. 'String))))
-      (is (not (bdd-typep "hello" (bdd-not (Bdd. 'Long)
-                                           (Bdd. 'String)))))
-      (is (not (bdd-typep 42 (bdd-and-not (Bdd. 'String)
-                                          (Bdd. 'Long)))))
-      (is (bdd-typep "hello" (bdd-and-not (Bdd. 'String)
-                                          (Bdd. 'Long)))))))      
+
   
  ;; Bdd.withNewBddHash{
  ;;      (1 to 10).foreach { _ =>
