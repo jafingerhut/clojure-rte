@@ -32,7 +32,17 @@
   [label positive negative])
 
 (defmethod print-method Bdd [bdd w]
-  (.write w (cl-format false "#<Bdd ~A ~A ~A>" (:label bdd) (:positive bdd) (:negative bdd))))
+  (.write w (cond
+              (and (= true (:positive bdd))
+                   (= false (:negative bdd)))
+              (cl-format false "#<Bdd ~A>" (:label bdd))
+
+              (and (= false (:positive bdd))
+                   (= true (:negative bdd)))
+              (cl-format false "#<Bdd not ~A>" (:label bdd))
+
+              :else
+              (cl-format false "#<Bdd ~A ~A ~A>" (:label bdd) (:positive bdd) (:negative bdd)))))
 
 (defn itenf
   "Serialize a Bdd to if-then-else-normal-form (itenf)"
