@@ -51,37 +51,36 @@
     (true) :sigma
     (false) :empty-set
     (let [l (:label bdd)
-          p (:positive bdd)
-          n (:negative bdd)]
+          p (itenf (:positive bdd))
+          n (itenf (:negative bdd))]
       (assert (not (= nil p)))
       (assert (not (= nil n)))
       (cond
-        (and (= p true)
-             (= n false))
+        (and (= p :sigma)
+             (= n :empty-set))
         l
 
-        (and (= p false)
-             (= n true))
+        (and (= p :empty-set)
+             (= n :sigma))
         (list 'not l)
 
-        (= p true)
+        (= p :sigma)
         `(~'or ~l
-          (~'and (~'not ~l) ~(itenf n)))
+          (~'and (~'not ~l) ~n))
 
-        (= p false)
-        `(~'and (~'not ~l) ~(itenf n))
+        (= p :empty-set)
+        `(~'and (~'not ~l) ~n)
 
-        (= n true)
-        `(~'or (~'and ~l ~(itenf p))
+        (= n :sigma)
+        `(~'or (~'and ~l ~p)
           (~'not ~l))
 
-        (= n false)
-        `(~'and ~l ~(itenf p))
+        (= n :empty-set)
+        `(~'and ~l ~p)
 
         :else
-        `(~'or (~'and ~l ~(itenf p))
-          (~'and (~'not ~l) ~(itenf n)))))))
-
+        `(~'or (~'and ~l ~p)
+          (~'and (~'not ~l) ~n))))))
 
 (defn dnf
   "Serialize a Bdd to dnf disjunctive normal form."
