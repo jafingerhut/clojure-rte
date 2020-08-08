@@ -57,6 +57,17 @@
         (is (bdd 'Long string double))
         (is (bdd 'Long double string))))))
 
+(deftest t-de-morgan
+  (testing "bdd de morgan's theorem"
+    (with-bdd-hash []
+      (doseq [n (range 100)
+              :let [bdd1 (bdd-random)
+                    bdd2 (bdd-random)]]
+        (is (= (bdd-not (bdd-or bdd1 bdd2))
+               (bdd-and (bdd-not bdd1) (bdd-not bdd2))))
+        (is (= (bdd-not (bdd-and bdd1 bdd2))
+               (bdd-or (bdd-not bdd1) (bdd-not bdd2))))))))
+
 (deftest t-or
   (testing "bdd or"
     (with-bdd-hash []
