@@ -22,6 +22,7 @@
 
 (ns clojure-rte.bdd-test
   (:require [clojure-rte.bdd :refer :all]
+            [clojure.pprint :refer [cl-format]]
             [clojure.test :refer :all]))
 
 (deftest t-typep
@@ -180,12 +181,25 @@
   ;; convert bdd to dnf
   ;; convert dnf back to bdd
   ;; compare them
-  )
+  (testing "dnf by serialization out and in"
+    (with-bdd-hash []
+      (doseq [n (range 100)
+              :let [bdd1 (bdd-random)
+                    serialized (dnf bdd1)
+                    bdd2 (bdd serialized)
+                    ]]
+        (is (= bdd1 bdd2) (cl-format false "dnf serialization failed on ~a" serialized))))))
 
 (deftest t-itenf
   ;; convert bdd to itenf
   ;; convert itenf back to bdd
   ;; compare them
-  
-  )
+  (testing "itenf by serialization out and in"
+    (with-bdd-hash []
+      (doseq [n (range 100)
+              :let [bdd1 (bdd-random)
+                    serialized (itenf bdd1)
+                    bdd2 (bdd serialized)
+                    ]]
+        (is (= bdd1 bdd2) (cl-format false "itenf serialization failed on ~a" serialized))))))
 
