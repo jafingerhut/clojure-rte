@@ -186,6 +186,8 @@
              (op bdd1 (:negative bdd2)))))))
   
 (defn bdd-and
+  ([] true)
+  ([bdd] bdd)
   ([bdd1 bdd2]
    (cond
      (= false bdd1) false
@@ -198,6 +200,8 @@
    (reduce bdd-and (apply cons bdd1 bdd2 bdds))))
 
 (defn bdd-or
+  ([] false)
+  ([bdd] bdd)
   ([bdd1 bdd2]
    (cond
      (= false bdd1) bdd2
