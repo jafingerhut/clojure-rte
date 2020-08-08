@@ -70,6 +70,28 @@
         `(~'or (~'and ~l ~(itenf p))
           (~'and (~'not ~l) ~(itenf n)))))))
 
+
+(defn dnf
+  "Serialize a Bdd to dnf disjunctive normal form."
+  [bdd]
+  (cons 'or
+        (call-with-collector
+         (fn [collect]
+           (letfn [(walk [node parents]
+                     (cond
+                       (= true node)
+                       (collect (cons 'and (reverse parents)))
+                       
+                       (= false node)
+                       "nothing"
+                       
+                       :else
+                       (do (walk (:positive node)
+                                 (cons (:label node) parents))
+                           (walk (:negative node)
+                                 (cons (list 'not (:label node)) parents)))))]
+             (walk bdd '()))))))
+
 (def ^:dynamic *bdd-hash* (atom false))
 (def ^:dynamic *label-to-index* (atom false))
 
