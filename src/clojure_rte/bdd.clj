@@ -177,8 +177,8 @@
   [op bdd1 bdd2]
   (if (= (:label bdd1) (:label bdd2))
     (bdd (:label bdd1)
-         (op (:positive bdd1) (:positive bdd1))
-         (op (:negative bdd1) (:negative bdd1)))
+         (op (:positive bdd1) (:positive bdd2))
+         (op (:negative bdd1) (:negative bdd2)))
     (let [label-index-1 (type-index (:label bdd1))
           label-index-2 (type-index (:label bdd2))]
       (assert (integer? label-index-1) (format "expecting integer got %s" (type label-index-1)))
