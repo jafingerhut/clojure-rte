@@ -101,7 +101,16 @@
                (bdd-and a b)))))
     ))
 
+(deftest t-dnf
+  ;; convert bdd to dnf
+  ;; convert dnf back to bdd
+  ;; compare them
+  )
 
+(deftest t-itenf
+  ;; convert bdd to itenf
+  ;; convert itenf back to bdd
+  ;; compare them
   
  ;; Bdd.withNewBddHash{
  ;;      (1 to 10).foreach { _ =>
@@ -138,3 +147,4 @@
   ;;            AndNot(2, 3)))
   ;;   }
   ;; }
+  )

@@ -22,8 +22,9 @@
 (ns clojure-rte.bdd
   "Definition of Bdd."
   (:require [clojure-rte.cl-compat :refer [cl-cond]]
-            [clojure-rte.util :refer [fixed-point member group-by-mapped print-vals]]
+            [clojure-rte.util :refer [fixed-point member group-by-mapped print-vals call-with-collector]]
             [clojure-rte.type :as ty]
+            [clojure.pprint :refer [cl-format]]
             [clojure.set :refer [union difference intersection]]
 ))
 
@@ -31,7 +32,8 @@
   [label positive negative])
 
 (defmethod print-method Bdd [bdd w]
-  (.write w (format "#<Bdd %s %s %s>" (:label bdd) (:positive bdd) (:negative bdd))))
+  (.write w (cl-format false "#<Bdd ~A ~A ~A>" (:label bdd) (:positive bdd) (:negative bdd))))
+
 (defn itenf
   "Serialize a Bdd to if-then-else-normal-form (itenf)"
   [bdd]
@@ -112,10 +114,22 @@
       (do (swap! *label-to-index* assoc type-designator (count @*label-to-index*))
           (@*label-to-index* type-designator))))
 
+(declare bdd-and)
+(declare bdd-or)
+(declare bdd-not)
+
 (defn bdd
   ""
   ([type-designator]
-   (bdd type-designator true false))
+   (cond
+     (sequential? type-designator)
+     (case (first type-designator)
+       (and) (reduce bdd-and (map bdd (rest type-designator)))
+       (or)  (reduce bdd-and (map bdd (rest type-designator)))
+       (not) (apply bdd-not (map bdd (rest type-designator)))
+       (bdd type-designator true false))
+     :else
+     (bdd type-designator true false)))
   ([type-designator positive negative]
    (assert (map? @*bdd-hash*) "attempt to allocate a Bdd outside dynamically extend of call-with-bdd-hash")
    (assert (map? @*label-to-index*) "attempt to allocate a Bdd outside dynamically extend of call-with-bdd-hash")
@@ -131,7 +145,6 @@
            cached-bdd (@*bdd-hash* try-bdd)]
        (or cached-bdd
            (do (swap! *bdd-hash* assoc try-bdd try-bdd)
-               
                (assert (or (instance? Boolean positive)
                            (< (type-index type-designator)
                               (type-index (:label positive))))
