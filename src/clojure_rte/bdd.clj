@@ -85,7 +85,7 @@
                try-bdd))))))
 
 (defn bdd-op
-  ""
+  "Bdd abstract binary operation."
   [op bdd1 bdd2]
   (if (= (:label bdd1) (:label bdd2))
     (bdd (:label bdd1)
