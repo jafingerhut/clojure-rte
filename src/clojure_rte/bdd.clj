@@ -172,7 +172,7 @@
                
                try-bdd))))))
 
-(defn bdd-op
+(defn binary-op
   "Bdd abstract binary operation."
   [op bdd1 bdd2]
   (if (= (:label bdd1) (:label bdd2))
@@ -201,7 +201,7 @@
      (= true bdd1) bdd2
      (= true bdd2) bdd1
      (= bdd1 bdd2) bdd1
-     :else (bdd-op bdd-and bdd1 bdd2)))
+     :else (binary-op bdd-and bdd1 bdd2)))
   ([bdd1 bdd2 & bdds]
    (reduce bdd-and (apply cons bdd1 bdd2 bdds))))
 
@@ -215,7 +215,7 @@
      (= true bdd1) true
      (= true bdd2) true
      (= bdd1 bdd2) bdd1
-     :else (bdd-op bdd-or bdd1 bdd2)))
+     :else (binary-op bdd-or bdd1 bdd2)))
   ([bdd1 bdd2 & bdds]
    (reduce bdd-or (apply cons bdd1 bdd2 bdds))))
 
@@ -229,7 +229,7 @@
      (= bdd1 true) (bdd (:label bdd2)
                         (bdd-and-not true (:positive bdd2))
                         (bdd-and-not true (:negative bdd2)))
-     :else (bdd-op bdd-and-not bdd1 bdd2)))
+     :else (binary-op bdd-and-not bdd1 bdd2)))
   ([bdd1 bdd2 & bdds]
    (reduce bdd-and (apply cons bdd1 bdd2 bdds))))
 
