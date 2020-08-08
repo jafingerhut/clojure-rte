@@ -119,7 +119,7 @@
         (is (= false (bdd-and-not bdd bdd)))
 
         (is (= bdd (bdd-and bdd true)))
-        (is (= bdd (bdd-or bdd true)))
+        (is (= true (bdd-or bdd true)))
         (is (= false (bdd-and-not bdd true)))
         (is (= (bdd-not bdd) (bdd-and-not true bdd)))
 
