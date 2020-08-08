@@ -138,6 +138,13 @@
        (or)  (reduce bdd-or (map bdd (rest type-designator)))
        (not) (apply bdd-not (map bdd (rest type-designator)))
        (bdd type-designator true false))
+
+     (= :sigma type-designator)
+     true
+
+     (= :empty-set type-designator)
+     false
+
      :else
      (bdd type-designator true false)))
   ([type-designator positive negative]
