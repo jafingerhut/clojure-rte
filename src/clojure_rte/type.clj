@@ -29,8 +29,9 @@
 
 (defmulti typep 
   "Like instance? except that the arguments are reversed, and the
-  given type need not be a class.
-  This function also handles CL style type designators such as
+  given type designator need not be a class.  The given type 
+  designator may be a (1) class, (2) a symbol resolving to a class, or
+  (3) a CL style type designator such as
   (not A)
   (and A B)
   (or A B)
@@ -63,15 +64,33 @@
   true)
 
 (defmethod typep :default [a-value a-type]
-  (if (and (symbol? a-type)
-           (resolve a-type)
-           (class? (resolve a-type)))
-    (isa? (type a-value) (resolve a-type))
-    (throw (ex-info (format "typep: invalid type %s" a-type)
+  (cond
+    (class? a-type)
+    (instance? a-type a-value)
+    
+    (not (symbol? a-type))
+    (throw (ex-info (format "typep: invalid type of %s, expecting a symbol or class , got %s" a-type (type a-type))
                     {:error-type :invalid-type-designator
                      :a-type a-type
                      :a-value a-value
-                     }))))
+                     }))
+
+    (not (resolve a-type))
+    (throw (ex-info (format "typep: invalid type %s, no resolvable value" a-type)
+                    {:error-type :invalid-type-designator
+                     :a-type a-type
+                     :a-value a-value
+                     }))
+
+    (not (class? (resolve a-type)))
+    (throw (ex-info (format "typep: invalid type of %s, does not resolve to a class, got %s of type %s"
+                            a-type (resolve a-type) (type (resolve a-type)))
+                    {:error-type :invalid-type-designator
+                     :a-type a-type
+                     :a-value a-value
+                     }))
+    :else
+    (isa? (type a-value) (resolve a-type))))
 
 (defmethod valid-type? :default [type-designator]
   (and (symbol? type-designator)
