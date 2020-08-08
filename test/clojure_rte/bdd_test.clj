@@ -57,6 +57,77 @@
         (is (bdd 'Long string double))
         (is (bdd 'Long double string))))))
 
+(deftest t-commutativity
+  (testing "testing Boolean operations commutativity"
+    (with-bdd-hash []
+      (doseq [n (range 100)
+              :let [bdd1 (bdd-random)
+                    bdd2 (bdd-random)]]
+        (is (= (bdd-or bdd1 bdd2)
+               (bdd-or bdd2 bdd1)))
+        (is (= (bdd-and bdd1 bdd2)
+               (bdd-and bdd2 bdd1)))))))
+
+(deftest t-associativity
+  (testing "testing Boolean operations associativity"
+    (with-bdd-hash []
+      (doseq [n (range 100)
+              :let [bdd1 (bdd-random)
+                    bdd2 (bdd-random)
+                    bdd3 (bdd-random)]]
+        (is (= (bdd-or (bdd-or bdd1 bdd2) bdd3)
+               (bdd-or bdd1 (bdd-or bdd2 bdd3))))
+        (is (= (bdd-and (bdd-and bdd1 bdd2) bdd3)
+               (bdd-and bdd1 (bdd-and bdd2 bdd3))))
+))))
+
+
+(deftest t-identities
+  (testing "testing Boolean identies"
+    (with-bdd-hash []
+      (is (= (bdd-or true false)
+             true))
+      (is (= (bdd-or false false)
+             false))
+      (is (= (bdd-or false true)
+             true))
+      (is (= (bdd-or true true)
+             true))
+
+      (is (= (bdd-and true false) false))
+      (is (= (bdd-and false false) false))
+      (is (= (bdd-and false true) false))
+      (is (= (bdd-and true true) true))
+
+      (is (= (bdd-and true true) false))
+      (is (= (bdd-and true false) true))
+      (is (= (bdd-and false true) false))
+      (is (= (bdd-and false false) false))
+
+      (is (= (bdd-not true) false))
+      (is (= (bdd-not false) true)))))
+
+(deftest t-idempotence
+  (testing "testing Boolean idempotence"
+    (with-bdd-hash []
+      (doseq [n (range 100)
+              :let [bdd (bdd-random)]]
+
+        (is (= bdd (bdd-and bdd bdd)))
+        (is (= bdd (bdd-or bdd bdd)))
+        (is (= false (bdd-and-not bdd bdd)))
+
+        (is (= bdd (bdd-and bdd true)))
+        (is (= bdd (bdd-or bdd true)))
+        (is (= false (bdd-and-not bdd true)))
+        (is (= (bdd-not bdd) (bdd-and-not true bdd)))
+
+        (is (= (bdd-and bdd false) false))
+        (is (= (bdd-or bdd false) bdd))
+        (is (= (bdd-and-not bdd false) bdd))
+        (is (= (bdd-and-not false bdd) false))))))
+
+
 (deftest t-de-morgan
   (testing "bdd de morgan's theorem"
     (with-bdd-hash []
@@ -89,8 +160,11 @@
     (with-bdd-hash []
       (for [a [true false]]
         (is (= (not a)
-               (bdd-not a)))))
-    ))
+               (bdd-not a))))
+      (doseq [n (range 100)
+              :let [bdd (bdd-random)]]
+        (is (= bdd (bdd-not (bdd-not bdd)))
+    )))))
 
 (deftest t-and-not
   (testing "bdd and-not"
@@ -98,8 +172,9 @@
       (for [a [true false]
             b [true false]]
         (is (= (not (and a b))
-               (bdd-and a b)))))
-    ))
+               (bdd-and a b))))
+
+      )))
 
 (deftest t-dnf
   ;; convert bdd to dnf
@@ -112,39 +187,5 @@
   ;; convert itenf back to bdd
   ;; compare them
   
- ;; Bdd.withNewBddHash{
- ;;      (1 to 10).foreach { _ =>
- ;;        assert(Or(BddTrue, BddFalse) == BddTrue)
- ;;        assert(Or(BddFalse, BddTrue) == BddTrue)
- ;;        assert(Or(BddTrue, BddFalse) == BddTrue)
- ;;        assert(Or(BddFalse, BddTrue) == BddTrue)
- ;;        assert(Or(BddTrue, BddTrue) == BddTrue)
- ;;        assert(Or(BddFalse, BddFalse) == BddFalse)
- ;;      }
- ;;      AndNot(1,2)
- ;;      AndNot(1,2,3)
- ;;      AndNot(1,2,3,4)
- ;;      AndNot(1,2,3,4,5)
- ;;      assert(Try(AndNot(1)).isFailure)
- ;;      assert(Try(AndNot()).isFailure)
- ;;    }
-  ;;   Bdd.withNewBddHash {
-  ;;     println(And(1, 2, 3))
-  ;;     println(And(1, Or(2, 3, Xor(1, 2, 4), AndNot(3, 4))))
-  ;;   }
-  ;;   Bdd.withNewBddHash {
-  ;;     val bdd3 = Bdd(3)
-  ;;     val bdd2 = Bdd(2)
-  ;;     Bdd(1, bdd2, bdd3)
-  ;;     Bdd(1, bdd2, bdd3)
-  ;;     Or(1, 2, -3, And(-1, 4), And(2, Not(Or(1, 3))))
-
-  ;;     Not(Or(Xor(1, And(-2, -3)),
-  ;;            AndNot(2, 3)))
-  ;;     Not(Or(-2,
-  ;;            3,
-  ;;            Xor(1, 2, And(-2, -3, 4)),
-  ;;            AndNot(2, 3)))
-  ;;   }
-  ;; }
   )
+
