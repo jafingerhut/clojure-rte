@@ -32,6 +32,43 @@
 
 (defmethod print-method Bdd [bdd w]
   (.write w (format "#<Bdd %s %s %s>" (:label bdd) (:positive bdd) (:negative bdd))))
+(defn itenf
+  "Serialize a Bdd to if-then-else-normal-form (itenf)"
+  [bdd]
+  (case bdd
+    (true) :sigma
+    (false) :empty-set
+    (let [l (:label bdd)
+          p (:positive bdd)
+          n (:negative bdd)]
+      (assert (not (= nil p)))
+      (assert (not (= nil n)))
+      (cond
+        (and (= p true)
+             (= n false))
+        l
+
+        (and (= p false)
+             (= n true))
+        (list 'not l)
+
+        (= p true)
+        `(~'or ~l
+          (~'and (~'not ~l) ~(itenf n)))
+
+        (= p false)
+        `(~'and (~'not ~l) ~(itenf n))
+
+        (= n true)
+        `(~'or (~'and ~l ~(itenf p))
+          (~'not ~l))
+
+        (= n false)
+        `(~'and ~l ~(itenf p))
+
+        :else
+        `(~'or (~'and ~l ~(itenf p))
+          (~'and (~'not ~l) ~(itenf n)))))))
 
 (def ^:dynamic *bdd-hash* (atom false))
 (def ^:dynamic *label-to-index* (atom false))
