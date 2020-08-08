@@ -37,7 +37,7 @@
                                      (bdd 'String))))
       (is (bdd-typep 42 (bdd-and-not (bdd 'Long)
                                      (bdd 'String))))
-      (is (not (bdd-typep "hello" (bdd-not (bdd 'Long)))))
+      (is (bdd-typep "hello" (bdd-not (bdd 'Long))))
       (is (not (bdd-typep 42 (bdd-and-not (bdd 'String)
                                           (bdd 'Long)))))
       (is (bdd-typep "hello" (bdd-and-not (bdd 'String)
