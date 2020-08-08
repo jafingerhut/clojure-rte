@@ -236,27 +236,32 @@
 (defn bdd-not [bdd1]
   (bdd-and-not true bdd1))
 
-(defn bdd-random []
-  (let [r (rand-int 4)]
-    (cond
-      (= r 0)
-      (rand-nth '(true false))
-      
-      (= r 1)
-      (bdd (rand-nth '(Long Double String Boolean Character Short
-                            java.io.Serializable java.lang.Comparable)))
-      
-      :else
-      (let [bdd-1 (bdd-random)
-            bdd-2 (bdd-random)
-            r (rand-int 3)]
-        (cond
-          (= r 0)
-          (bdd-and bdd-1 bdd-2)
-          (= r 1)
-          (bdd-or bdd-1 bdd-2)
-          :else
-          (bdd-and-not bdd-1 bdd-2))))))
+(defn bdd-random
+  "Generate a random Bdd"
+  ([] (bdd-random 15))
+  ([max-depth]
+   (if (<= max-depth 0)
+     (rand-nth '(true false))
+     (let [r (rand-int 4)]
+       (cond
+         (= r 0)
+         (rand-nth '(true false))
+         
+         (= r 1)
+         (bdd (rand-nth '(Long Double String Boolean Character Short
+                               java.io.Serializable java.lang.Comparable)))
+         
+         :else
+         (let [bdd-1 (bdd-random (dec max-depth))
+               bdd-2 (bdd-random (dec max-depth))
+               r (rand-int 3)]
+           (cond
+             (= r 0)
+             (bdd-and bdd-1 bdd-2)
+             (= r 1)
+             (bdd-or bdd-1 bdd-2)
+             :else
+             (bdd-and-not bdd-1 bdd-2))))))))
 
 (defn bdd-typep [value bdd]
   (cond

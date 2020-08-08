@@ -25,6 +25,8 @@
             [clojure.pprint :refer [cl-format]]
             [clojure.test :refer :all]))
 
+(def num-random-samples 500)
+
 (deftest t-typep
   (testing "bdd and-not"
     (with-bdd-hash []
@@ -61,7 +63,7 @@
 (deftest t-commutativity
   (testing "testing Boolean operations commutativity"
     (with-bdd-hash []
-      (doseq [n (range 100)
+      (doseq [n (range num-random-samples)
               :let [bdd1 (bdd-random)
                     bdd2 (bdd-random)]]
         (is (= (bdd-or bdd1 bdd2)
@@ -72,7 +74,7 @@
 (deftest t-associativity
   (testing "testing Boolean operations associativity"
     (with-bdd-hash []
-      (doseq [n (range 100)
+      (doseq [n (range num-random-samples)
               :let [bdd1 (bdd-random)
                     bdd2 (bdd-random)
                     bdd3 (bdd-random)]]
@@ -111,7 +113,7 @@
 (deftest t-idempotence
   (testing "testing Boolean idempotence"
     (with-bdd-hash []
-      (doseq [n (range 100)
+      (doseq [n (range num-random-samples)
               :let [bdd (bdd-random)]]
 
         (is (= bdd (bdd-and bdd bdd)))
@@ -132,7 +134,7 @@
 (deftest t-de-morgan
   (testing "bdd de morgan's theorem"
     (with-bdd-hash []
-      (doseq [n (range 100)
+      (doseq [n (range num-random-samples)
               :let [bdd1 (bdd-random)
                     bdd2 (bdd-random)]]
         (is (= (bdd-not (bdd-or bdd1 bdd2))
@@ -162,7 +164,7 @@
       (for [a [true false]]
         (is (= (not a)
                (bdd-not a))))
-      (doseq [n (range 100)
+      (doseq [n (range num-random-samples)
               :let [bdd (bdd-random)]]
         (is (= bdd (bdd-not (bdd-not bdd)))
     )))))
@@ -183,7 +185,7 @@
   ;; compare them
   (testing "dnf by serialization out and in"
     (with-bdd-hash []
-      (doseq [n (range 100)
+      (doseq [n (range num-random-samples)
               :let [bdd1 (bdd-random)
                     serialized (dnf bdd1)
                     bdd2 (bdd serialized)
@@ -196,7 +198,7 @@
   ;; compare them
   (testing "itenf by serialization out and in"
     (with-bdd-hash []
-      (doseq [n (range 100)
+      (doseq [n (range num-random-samples)
               :let [bdd1 (bdd-random)
                     serialized (itenf bdd1)
                     bdd2 (bdd serialized)
