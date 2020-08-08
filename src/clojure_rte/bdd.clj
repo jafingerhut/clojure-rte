@@ -118,8 +118,8 @@
 (defn bdd-or
   ([bdd1 bdd2]
    (cond
-     (= false bdd1) bdd1
-     (= false bdd2) bdd2
+     (= false bdd1) bdd2
+     (= false bdd2) bdd1
      (= true bdd1) true
      (= true bdd2) true
      (= bdd1 bdd2) bdd1
