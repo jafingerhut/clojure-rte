@@ -133,8 +133,7 @@
      (= bdd1 bdd2) false
      (= bdd1 false) false
      (= bdd2 true) false
-     (and (= bdd1 true)
-          (= bdd2 false)) true
+     (= bdd2 false) bdd1
      (= bdd1 true) (bdd (:label bdd2)
                         (bdd-and-not true (:positive bdd2))
                         (bdd-and-not true (:negative bdd2)))
