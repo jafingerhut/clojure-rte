@@ -102,10 +102,10 @@
       (is (= (bdd-and false true) false))
       (is (= (bdd-and true true) true))
 
-      (is (= (bdd-and true true) false))
-      (is (= (bdd-and true false) true))
-      (is (= (bdd-and false true) false))
-      (is (= (bdd-and false false) false))
+      (is (= (bdd-and-not true true) false))
+      (is (= (bdd-and-not true false) true))
+      (is (= (bdd-and-not false true) false))
+      (is (= (bdd-and-not false false) false))
 
       (is (= (bdd-not true) false))
       (is (= (bdd-not false) true)))))
