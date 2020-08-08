@@ -31,7 +31,7 @@
   [label positive negative])
 
 (defmethod print-method Bdd [bdd w]
-  (.write w (format "#<Bdd %s>" (:label bdd))))
+  (.write w (format "#<Bdd %s %s %s>" (:label bdd) (:positive bdd) (:negative bdd))))
 
 (def ^:dynamic *bdd-hash* (atom false))
 (def ^:dynamic *label-to-index* (atom false))
