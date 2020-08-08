@@ -130,7 +130,7 @@
 (declare bdd-not)
 
 (defn bdd
-  ""
+  "Programmatic Bdd constructor."
   ([type-designator]
    (cond
      (sequential? type-designator)
