@@ -21,10 +21,11 @@
 
 
 (ns clojure-rte.bdd-test
-  (:import [clojure_rte.bdd Bdd]) ;; this imports the name of the Bdd record, which is otherwise not imported by :require
   (:require [clojure-rte.bdd :refer :all ]
             [clojure.pprint :refer [cl-format]]
-            [clojure.test :refer :all]))
+            [clojure.test :refer :all])
+  ;; this imports the name of the Bdd record, which is otherwise not imported by :require
+  (:import [clojure_rte.bdd Bdd]))
 
 (def num-random-samples 500)
 
