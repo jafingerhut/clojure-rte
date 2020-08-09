@@ -81,25 +81,86 @@
                    (pretty-and (pretty-not l) n))))))
 
 (defn dnf
-  "Serialize a Bdd to dnf disjunctive normal form."
+  "Serialize a Bdd to dnf disjunctive normal form.
+  This dnf form is cleaned up so that an (and ...) or (or ...) clause contains
+  no subtype/supertype pairs.  This subtype relation is determined by
+  (ty/subtype? a b (constantly false)).
+  
+  "
   [bdd]
-  (cons 'or
-        (call-with-collector
-         (fn [collect]
-           (letfn [(walk [node parents]
+  (letfn [(pretty-and [args]
+            (cond
+              (empty? args) :sigma
+              (empty? (rest args)) (first args)
+              :else (cons 'and args)))
+          (pretty-or [args]
+            (cond
+              (empty? args) :empty-set
+              (empty? (rest args)) (first args)
+              :else (cons 'or args)))
+          (supertypes [sub types]
+            (filter (fn [super]
+                      (and (not (= sub super))
+                           (ty/subtype? sub super (constantly false)))) types))
+          (check-supers [args]
+            (let [args (distinct args)
+                  complements (for [a args
+                                    b args
+                                    :when (or (= a (list 'not b))
+                                              (= b (list 'not a)))]
+                                [a b])]
+              (cond
+                ;; does the list contain A and (not A) ?
+                (not (empty? complements))
+                '(:sigma)
+
+                ;; does the list contain A and B where A is subtype B
+                :else
+                (remove (fn [sub]
+                          (not (empty? (supertypes sub args))))
+                        args))))]
+
+    (pretty-or
+     (check-supers
+      (call-with-collector
+       (fn [collect]
+         (letfn [(walk [node parents]
+                   (let [my-label (:label node)
+                         ;; two lazy sequences created by filter.  the filter loops are
+                         ;; never called unless (empty? ...) is called below.
+                         disjoints (filter (fn [x] (ty/disjoint? x my-label (constantly false))) parents)
+                         subtypes  (filter (fn [x] (ty/subtype?  x my-label (constantly false))) parents)]
+                     
                      (cond
                        (= true node)
-                       (collect (cons 'and (reverse parents)))
+                       ;; we know parents ( ... A ... B ...) that B is not subtype of A, but maybe B subtype A
+                       ;;   we need to remove the supertypes
+                       ;;   E.g., (Long java.io.Comparable java.io.Serializable) -> (Long)
+                       (collect (pretty-and (loop [tail parents
+                                                   done '()]
+                                              (if (empty? tail)
+                                                done
+                                                (recur (filter (fn [b]
+                                                                 (ty/subtype? b (first tail) (constantly false))) (rest tail))
+                                                       (cons (first tail) done))))))
                        
                        (= false node)
-                       "nothing"
+                       nil ;; do not collect, and prune recursion
+                       
+                       (not (empty? disjoints))
+                       (walk (:negative node)
+                             parents)
+                       
+                       (not (empty? subtypes))
+                       (walk (:positive node)
+                             parents)
                        
                        :else
                        (do (walk (:positive node)
                                  (cons (:label node) parents))
                            (walk (:negative node)
-                                 (cons (list 'not (:label node)) parents)))))]
-             (walk bdd '()))))))
+                                 (cons (list 'not (:label node)) parents))))))]
+           (walk bdd '()))))))))
 
 (def ^:dynamic *bdd-hash* (atom false))
 (def ^:dynamic *label-to-index* (atom false))
