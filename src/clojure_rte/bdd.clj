@@ -50,37 +50,35 @@
   (case bdd
     (true) :sigma
     (false) :empty-set
-    (let [l (:label bdd)
-          p (itenf (:positive bdd))
-          n (itenf (:negative bdd))]
-      (assert (not (= nil p)))
-      (assert (not (= nil n)))
-      (cond
-        (and (= p :sigma)
-             (= n :empty-set))
-        l
-
-        (and (= p :empty-set)
-             (= n :sigma))
-        (list 'not l)
-
-        (= p :sigma)
-        `(~'or ~l
-          (~'and (~'not ~l) ~n))
-
-        (= p :empty-set)
-        `(~'and (~'not ~l) ~n)
-
-        (= n :sigma)
-        `(~'or (~'and ~l ~p)
-          (~'not ~l))
-
-        (= n :empty-set)
-        `(~'and ~l ~p)
-
-        :else
-        `(~'or (~'and ~l ~p)
-          (~'and (~'not ~l) ~n))))))
+    (letfn [(pretty-not [arg]
+              (case arg
+                (:sigma) :empty-set
+                (:empty-set) :sigma
+                (list 'not arg)))
+            (pretty-or [a b]
+              (cond
+                (= a :sigma) :sigma
+                (= b :sigma) :sigma
+                (= a :empty-set) b
+                (= b :empty-set) a
+                (= a b) a
+                :else (list 'or a b)))
+            (pretty-and [a b]
+              (cond
+                (= a :sigma) b
+                (= b :sigma) a
+                (= a :empty-set) :empty-set
+                (= b :empty-set) :empty-set
+                (= a b) a
+                :else (list 'and a b)))]
+      
+      (let [l (:label bdd)
+            p (itenf (:positive bdd))
+            n (itenf (:negative bdd))]
+        (assert (not (= nil p)))
+        (assert (not (= nil n)))
+        (pretty-or (pretty-and l p)
+                   (pretty-and (pretty-not l) n))))))
 
 (defn dnf
   "Serialize a Bdd to dnf disjunctive normal form."
