@@ -221,3 +221,10 @@
         (is (identical? bdd-1 bdd-3))))))
             
 
+(deftest t-bdd-disjoint
+  (testing "disjoint checks for types"
+    (with-bdd-hash []
+      (let [bdd1 (bdd  '(and Number (not (= 0)) (not (member a b c 1 2 3))))
+            bdd2 (bdd 'java.io.Serializable)]
+        (is (bdd-and bdd1 bdd2)) ;; not false
+        (is (= false (bdd-and bdd1 (bdd-not bdd2))))))))
