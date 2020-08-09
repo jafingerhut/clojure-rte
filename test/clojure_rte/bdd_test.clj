@@ -210,21 +210,33 @@
                     ]]
         (is (= bdd1 bdd2) (cl-format false "itenf serialization failed on ~a" serialized))))))
 
-(deftest t-eq
-  (testing "that bdds which are equal are also eq"
-    (with-bdd-hash []
-      (doseq [_ (range num-random-samples)
-              :let [bdd-1 (gen-random)
-                    bdd-2 (bdd (itenf bdd-1))
-                    bdd-3 (bdd (dnf bdd-1))]]
-        (is (identical? bdd-1 bdd-2))
-        (is (identical? bdd-1 bdd-3))))))
-            
+        (is (= dnf-1 dnf-2) (cl-format false "itenf serialization failed on ~a : ~a, ~A != ~A"
+                                       bdd1 serialized
+                                       dnf-1 dnf-2
+                                       ))))))
 
+;; (deftest t-eq
+;;   (testing "that bdds which are equal are also eq"
+;;     (with-bdd-hash []
+;;       (doseq [_ (range num-random-samples)
+;;               :let [bdd-1 (gen-random)
+;;                     bdd-2 (bdd (itenf bdd-1))
+;;                     bdd-3 (bdd (dnf bdd-1))]]
+;;         (is (identical? bdd-1 bdd-2))
+;;         (is (identical? bdd-1 bdd-3))))))
+            
 (deftest t-bdd-disjoint
   (testing "disjoint checks for types"
     (with-bdd-hash []
-      (let [bdd1 (bdd  '(and Number (not (= 0)) (not (member a b c 1 2 3))))
-            bdd2 (bdd 'java.io.Serializable)]
+      (let [type1 '(and Number (not (= 0)) (not (member a b c 1 2 3)))
+            type2 'java.io.Serializable
+            bdd1 (bdd  type1)
+            bdd2 (bdd type2)]
         (is (bdd-and bdd1 bdd2)) ;; not false
-        (is (= false (bdd-and bdd1 (bdd-not bdd2))))))))
+        (is (= :empty-set (dnf (bdd-and bdd1 (bdd-not bdd2)))))
+
+        (is (not (bdd-disjoint? bdd1 bdd2)))
+        (is (bdd-disjoint? bdd1 (bdd-not bdd2)))
+
+        (is (not (bdd-type-disjoint? type1 type2)))
+        (is (bdd-type-disjoint? type1 (list 'not type2)))))))
