@@ -24,6 +24,7 @@
   (:require [clojure-rte.cl-compat :refer [cl-cond]]
             [clojure-rte.util :refer [fixed-point member group-by-mapped print-vals]]
             [clojure-rte.type :as ty]
+            [clojure-rte.bdd :refer [dnf bdd bdd-type-subtype?]]
             [clojure.set :refer [union difference intersection]]
 ))
 
@@ -210,7 +211,7 @@
   (let [labels (map first (:transitions state))]
     (and (not (empty? labels))
          (or (member :sigma labels)
-             (ty/subtype? :sigma (cons 'or labels) (constantly false))))))
+             (bdd-type-subtype? :sigma (cons 'or labels))))))
 
 (defn find-incomplete-states
   [dfa]
@@ -229,11 +230,12 @@
        (complete dfa incomplete))))
   ([dfa incomplete]
    (let [sink-state (or (first (find-sink-states dfa))
-                        (let [sink-id (first (filter (fn [id]
-                                                       (not ((:states dfa) id))) (range)))]
-                          (map->State :index sink-id
-                                      :accepting false
-                                      :transitions (list [:sigma sink-id]))))]
+                        (let [available-ids (filter (fn [id]
+                                                      (not (contains? (:states dfa) id))) (range))
+                              sink-id (first available-ids)]
+                          (map->State {:index sink-id
+                                       :accepting false
+                                       :transitions (list [:sigma sink-id])})))]
      (make-dfa dfa
                {:states
                 (let [current-states (states-as-seq dfa)
@@ -247,11 +249,13 @@
                              (let [existing-labels (map first (:transitions q))
                                    new-label (if (empty? existing-labels)
                                                :sigma
-                                               `(~'and :sigma (~'not (~'or ~@existing-labels))))]
-                               (map->State
-                                (assoc q
-                                       :transitions (conj (:transitions q)
-                                                          [new-label (:index sink-state)]))))
+                                               (dnf (bdd `(~'and :sigma (~'not (~'or ~@existing-labels))))))]
+                               (if (= :empty-set new-label)
+                                 q
+                                 (map->State
+                                  (assoc q
+                                         :transitions (conj (:transitions q)
+                                                            [new-label (:index sink-state)])))))
                              q)])))}))))
 
 (defn minimize
