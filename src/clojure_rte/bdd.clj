@@ -151,7 +151,7 @@
    (assert (map? @*label-to-index*) "attempt to allocate a Bdd outside dynamically extend of call-with-bdd-hash")
    (assert (ty/typep positive '(or Boolean clojure_rte.bdd.Bdd)))
    (assert (ty/typep negative '(or Boolean clojure_rte.bdd.Bdd)))
-   (assert (ty/valid-type? type-designator))
+   (assert (ty/valid-type? type-designator) (format "invalid type-designator %s" type-designator))
 
    (cond
      (identical? positive negative)

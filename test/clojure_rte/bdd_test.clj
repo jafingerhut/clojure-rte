@@ -23,6 +23,7 @@
 (ns clojure-rte.bdd-test
   (:require [clojure-rte.bdd :refer :all ]
             [clojure.pprint :refer [cl-format]]
+            [clojure-rte.util :refer [print-vals]]
             [clojure.test :refer :all])
   ;; this imports the name of the Bdd record, which is otherwise not imported by :require
   (:import [clojure_rte.bdd Bdd]))
@@ -192,10 +193,16 @@
     (with-bdd-hash []
       (doseq [n (range num-random-samples)
               :let [bdd1 (gen-random)
-                    serialized (dnf bdd1)
-                    bdd2 (bdd serialized)
+                    serialized-1 (dnf bdd1)
+                    bdd2 (bdd serialized-1)
+                    serialized-2 (dnf bdd2)
                     ]]
-        (is (= bdd1 bdd2) (cl-format false "dnf serialization failed on ~a" serialized))))))
+        (is (= serialized-1 serialized-2)
+            (cl-format false "dnf serialization failed on ~a, ~A != ~A"
+                       bdd1
+                       serialized-1
+                       serialized-2
+                       ))))))
 
 (deftest t-itenf
   ;; convert bdd to itenf
@@ -205,11 +212,11 @@
     (with-bdd-hash []
       (doseq [_ (range num-random-samples)
               :let [bdd1 (gen-random)
+                    dnf-1 (dnf bdd1)
                     serialized (itenf bdd1)
                     bdd2 (bdd serialized)
+                    dnf-2 (dnf bdd2)
                     ]]
-        (is (= bdd1 bdd2) (cl-format false "itenf serialization failed on ~a" serialized))))))
-
         (is (= dnf-1 dnf-2) (cl-format false "itenf serialization failed on ~a : ~a, ~A != ~A"
                                        bdd1 serialized
                                        dnf-1 dnf-2
