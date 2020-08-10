@@ -350,12 +350,20 @@
   (= :empty-set
      (dnf (bdd-and bdd1 bdd2))))
 
+(defn bdd-canonicalize-type
+  [type-designator]
+  "Compute a canonicalized form of a given type designator.
+   The intent is that given two type designators (as possibly different
+   s-expressions), if they represent the same type, then they should
+   be canonicalized to equal (=) s-expressions."
+  (dnf (bdd type-designator)))
+
 (defn bdd-type-disjoint?
   "Given two type designators, use Bdds to determine whether they are disjoint.
   If it cannot be proven that they are disjoint, false is returned."
   [type-designator-1 type-designator-2]
   (= :empty-set
-     (dnf (bdd (list 'and type-designator-1 type-designator-2)))))
+     (bdd-canonicalize-type (list 'and type-designator-1 type-designator-2))))
 
 (defn bdd-type-subtype?
   "Given two type designators, use Bdds to determine whether one is a subtype of the other.
