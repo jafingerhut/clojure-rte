@@ -24,7 +24,8 @@
   (:require [clojure-rte.cl-compat :refer [cl-cond]]
             [clojure-rte.util :refer [fixed-point member group-by-mapped print-vals]]
             [clojure-rte.type :as ty]
-            [clojure-rte.bdd :refer [dnf bdd bdd-type-subtype? bdd-canonicalize-type]]
+            [clojure.pprint :refer [cl-format]]
+            [clojure-rte.bdd :refer [dnf bdd bdd-type-subtype? bdd-canonicalize-type with-bdd-hash]]
             [clojure.set :refer [union difference intersection]]
 ))
 
@@ -92,10 +93,22 @@
       (assert (= q (state-by-index dfa (:index q)))
               (format "state %s disagrees with its index %s" q (:index q)))
 
+      (assert (= (:transitions q)
+                 (distinct (:transitions q)))
+              (cl-format false "~A transitions contains a duplicate: ~A"
+                         q (:transitions q)))
+      (doseq [[label-1 dst-1] (:transitions q)
+              [label-2 dst-2] (:transitions q)
+              :when (not (= [label-1 dst-1]
+                            [label-2 dst-2]))]
+        (assert (bdd-type-disjoint? label-1 label-2)
+                (cl-format false "overlapping types ~A vs ~A in ~A transitions ~A"
+                           label-1 label-2 q (:transitions q))))
       (doseq [:let [trans-labels (map first (:transitions q))]
               [label freq] (frequencies trans-labels)]
         (assert (= 1 freq)
-                (format "label %s appears %d times in transitions of %s" label freq q))))
+                (cl-format false "label ~A appears ~D times in transitions of ~A: transitions=~A"
+                           label freq q (:transitions q)))))
 
     (doseq [q (states-as-seq dfa)
             [label dst-id] (:transitions q)]
