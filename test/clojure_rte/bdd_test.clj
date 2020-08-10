@@ -232,7 +232,7 @@
 ;;         (is (identical? bdd-1 bdd-2))
 ;;         (is (identical? bdd-1 bdd-3))))))
             
-(deftest t-bdd-disjoint
+(deftest t-bdd-type-disjoint-1
   (testing "disjoint checks for types"
     (with-bdd-hash []
       (let [type1 '(and Number (not (= 0)) (not (member a b c 1 2 3)))
@@ -247,3 +247,26 @@
 
         (is (not (bdd-type-disjoint? type1 type2)))
         (is (bdd-type-disjoint? type1 (list 'not type2)))))))
+
+(deftest t-bdd-type-disjoint-2
+  (when (and (resolve 'java.lang.CharSequence)
+             (resolve 'java.io.Serializable)
+             (resolve 'java.lang.Comparable))
+    (testing "bdd-type-disjoint?"
+    (with-bdd-hash []
+      (is (not (bdd-type-disjoint? 'java.io.Serializable '(and clojure.lang.Symbol (not (member a b))))))
+      (is (not (bdd-type-disjoint? 'java.lang.CharSequence 'String)))
+      (is (not (bdd-type-disjoint? 'java.io.Serializable 'java.lang.Comparable)))
+      (is (bdd-type-disjoint? 'Integer 'String))
+      (is (not (bdd-type-disjoint? 'java.lang.Comparable '(not java.io.Serializable))))
+      (is (not (bdd-type-disjoint? '(and java.lang.Comparable (not clojure.lang.Symbol)) 'java.lang.Object)))
+
+      ;; (bdd-type-disjoint? (and A1 A2 .. An) S)
+      ;; if Ai is non empty subset of S
+      (is (not (bdd-type-disjoint? '(and Long (not (member 2 3 4))) 'java.lang.Comparable)))
+
+      (is (not (bdd-type-disjoint? '(and java.lang.Number (not (= 0)) (not (member a b c 1 2 3)))
+                          'java.io.Serializable)))
+      (is (not (bdd-type-disjoint? 'java.io.Serializable
+                          '(and java.lang.Number (not (= 0)) (not (member a b c 1 2 3))))))
+      ))))
