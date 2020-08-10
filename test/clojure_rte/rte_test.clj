@@ -26,6 +26,7 @@
             [clojure-rte.util :refer [sort-operands remove-once call-with-collector visit-permutations]]
             [clojure-rte.type :refer [disjoint? typep inhabited?]]
             [clojure-rte.core :refer :all]
+            [clojure-rte.rte-case :refer :all]
             [clojure-rte.rte-tester :refer :all]))
 
 (deftest t-nullable
@@ -591,3 +592,49 @@
                                '(or Long String))))))
     
 
+(deftest t-rte-case
+  (testing "rte-case"
+    (is (= 0 (rte-match
+              (rte-case-helper
+               '[[0 (:and (:* Long) (:not (:or)))]
+                 [1 (:and (:* Boolean) (:not (:or (:* Long))))]
+                 [2 (:and (:* String) (:not (:or (:* integer?) (:* Long))))]
+                 [3
+                  (:and
+                   (:* :sigma)
+                   (:not (:or (:* String) (:* integer?) (:* Long))))]])
+              [1 2 3])))
+
+    (is (= 1 (rte-match
+              (rte-case-helper
+               '[[0 (:and (:* Long) (:not (:or)))]
+                 [1 (:and (:* Boolean) (:not (:or (:* Long))))]
+                 [2 (:and (:* String) (:not (:or (:* integer?) (:* Long))))]
+                 [3
+                  (:and
+                   (:* :sigma)
+                   (:not (:or (:* String) (:* integer?) (:* Long))))]])
+              [true false])))
+
+    (is (= 2 (rte-match
+              (rte-case-helper
+               '[[0 (:and (:* Long) (:not (:or)))]
+                 [1 (:and (:* Boolean) (:not (:or (:* Long))))]
+                 [2 (:and (:* String) (:not (:or (:* integer?) (:* Long))))]
+                 [3
+                  (:and
+                   (:* :sigma)
+                   (:not (:or (:* String) (:* integer?) (:* Long))))]])
+              ["hello" "world"])))
+
+    (is (= 3 (rte-match
+              (rte-case-helper
+               '[[0 (:and (:* Long) (:not (:or)))]
+                 [1 (:and (:* Boolean) (:not (:or (:* Long))))]
+                 [2 (:and (:* String) (:not (:or (:* integer?) (:* Long))))]
+                 [3
+                  (:and
+                   (:* :sigma)
+                   (:not (:or (:* String) (:* integer?) (:* Long))))]])
+              [false "world"])))))
+    

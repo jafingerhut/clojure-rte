@@ -490,3 +490,18 @@
                                                                  :let [label-sxp (intersect-labels label-1 label-2)]
                                                                  :when (not (ty/disjoint? label-1 label-2 (constantly true)))]
                                                              [label-sxp (state-ident-map [dst-1 dst-2])])})]))}))))
+
+(defn synchronized-union [dfa-1 dfa-2]
+  (synchronized-product dfa-1 dfa-2
+                        (fn [a b]
+                          (or a b))
+                        (fn [a b]
+                          (or a b))))
+
+(defn synchronized-intersection [dfa-1 dfa-2]
+  (synchronized-product dfa-1 dfa-2
+                        (fn [a b]
+                          (and a b))
+                        (fn [a _b]
+                          a)))
+
