@@ -25,14 +25,15 @@
 
 (in-ns 'clojure-rte.core)
 
-(defn memoized-rte-case-helper
+(defn rte-case-helper
+  "Helper function for macro-expanding rte-case"
   [pairs]
   (reduce dfa/synchronized-union
           (map (fn [[index rte]]
                  (rte-to-dfa rte index))
                pairs)))
 
-(def rte-case-helper (memoize memoized-rte-case-helper))
+(def memoized-rte-case-helper (memoize rte-case-helper))
 
 (defmacro rte-case
   ""
@@ -63,6 +64,6 @@
                          (conj acc-fns `(fn [] ~consequent)))))))]
     
     (let [[fns int-rte-pairs] (compile-clauses clauses)]
-      `((~fns (rte-match (rte-case-helper '~int-rte-pairs) ~sequence))))))
+      `((~fns (rte-match (memoized-rte-case-helper '~int-rte-pairs) ~sequence))))))
 
 
