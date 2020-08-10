@@ -373,7 +373,3 @@
         bdd-sup (bdd supertype-designator)]
     (= :empty-set
        (dnf (bdd-and-not bdd-sub bdd-sup)))))
-
-
-
-  

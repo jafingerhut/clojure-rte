@@ -24,7 +24,7 @@
   (:require [clojure-rte.cl-compat :refer [cl-cond]]
             [clojure-rte.util :refer [fixed-point member group-by-mapped print-vals]]
             [clojure-rte.type :as ty]
-            [clojure-rte.bdd :refer [dnf bdd bdd-type-subtype?]]
+            [clojure-rte.bdd :refer [dnf bdd bdd-type-subtype? bdd-canonicalize-type]]
             [clojure.set :refer [union difference intersection]]
 ))
 
@@ -214,8 +214,10 @@
              (bdd-type-subtype? :sigma (cons 'or labels))))))
 
 (defn find-incomplete-states
+  "Return a sequence containing all the State's of the given Dfa which are not complete,
+  according to the function complete-state?"
   [dfa]
-  (filter complete-state? (states-as-seq dfa)))
+  (remove complete-state? (states-as-seq dfa)))
 
 (defn complete
   "Render complete the given Dfa.
@@ -244,18 +246,22 @@
                                         (conj current-states sink-state))]
                   (into {}
                         (for [q extended-states]
+                          ;; allocate a pair [index state]
+                          ;;   where state is either the State q, or a new State
+                          ;;   derived from it by adding a transition so that the
+                          ;;   union of the transition labels is now :sigma
                           [(:index q)
                            (if (member q incomplete)
                              (let [existing-labels (map first (:transitions q))
                                    new-label (if (empty? existing-labels)
                                                :sigma
-                                               (dnf (bdd `(~'and :sigma (~'not (~'or ~@existing-labels))))))]
+                                               (bdd-canonicalize-type
+                                                `(~'and :sigma (~'not (~'or ~@existing-labels)))))]
                                (if (= :empty-set new-label)
                                  q
-                                 (map->State
-                                  (assoc q
-                                         :transitions (conj (:transitions q)
-                                                            [new-label (:index sink-state)])))))
+                                 (assoc q
+                                        :transitions (conj (:transitions q)
+                                                           [new-label (:index sink-state)]))))
                              q)])))}))))
 
 (defn minimize
