@@ -253,6 +253,7 @@
              (op bdd1 (:negative bdd2)))))))
   
 (defn bdd-and
+  "Perform a Boolean AND on 0 or more Bdds."
   ([] true)
   ([bdd] bdd)
   ([bdd1 bdd2]
@@ -267,6 +268,7 @@
    (reduce bdd-and (apply cons bdd1 bdd2 bdds))))
 
 (defn bdd-or
+  "Perform a Boolean OR on 0 or more Bdds."
   ([] false)
   ([bdd] bdd)
   ([bdd1 bdd2]
@@ -281,6 +283,8 @@
    (reduce bdd-or (apply cons bdd1 bdd2 bdds))))
 
 (defn bdd-and-not
+  "Perform a relative complement operation on two (or more) Bdds.
+  This is not implemented for the 0-ary nor 1-ary case."
   ([bdd1 bdd2]
    (cond
      (identical? bdd1 bdd2) false
@@ -294,7 +298,9 @@
   ([bdd1 bdd2 & bdds]
    (reduce bdd-and (apply cons bdd1 bdd2 bdds))))
 
-(defn bdd-not [bdd1]
+(defn bdd-not
+  "Perform a Boolean not of a given Bdd"
+  [bdd1]
   (bdd-and-not true bdd1))
 
 (defn gen-random
@@ -324,7 +330,10 @@
              :else
              (bdd-and-not bdd-1 bdd-2))))))))
 
-(defn bdd-typep [value bdd]
+(defn bdd-typep
+  "Given a value in question, and a Bdd representing a type designator,
+  determine whether the value is an alement of the designated type."
+  [value bdd]
   (cond
     (= true bdd) true
     (= false bdd) false
@@ -356,6 +365,7 @@
         bdd-sup (bdd supertype-designator)]
     (= :empty-set
        (dnf (bdd-and-not bdd-sub bdd-sup)))))
+
 
 
   
