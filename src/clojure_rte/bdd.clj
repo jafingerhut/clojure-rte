@@ -168,8 +168,11 @@
 (defn call-with-bdd-hash
   ""
   [thunk]
-  (binding [*label-to-index* (atom {})
-            *bdd-hash* (atom {})]
+  (if (= false @*bdd-hash*)
+    (binding [*label-to-index* (atom {})
+              *bdd-hash* (atom {})]
+      (thunk))
+    ;; if call-with-bdd-hash is called recursively, don't rebind anything.
     (thunk)))
 
 (defmacro with-bdd-hash
