@@ -417,43 +417,7 @@
 (defn intersect-labels
   ""
   [label-1 label-2]
-  (letfn [(and? [label]
-            (and (sequential? label)
-                 (= 'and (first label))))
-          (pretty-and [rest-args]
-            (cond
-              (empty? rest-args)
-              :empty-set
-              
-              (empty? (rest rest-args))
-              (first rest-args)
-              
-              (= (distinct rest-args) rest-args)
-              (concat (list 'and) rest-args)
-              
-              :else
-              (pretty-and (distinct rest-args))))]
-              
-    (cl-cond
-     ((= label-1 :sigma)
-      label-2)
-     ((= label-2 :sigma)
-      label-1)
-     ((= label-1 :empty-set)
-      :empty-set)
-     ((= label-2 :empty-set)
-      :empty-set)
-     ((= label-1 label-2)
-      label-1)
-     ((and (and? label-1)
-           (and? label-2))
-      (pretty-and (concat (rest label-1) (rest label-2))))
-     ((and? label-1)
-      (pretty-and (conj (rest label-1) label-2)))
-     ((and? label-2)
-      (pretty-and (conj (rest label-2) label-1)))
-     (:else
-      (pretty-and (list label-1 label-2))))))
+  (bdd-canonicalize-type (list 'and label-1 label-2)))
 
 (defn synchronized-product
   [dfa-1 dfa-2 f-arbitrate-accepting f-arbitrate-exit-value]
