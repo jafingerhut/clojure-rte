@@ -24,6 +24,7 @@
   (:require [clojure-rte.cl-compat :refer [cl-cond]]
             [clojure-rte.util :refer [fixed-point member group-by-mapped print-vals]]
             [clojure-rte.type :as ty]
+            [clojure-rte.bdd :refer [dnf bdd bdd-type-subtype? bdd-canonicalize-type]]
             [clojure.set :refer [union difference intersection]]
 ))
 
@@ -210,11 +211,13 @@
   (let [labels (map first (:transitions state))]
     (and (not (empty? labels))
          (or (member :sigma labels)
-             (ty/subtype? :sigma (cons 'or labels) (constantly false))))))
+             (bdd-type-subtype? :sigma (cons 'or labels))))))
 
 (defn find-incomplete-states
+  "Return a sequence containing all the State's of the given Dfa which are not complete,
+  according to the function complete-state?"
   [dfa]
-  (filter complete-state? (states-as-seq dfa)))
+  (remove complete-state? (states-as-seq dfa)))
 
 (defn complete
   "Render complete the given Dfa.
@@ -229,11 +232,12 @@
        (complete dfa incomplete))))
   ([dfa incomplete]
    (let [sink-state (or (first (find-sink-states dfa))
-                        (let [sink-id (first (filter (fn [id]
-                                                       (not ((:states dfa) id))) (range)))]
-                          (map->State :index sink-id
-                                      :accepting false
-                                      :transitions (list [:sigma sink-id]))))]
+                        (let [available-ids (filter (fn [id]
+                                                      (not (contains? (:states dfa) id))) (range))
+                              sink-id (first available-ids)]
+                          (map->State {:index sink-id
+                                       :accepting false
+                                       :transitions (list [:sigma sink-id])})))]
      (make-dfa dfa
                {:states
                 (let [current-states (states-as-seq dfa)
@@ -242,16 +246,22 @@
                                         (conj current-states sink-state))]
                   (into {}
                         (for [q extended-states]
+                          ;; allocate a pair [index state]
+                          ;;   where state is either the State q, or a new State
+                          ;;   derived from it by adding a transition so that the
+                          ;;   union of the transition labels is now :sigma
                           [(:index q)
                            (if (member q incomplete)
                              (let [existing-labels (map first (:transitions q))
                                    new-label (if (empty? existing-labels)
                                                :sigma
-                                               `(~'and :sigma (~'not (~'or ~@existing-labels))))]
-                               (map->State
-                                (assoc q
-                                       :transitions (conj (:transitions q)
-                                                          [new-label (:index sink-state)]))))
+                                               (bdd-canonicalize-type
+                                                `(~'and :sigma (~'not (~'or ~@existing-labels)))))]
+                               (if (= :empty-set new-label)
+                                 q
+                                 (assoc q
+                                        :transitions (conj (:transitions q)
+                                                           [new-label (:index sink-state)]))))
                              q)])))}))))
 
 (defn minimize

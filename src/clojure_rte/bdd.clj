@@ -50,58 +50,117 @@
   (case bdd
     (true) :sigma
     (false) :empty-set
-    (let [l (:label bdd)
-          p (itenf (:positive bdd))
-          n (itenf (:negative bdd))]
-      (assert (not (= nil p)))
-      (assert (not (= nil n)))
-      (cond
-        (and (= p :sigma)
-             (= n :empty-set))
-        l
-
-        (and (= p :empty-set)
-             (= n :sigma))
-        (list 'not l)
-
-        (= p :sigma)
-        `(~'or ~l
-          (~'and (~'not ~l) ~n))
-
-        (= p :empty-set)
-        `(~'and (~'not ~l) ~n)
-
-        (= n :sigma)
-        `(~'or (~'and ~l ~p)
-          (~'not ~l))
-
-        (= n :empty-set)
-        `(~'and ~l ~p)
-
-        :else
-        `(~'or (~'and ~l ~p)
-          (~'and (~'not ~l) ~n))))))
+    (letfn [(pretty-not [arg]
+              (case arg
+                (:sigma) :empty-set
+                (:empty-set) :sigma
+                (list 'not arg)))
+            (pretty-or [a b]
+              (cond
+                (= a :sigma) :sigma
+                (= b :sigma) :sigma
+                (= a :empty-set) b
+                (= b :empty-set) a
+                (= a b) a
+                :else (list 'or a b)))
+            (pretty-and [a b]
+              (cond
+                (= a :sigma) b
+                (= b :sigma) a
+                (= a :empty-set) :empty-set
+                (= b :empty-set) :empty-set
+                (= a b) a
+                :else (list 'and a b)))]
+      
+      (let [l (:label bdd)
+            p (itenf (:positive bdd))
+            n (itenf (:negative bdd))]
+        (assert (not (= nil p)))
+        (assert (not (= nil n)))
+        (pretty-or (pretty-and l p)
+                   (pretty-and (pretty-not l) n))))))
 
 (defn dnf
-  "Serialize a Bdd to dnf disjunctive normal form."
+  "Serialize a Bdd to dnf disjunctive normal form.
+  This dnf form is cleaned up so that an (and ...) or (or ...) clause contains
+  no subtype/supertype pairs.  This subtype relation is determined by
+  (ty/subtype? a b (constantly false)).
+  
+  "
   [bdd]
-  (cons 'or
-        (call-with-collector
-         (fn [collect]
-           (letfn [(walk [node parents]
+  (letfn [(pretty-and [args]
+            (cond
+              (empty? args) :sigma
+              (empty? (rest args)) (first args)
+              :else (cons 'and args)))
+          (pretty-or [args]
+            (cond
+              (empty? args) :empty-set
+              (empty? (rest args)) (first args)
+              :else (cons 'or args)))
+          (supertypes [sub types]
+            (filter (fn [super]
+                      (and (not (= sub super))
+                           (ty/subtype? sub super (constantly false)))) types))
+          (check-supers [args]
+            (let [args (distinct args)
+                  complements (for [a args
+                                    b args
+                                    :when (or (= a (list 'not b))
+                                              (= b (list 'not a)))]
+                                [a b])]
+              (cond
+                ;; does the list contain A and (not A) ?
+                (not (empty? complements))
+                '(:sigma)
+
+                ;; does the list contain A and B where A is subtype B
+                :else
+                (remove (fn [sub]
+                          (not (empty? (supertypes sub args))))
+                        args))))]
+
+    (pretty-or
+     (check-supers
+      (call-with-collector
+       (fn [collect]
+         (letfn [(walk [node parents]
+                   (let [my-label (:label node)
+                         ;; two lazy sequences created by filter.  the filter loops are
+                         ;; never called unless (empty? ...) is called below.
+                         disjoints (filter (fn [x] (ty/disjoint? x my-label (constantly false))) parents)
+                         subtypes  (filter (fn [x] (ty/subtype?  x my-label (constantly false))) parents)]
+                     
                      (cond
                        (= true node)
-                       (collect (cons 'and (reverse parents)))
+                       ;; we know parents ( ... A ... B ...) that B is not subtype of A, but maybe B subtype A
+                       ;;   we need to remove the supertypes
+                       ;;   E.g., (Long java.io.Comparable java.io.Serializable) -> (Long)
+                       (collect (pretty-and (loop [tail parents
+                                                   done '()]
+                                              (if (empty? tail)
+                                                done
+                                                (recur (filter (fn [b]
+                                                                 (ty/subtype? b (first tail) (constantly false))) (rest tail))
+                                                       (cons (first tail) done))))))
                        
                        (= false node)
-                       "nothing"
+                       nil ;; do not collect, and prune recursion
+                       
+                       (not (empty? disjoints))
+                       (walk (:negative node)
+                             parents)
+                       
+                       (not (empty? subtypes))
+                       (walk (:positive node)
+                             parents)
                        
                        :else
                        (do (walk (:positive node)
                                  (cons (:label node) parents))
                            (walk (:negative node)
-                                 (cons (list 'not (:label node)) parents)))))]
-             (walk bdd '()))))))
+                                 (cons (list 'not (:label node)) parents))))))]
+           (walk bdd '()))))))))
 
 (def ^:dynamic *bdd-hash* (atom false))
 (def ^:dynamic *label-to-index* (atom false))
@@ -153,7 +212,7 @@
    (assert (map? @*label-to-index*) "attempt to allocate a Bdd outside dynamically extend of call-with-bdd-hash")
    (assert (ty/typep positive '(or Boolean clojure_rte.bdd.Bdd)))
    (assert (ty/typep negative '(or Boolean clojure_rte.bdd.Bdd)))
-   (assert (ty/valid-type? type-designator))
+   (assert (ty/valid-type? type-designator) (format "invalid type-designator %s" type-designator))
 
    (cond
      (identical? positive negative)
@@ -194,6 +253,7 @@
              (op bdd1 (:negative bdd2)))))))
   
 (defn bdd-and
+  "Perform a Boolean AND on 0 or more Bdds."
   ([] true)
   ([bdd] bdd)
   ([bdd1 bdd2]
@@ -208,6 +268,7 @@
    (reduce bdd-and (apply cons bdd1 bdd2 bdds))))
 
 (defn bdd-or
+  "Perform a Boolean OR on 0 or more Bdds."
   ([] false)
   ([bdd] bdd)
   ([bdd1 bdd2]
@@ -222,6 +283,8 @@
    (reduce bdd-or (apply cons bdd1 bdd2 bdds))))
 
 (defn bdd-and-not
+  "Perform a relative complement operation on two (or more) Bdds.
+  This is not implemented for the 0-ary nor 1-ary case."
   ([bdd1 bdd2]
    (cond
      (identical? bdd1 bdd2) false
@@ -235,7 +298,9 @@
   ([bdd1 bdd2 & bdds]
    (reduce bdd-and (apply cons bdd1 bdd2 bdds))))
 
-(defn bdd-not [bdd1]
+(defn bdd-not
+  "Perform a Boolean not of a given Bdd"
+  [bdd1]
   (bdd-and-not true bdd1))
 
 (defn gen-random
@@ -265,7 +330,10 @@
              :else
              (bdd-and-not bdd-1 bdd-2))))))))
 
-(defn bdd-typep [value bdd]
+(defn bdd-typep
+  "Given a value in question, and a Bdd representing a type designator,
+  determine whether the value is an alement of the designated type."
+  [value bdd]
   (cond
     (= true bdd) true
     (= false bdd) false
@@ -273,3 +341,35 @@
                      (if (ty/typep value (:label bdd))
                          (:positive bdd)
                          (:negative bdd)))))
+
+(defn bdd-disjoint?
+  "Given two Bdds, determine whether it can be proven that the intersection of the
+   types they represent is empty.
+   If it cannot be proven that they are disjoint, false is returned."
+  [bdd1 bdd2]
+  (= :empty-set
+     (dnf (bdd-and bdd1 bdd2))))
+
+(defn bdd-canonicalize-type
+  [type-designator]
+  "Compute a canonicalized form of a given type designator.
+   The intent is that given two type designators (as possibly different
+   s-expressions), if they represent the same type, then they should
+   be canonicalized to equal (=) s-expressions."
+  (dnf (bdd type-designator)))
+
+(defn bdd-type-disjoint?
+  "Given two type designators, use Bdds to determine whether they are disjoint.
+  If it cannot be proven that they are disjoint, false is returned."
+  [type-designator-1 type-designator-2]
+  (= :empty-set
+     (bdd-canonicalize-type (list 'and type-designator-1 type-designator-2))))
+
+(defn bdd-type-subtype?
+  "Given two type designators, use Bdds to determine whether one is a subtype of the other.
+  If it cannot be proven, false is returned."
+  [subtype-designator supertype-designator]
+  (let [bdd-sub (bdd subtype-designator)
+        bdd-sup (bdd supertype-designator)]
+    (= :empty-set
+       (dnf (bdd-and-not bdd-sub bdd-sup)))))

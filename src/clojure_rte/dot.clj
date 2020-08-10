@@ -26,7 +26,8 @@
             [clojure-rte.cl-compat :refer [cl-cond]]
             [clojure-rte.core]
             [clojure-rte.dfa :as dfa]
-            [clojure-rte.util :refer [member print-vals]]
+            [clojure-rte.bdd :as bdd]
+            [clojure-rte.util :refer [member print-vals mapc]]
             [clojure.java.shell :refer [sh]]))
 
 (def ^:dynamic *dot-path*
@@ -127,4 +128,127 @@
                (:else
                 (cl-format *out* "   q~D -> q~D [label=\"~a\"];~%" (:index q) next-state type-desig)))))))
         
+        (cl-format *out* "}~%")))))
+
+
+(defn bdd-to-dot 
+  "Create (and possibly display) a graphical image rendering the given Bdd
+  For Mac OS, the :view option may be used to display the image
+  interactively."
+  [bdd & {:keys [title view verbose pen-width draw-false-leaf]
+          :or {title "no-title"
+               view false
+               verbose false
+               pen-width 2
+               draw-false-leaf true}}]
+  (cond
+    view (let [png-file-name (str *dot-tmp-dir* "/" title ".png")
+               dot-string (bdd-to-dot bdd :title title :view false
+                                      :pen-width pen-width :draw-false-leaf draw-false-leaf)]
+           (when verbose
+             (println [:title title :view view
+                       :pen-width pen-width :draw-false-leaf draw-false-leaf]))
+           (let [stat (sh *dot-path* "-Tpng" "-o" png-file-name
+                           :in dot-string)]
+             (if (not (= 0 (:exit stat)))
+               (println stat)             ))
+           (when (= "Mac OS X" (System/getProperty "os.name"))
+             (let [stat (sh "open" "-a" "Preview" png-file-name)]
+               (if (not (= 0 (:exit stat)))
+                 (println dot-string))
+               stat)))
+    :else
+    (letfn [(draw-connection [direction bdd node-to-index]
+              (cond
+                (and (not draw-false-leaf)
+                     (= (direction bdd) false))
+                nil
+
+                (= :positive direction)
+                (cl-format *out* "~D -> ~D [style=~A,color=~A,penwidth=~D]~%"
+                           (node-to-index bdd) (node-to-index (direction bdd))
+                           "solid" "green" pen-width)
+
+                (= :negative direction)
+                (cl-format *out* "~D -> ~D [style=~A,color=~A,penwidth=~D,arrowhead=~s,arrowtail=~s,dir=~s]~%"
+                           (node-to-index bdd) (node-to-index (direction bdd))
+                           "dashed" "red" pen-width "normal" "odot" "both")))
+            
+            (write-leaf [leaf node-to-index]
+              (cond
+                (= true leaf)
+                (cl-format *out* "~D [shape=~A,label=~S,fontname=~S]~%"
+                           (node-to-index leaf)
+                           "box"
+                           "T"
+                           "sans-serif")
+                (= false leaf)
+                (when draw-false-leaf
+                  (cl-format *out* "~D [shape=~A,label=~S]~%"
+                          (node-to-index leaf)
+                          "box"
+                          "&perp;"))))
+            
+            (top-sort [groups]
+              ;; find all the labels which no bdd references,
+              ;; these are the independent nodes.
+              (loop [labels (set (keys groups))
+                     groups groups
+                     acc []]
+                (if (empty? labels)
+                  acc
+                  (let [referenced-labels (set (for [[label seq] groups
+                                                     bdd seq
+                                                     direction '(:positive :negative)
+                                                     :let [child (direction bdd)]
+                                                     :when (not (boolean? child))]
+                                                 (:label child)))
+                        unreferenced-labels (clojure.set/difference labels referenced-labels)
+                        ]
+                    (recur referenced-labels
+                           (apply dissoc groups unreferenced-labels)
+                           (concat acc unreferenced-labels))))))]
+
+      (with-out-str
+        (cl-format *out* "digraph G {~%")
+        (when title
+          (cl-format *out* "// ~a~%" title))
+        (cl-format *out* "  fontname=courier;~%")
+        (let [all-nodes (set (tree-seq (fn [node]
+                                              (not (member node '(true false))))
+                                            (fn [bdd]
+                                              (for [child '(:positive :negative)
+                                                    :when (or draw-false-leaf
+                                                              (child bdd))]
+                                                (child bdd)))
+                                            bdd))
+              node-to-index (zipmap all-nodes (range))
+              apex-node (first all-nodes)
+              leaf-nodes (clojure.set/intersection #{true false} all-nodes)
+              internal-nodes (clojure.set/difference all-nodes leaf-nodes)
+              groups (group-by :label internal-nodes)
+              sorted-labels (top-sort groups)]
+
+          (if (member apex-node '(true false))
+            (write-leaf apex-node node-to-index) ;; always draw the leaf if there's only one, independent of draw-false-leaf
+            (do
+              (if draw-false-leaf
+                (doseq [leaf leaf-nodes]
+                  (write-leaf leaf node-to-index))
+                (write-leaf true node-to-index))
+              (doseq [label sorted-labels]
+                (cl-format *out* "{rank=same")
+                (doseq [bdd (groups label)]
+                  (cl-format *out* " ~D" (node-to-index bdd)))
+                (cl-format *out* "}~%")
+                (doseq [bdd (groups label)]
+                  (cl-format *out* "~D [shape=~A,label=~S,penwidth=~D]~%"
+                             (node-to-index bdd)
+                             "ellipse"
+                             (cl-format false "~A" label)
+                             pen-width)
+                  (draw-connection :positive bdd node-to-index )
+                  (draw-connection :negative bdd node-to-index )))
+              
+        )))
         (cl-format *out* "}~%")))))

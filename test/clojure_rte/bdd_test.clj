@@ -21,10 +21,12 @@
 
 
 (ns clojure-rte.bdd-test
-  (:import [clojure_rte.bdd Bdd]) ;; this imports the name of the Bdd record, which is otherwise not imported by :require
   (:require [clojure-rte.bdd :refer :all ]
             [clojure.pprint :refer [cl-format]]
-            [clojure.test :refer :all]))
+            [clojure-rte.util :refer [print-vals]]
+            [clojure.test :refer :all])
+  ;; this imports the name of the Bdd record, which is otherwise not imported by :require
+  (:import [clojure_rte.bdd Bdd]))
 
 (def num-random-samples 500)
 
@@ -191,10 +193,16 @@
     (with-bdd-hash []
       (doseq [n (range num-random-samples)
               :let [bdd1 (gen-random)
-                    serialized (dnf bdd1)
-                    bdd2 (bdd serialized)
+                    serialized-1 (dnf bdd1)
+                    bdd2 (bdd serialized-1)
+                    serialized-2 (dnf bdd2)
                     ]]
-        (is (= bdd1 bdd2) (cl-format false "dnf serialization failed on ~a" serialized))))))
+        (is (= serialized-1 serialized-2)
+            (cl-format false "dnf serialization failed on ~a, ~A != ~A"
+                       bdd1
+                       serialized-1
+                       serialized-2
+                       ))))))
 
 (deftest t-itenf
   ;; convert bdd to itenf
@@ -204,19 +212,61 @@
     (with-bdd-hash []
       (doseq [_ (range num-random-samples)
               :let [bdd1 (gen-random)
+                    dnf-1 (dnf bdd1)
                     serialized (itenf bdd1)
                     bdd2 (bdd serialized)
+                    dnf-2 (dnf bdd2)
                     ]]
-        (is (= bdd1 bdd2) (cl-format false "itenf serialization failed on ~a" serialized))))))
+        (is (= dnf-1 dnf-2) (cl-format false "itenf serialization failed on ~a : ~a, ~A != ~A"
+                                       bdd1 serialized
+                                       dnf-1 dnf-2
+                                       ))))))
 
-(deftest t-eq
-  (testing "that bdds which are equal are also eq"
-    (with-bdd-hash []
-      (doseq [_ (range num-random-samples)
-              :let [bdd-1 (gen-random)
-                    bdd-2 (bdd (itenf bdd-1))
-                    bdd-3 (bdd (dnf bdd-1))]]
-        (is (identical? bdd-1 bdd-2))
-        (is (identical? bdd-1 bdd-3))))))
+;; (deftest t-eq
+;;   (testing "that bdds which are equal are also eq"
+;;     (with-bdd-hash []
+;;       (doseq [_ (range num-random-samples)
+;;               :let [bdd-1 (gen-random)
+;;                     bdd-2 (bdd (itenf bdd-1))
+;;                     bdd-3 (bdd (dnf bdd-1))]]
+;;         (is (identical? bdd-1 bdd-2))
+;;         (is (identical? bdd-1 bdd-3))))))
             
+(deftest t-bdd-type-disjoint-1
+  (testing "disjoint checks for types"
+    (with-bdd-hash []
+      (let [type1 '(and Number (not (= 0)) (not (member a b c 1 2 3)))
+            type2 'java.io.Serializable
+            bdd1 (bdd  type1)
+            bdd2 (bdd type2)]
+        (is (bdd-and bdd1 bdd2)) ;; not false
+        (is (= :empty-set (dnf (bdd-and bdd1 (bdd-not bdd2)))))
 
+        (is (not (bdd-disjoint? bdd1 bdd2)))
+        (is (bdd-disjoint? bdd1 (bdd-not bdd2)))
+
+        (is (not (bdd-type-disjoint? type1 type2)))
+        (is (bdd-type-disjoint? type1 (list 'not type2)))))))
+
+(deftest t-bdd-type-disjoint-2
+  (when (and (resolve 'java.lang.CharSequence)
+             (resolve 'java.io.Serializable)
+             (resolve 'java.lang.Comparable))
+    (testing "bdd-type-disjoint?"
+    (with-bdd-hash []
+      (is (not (bdd-type-disjoint? 'java.io.Serializable '(and clojure.lang.Symbol (not (member a b))))))
+      (is (not (bdd-type-disjoint? 'java.lang.CharSequence 'String)))
+      (is (not (bdd-type-disjoint? 'java.io.Serializable 'java.lang.Comparable)))
+      (is (bdd-type-disjoint? 'Integer 'String))
+      (is (not (bdd-type-disjoint? 'java.lang.Comparable '(not java.io.Serializable))))
+      (is (not (bdd-type-disjoint? '(and java.lang.Comparable (not clojure.lang.Symbol)) 'java.lang.Object)))
+
+      ;; (bdd-type-disjoint? (and A1 A2 .. An) S)
+      ;; if Ai is non empty subset of S
+      (is (not (bdd-type-disjoint? '(and Long (not (member 2 3 4))) 'java.lang.Comparable)))
+
+      (is (not (bdd-type-disjoint? '(and java.lang.Number (not (= 0)) (not (member a b c 1 2 3)))
+                          'java.io.Serializable)))
+      (is (not (bdd-type-disjoint? 'java.io.Serializable
+                          '(and java.lang.Number (not (= 0)) (not (member a b c 1 2 3))))))
+      ))))

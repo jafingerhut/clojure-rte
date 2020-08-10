@@ -22,6 +22,7 @@
 (ns clojure-rte.dfa-test
   (:require [clojure-rte.core :refer :all]
             [clojure-rte.dfa :refer :all]
+            [clojure-rte.bdd :refer [with-bdd-hash]]
             [clojure.test :refer :all]))
 
 (deftest t-split-eqv-class
@@ -154,6 +155,16 @@
                          (:cat (:* String) Long)
                          (:and (:+ (:cat String (:? Long)))
                                (:cat (:* String) Long))))
+
+(deftest t-complete
+  (testing "testing dfa/complete"
+    (with-bdd-hash []
+      (doseq [rte test-rtes
+              :let [dfa (rte-to-dfa rte)
+                    dfa-complete (complete dfa)
+                    incomplete-states (find-incomplete-states dfa-complete)]]
+        (is (empty? incomplete-states))))))
+            
 
 (defn t-acceptance-test-rte
   [rte]
