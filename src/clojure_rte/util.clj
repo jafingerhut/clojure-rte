@@ -230,3 +230,11 @@
   (into {} (map (fn [[key value]]
                   [key (set (map f2 value))]) (group-by f1 coll))))
 
+
+(defn mapc
+  "Like map but does not accumulate the return values.  Returns its second argument."
+  [f seq]
+  (doseq [i seq]
+    (f i))
+  seq)
+  
