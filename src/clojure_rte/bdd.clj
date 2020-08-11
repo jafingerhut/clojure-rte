@@ -162,11 +162,25 @@
                                  (cons (list 'not (:label node)) parents))))))]
            (walk bdd '()))))))))
 
-(def ^:dynamic *bdd-hash* (atom false))
-(def ^:dynamic *label-to-index* (atom false))
+(def ^:dynamic *bdd-hash*
+  "Hash table storing Bdd instances which have been allocated.   The idea
+  is that if a new Bdd is allocated via a call to Bdd., the funciton, bdd,
+  will recognize this redundant instance, and return the previously allocated
+  instance."
+  (atom false))
+
+(def ^:dynamic *label-to-index*
+  "Hash table mapping type-designators to integers.  Each type designator
+  serves as a label for a Bdd object, but to enforce the ordering of the ROBDD
+  we have to have a way to order any two type designators.  They are ordered
+  according to the integers stored in this hash table."
+  (atom false))
 
 (defn call-with-bdd-hash
-  ""
+  "Allocations two dynamic variables for the dynamic extent of evaluating
+  the given 0-ary function.  The variables are *label-to-index* and *bdd-hash*.
+  This function is part of the implementation of the with-bdd-hash macro.
+  "
   [thunk]
   (if (= false @*bdd-hash*)
     (binding [*label-to-index* (atom {})
@@ -176,7 +190,12 @@
     (thunk)))
 
 (defmacro with-bdd-hash
-  ""
+  "This macro wraps a piece of code which needs to allocate Bdds. The macro
+  wraps a call to the function call-with-bdd-hash, which provides an environment,
+  of sorts, which makes it possible to allocate and manipulate Bdd instances.
+  If with-bdd-hash is called recursively (intentially or accidentally), the
+  inner-most call recognizes this and does not re-bind any dynamic variables,
+  thus the innter-most call is innocuous and harmless."
   [[] & body]
   `(call-with-bdd-hash (fn [] ~@body)))
 
@@ -192,7 +211,7 @@
 (declare bdd-not)
 
 (defn bdd
-  "Programmatic Bdd constructor."
+  "Public interface to programmatic Bdd constructor."
   ([type-designator]
    (cond
      (sequential? type-designator)
