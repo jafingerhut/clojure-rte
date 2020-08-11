@@ -221,8 +221,8 @@
           dfa-sxp (synchronized-product dfa-1 dfa-2 
                                         (fn [a b]
                                           (and a b))
-                                        (fn [a b]
-                                          a))
+                                        (fn [q1 q2]
+                                          ((:exit-map dfa-1) (:index q1))))
           dfa-sxp-trim (trim dfa-sxp)
           dfa-sxp-min (minimize dfa-sxp)
           dfa-sxp-trim-min (minimize dfa-sxp-trim)
@@ -261,21 +261,3 @@
          ]
      (is (= (rte-match dfa-1 test-seq)
             (rte-match dfa-min test-seq))))))
-
-
-;; (defn testing-function ;; function for demo
-;;   []
-;;   (let [dfa-1 (rte-to-dfa '(:* Long) 
-;;                           1)
-;;         dfa-2 (rte-to-dfa '(:or (:+ (:cat String Short))
-;;                                 (:+ (:cat String Long))) 
-;;                           2)
-;;         dfa-sxp (dfa/synchronized-product dfa-1 dfa-2 
-;;                                           (fn [a b]
-;;                                             (and a b))
-;;                                           (fn [a b]
-;;                                             a))]
-;;     (dot/dfa-to-dot  dfa-sxp :title "sxp" :view true)
-;;     (dot/dfa-to-dot (dfa/trim dfa-sxp) :title "sxp-trim" :view true)
-;;     (dot/dfa-to-dot (dfa/minimize dfa-sxp) :title "sxp-min" :view true)
-;;     (dot/dfa-to-dot (dfa/minimize (dfa/trim dfa-sxp)) :title "sxp-trim-min" :view true :verbose true)))

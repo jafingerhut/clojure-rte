@@ -422,7 +422,19 @@
 (defn synchronized-product
   [dfa-1 dfa-2 f-arbitrate-accepting f-arbitrate-exit-value]
   "Assuming that the given Dfas are complete, we compute the syncronized cross product SXP
-  of the two Dfas."
+    of the two Dfas.
+  f-arbitrate-accepting - binary function which accepts two Boolean values, [a1,a2]
+    Then function is called when determining whether a computed state in the SXP
+    should be an accepting state.  a1 indicates whether the state from dfa-1 is
+    accepting.  a2 indicates whether the state from dfa-2 is accepting.
+    To effectuate the intersection of dfa-1 with dfa-2, f-arbitrate-accepting should
+    perform an (and a1 a2).
+  f-arbitrate-exit-value - binary function called with [q1,q2].  q1 is an accepting state
+    of dfa-1.  q2 is an accepting state in dfa-2.
+    f-arbitrate-exit-value is called when q1 and q2 are both accepting state or
+      when neither is an accepting state.   In the case that only q1 or only q2
+      is an accepting state, this accepting state's exit value is used in the SXP.
+      f-arbitrate-exit-value should return the exit value for the state in the SXP."
   (letfn [(intersection-types [labels-1 labels-2]
             (with-bdd-hash []
               (for [label-1 labels-1
@@ -460,10 +472,20 @@
 
       (with-bdd-hash []
         (make-dfa dfa-1 {:exit-map (into {} (for [[id [id-1 id-2]] ident-state-map
-                                                  :when (member id accepting-ids)]
-                                              [id (f-arbitrate-exit-value
-                                                   (exit-value dfa-1 id-1)
-                                                   (exit-value dfa-2 id-2))]))                       
+                                                  :when (member id accepting-ids)
+                                                  :let [state-1 (state-by-index dfa-1 id-1)
+                                                        state-2 (state-by-index dfa-2 id-2)]]
+                                              [id (cond
+                                                    (= (boolean (:accepting state-1))
+                                                       (boolean (:accepting state-2)))
+                                                    (f-arbitrate-exit-value state-1 state-2)
+                                                    
+                                                    (:accepting (state-by-index dfa-1 id-1))
+                                                    (exit-value dfa-1 id-1)
+
+                                                    (:accepting (state-by-index dfa-2 id-2))
+                                                    (exit-value dfa-2 id-2))]))
+
                          :states (into {} (for [[id-sxp [id-1 id-2]] ident-state-map]
                                             (let [state-1 (state-by-index dfa-1 id-1)
                                                   state-2 (state-by-index dfa-2 id-2)
@@ -483,16 +505,27 @@
                                                                    :accepting (member id-sxp accepting-ids)
                                                                    :transitions new-transitions})])))})))))
 
-(defn synchronized-union [dfa-1 dfa-2]
+(defn synchronized-union
+  "Compute the union of two Dfas.  I.e., compute a Dfa which
+  will recognize sequences which either dfa-1 or dfa-2 recognizes.
+  If some sequence is recognized both by dfa-1 and dfa-2, then
+  the exit value is determined by dfa-1, and the exit-value of
+  dfa-2 is silently ignored."
+  [dfa-1 dfa-2]
   (synchronized-product dfa-1 dfa-2
                         (fn [a b]
                           (or a b))
-                        (fn [a b]
-                          (or a b))))
+                        (fn [q1 _q2]
+                          ((:exit-map dfa-1)
+                           (:index q1)))))
 
 (defn synchronized-intersection [dfa-1 dfa-2]
+  "Compute the intersection of two Dfas. I.e., compute the Dfa which
+  will recognized any sequence which is recognized by dfa-1 and also
+  by dfa-2."
   (synchronized-product dfa-1 dfa-2
                         (fn [a b]
                           (and a b))
-                        (fn [a _b]
-                          a)))
+                        (fn [q1 _q2]
+                          ((:exit-map dfa-1)
+                           (:index q1)))))
