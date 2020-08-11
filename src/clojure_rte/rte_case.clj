@@ -65,5 +65,3 @@
     
     (let [[fns int-rte-pairs] (compile-clauses clauses)]
       `((~fns (rte-match (memoized-rte-case-helper '~int-rte-pairs) ~sequence))))))
-
-

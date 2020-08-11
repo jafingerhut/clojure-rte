@@ -512,12 +512,13 @@
   the exit value is determined by dfa-1, and the exit-value of
   dfa-2 is silently ignored."
   [dfa-1 dfa-2]
-  (synchronized-product dfa-1 dfa-2
-                        (fn [a b]
-                          (or a b))
-                        (fn [q1 _q2]
-                          ((:exit-map dfa-1)
-                           (:index q1)))))
+  (trim
+   (synchronized-product dfa-1 dfa-2
+                         (fn [a b]
+                           (or a b))
+                         (fn [q1 _q2]
+                           ((:exit-map dfa-1)
+                            (:index q1))))))
 
 (defn synchronized-intersection [dfa-1 dfa-2]
   "Compute the intersection of two Dfas. I.e., compute the Dfa which

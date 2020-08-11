@@ -261,3 +261,17 @@
          ]
      (is (= (rte-match dfa-1 test-seq)
             (rte-match dfa-min test-seq))))))
+
+
+(deftest t-sxp
+  (testing "sxp"
+    (let [dfa-0 (rte-to-dfa '(:and (:* Long) (:not (:or)))
+                           0)
+          dfa-1 (rte-to-dfa '(:and (:* Boolean) (:not (:or (:* Long))))
+                           1)
+          dfa-2 (rte-to-dfa '(:and (:* String) (:not (:or (:* Boolean) (:* Long))))
+                           2)
+          dfa-01 (synchronized-union dfa-0 dfa-1)
+          dfa-012 (synchronized-union dfa-01 dfa-2)]
+      ;; TODO currently failing, need to debug ?sxp?
+      (is (= 2 (rte-match dfa-012 ["hello" "world"]))))))
