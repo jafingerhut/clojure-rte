@@ -25,7 +25,7 @@
             [clojure-rte.util :refer [fixed-point member group-by-mapped print-vals]]
             [clojure-rte.type :as ty]
             [clojure.pprint :refer [cl-format]]
-            [clojure-rte.bdd :refer [dnf bdd bdd-type-subtype? bdd-canonicalize-type with-bdd-hash]]
+            [clojure-rte.bdd :refer [dnf bdd bdd-type-subtype? bdd-canonicalize-type with-bdd-hash bdd-type-disjoint?]]
             [clojure.set :refer [union difference intersection]]
 ))
 
@@ -423,7 +423,13 @@
   [dfa-1 dfa-2 f-arbitrate-accepting f-arbitrate-exit-value]
   "Assuming that the given Dfas are complete, we compute the syncronized cross product SXP
   of the two Dfas."
-  (letfn [
+  (letfn [(intersection-types [labels-1 labels-2]
+            (with-bdd-hash []
+              (for [label-1 labels-1
+                    label-2 labels-2
+                    :when (not (bdd-type-disjoint? label-1 label-2))
+                    ]
+                (intersect-labels label-1 label-2))))
           (find-reachable [state-pairs]
             (loop [state-pairs state-pairs
                    done #{}]
@@ -452,21 +458,30 @@
       (assert (= 0 (state-ident-map [0 0])))
       (assert (= [0 0] (ident-state-map 0)))
 
-      (make-dfa dfa-1 {:exit-map (into {} (for [[id [id-1 id-2]] ident-state-map
-                                                :when (member id accepting-ids)]
-                                            [id (f-arbitrate-exit-value
-                                                 (exit-value dfa-1 id-1)
-                                                 (exit-value dfa-2 id-2))]))                       
-                       :states (into {} (for [[id [id-1 id-2]] ident-state-map]
-                                          [id (map->State {:index id
-                                                           :initial (= 0 id)
-                                                           :accepting (member id accepting-ids)
-                                                           :transitions
-                                                           (for [[label-1 dst-1] (:transitions (state-by-index dfa-1 id-1))
-                                                                 [label-2 dst-2] (:transitions (state-by-index dfa-2 id-2))
-                                                                 :let [label-sxp (intersect-labels label-1 label-2)]
-                                                                 :when (not (ty/disjoint? label-1 label-2 (constantly true)))]
-                                                             [label-sxp (state-ident-map [dst-1 dst-2])])})]))}))))
+      (with-bdd-hash []
+        (make-dfa dfa-1 {:exit-map (into {} (for [[id [id-1 id-2]] ident-state-map
+                                                  :when (member id accepting-ids)]
+                                              [id (f-arbitrate-exit-value
+                                                   (exit-value dfa-1 id-1)
+                                                   (exit-value dfa-2 id-2))]))                       
+                         :states (into {} (for [[id-sxp [id-1 id-2]] ident-state-map]
+                                            (let [state-1 (state-by-index dfa-1 id-1)
+                                                  state-2 (state-by-index dfa-2 id-2)
+                                                  transitions-1 (:transitions state-1)
+                                                  transitions-2 (:transitions state-2)
+                                                  labels-1 (map first transitions-1)
+                                                  labels-2 (map first transitions-2)
+                                                  new-transitions 
+                                                  (for [label-sxp (intersection-types labels-1 labels-2)
+                                                        [label-1 dst-1] transitions-1
+                                                        :when (bdd-type-subtype? label-sxp label-1)
+                                                        [label-2 dst-2] transitions-2
+                                                        :when (bdd-type-subtype? label-sxp label-2)]
+                                                    [label-sxp (state-ident-map [dst-1 dst-2])])]
+                                              [id-sxp (map->State {:index id-sxp
+                                                                   :initial (= 0 id-sxp)
+                                                                   :accepting (member id-sxp accepting-ids)
+                                                                   :transitions new-transitions})])))})))))
 
 (defn synchronized-union [dfa-1 dfa-2]
   (synchronized-product dfa-1 dfa-2
@@ -481,4 +496,3 @@
                           (and a b))
                         (fn [a _b]
                           a)))
-
