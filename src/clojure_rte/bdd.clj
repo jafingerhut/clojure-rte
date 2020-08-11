@@ -378,20 +378,23 @@
    The intent is that given two type designators (as possibly different
    s-expressions), if they represent the same type, then they should
    be canonicalized to equal (=) s-expressions."
-  (dnf (bdd type-designator)))
+  (with-bdd-hash []
+    (dnf (bdd type-designator))))
 
 (defn bdd-type-disjoint?
   "Given two type designators, use Bdds to determine whether they are disjoint.
   If it cannot be proven that they are disjoint, false is returned."
   [type-designator-1 type-designator-2]
-  (= :empty-set
-     (bdd-canonicalize-type (list 'and type-designator-1 type-designator-2))))
+  (with-bdd-hash []
+    (= :empty-set
+       (bdd-canonicalize-type (list 'and type-designator-1 type-designator-2)))))
 
 (defn bdd-type-subtype?
   "Given two type designators, use Bdds to determine whether one is a subtype of the other.
   If it cannot be proven, false is returned."
   [subtype-designator supertype-designator]
-  (let [bdd-sub (bdd subtype-designator)
-        bdd-sup (bdd supertype-designator)]
-    (= :empty-set
-       (dnf (bdd-and-not bdd-sub bdd-sup)))))
+  (with-bdd-hash []
+    (let [bdd-sub (bdd subtype-designator)
+          bdd-sup (bdd supertype-designator)]
+      (= :empty-set
+         (dnf (bdd-and-not bdd-sub bdd-sup))))))
