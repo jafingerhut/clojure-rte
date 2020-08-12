@@ -569,7 +569,6 @@
       (boolean (rest t1))
       :dont-know))
 
-
   (defmethod -inhabited? := [t1]
     (if (=? t1)
       true
@@ -598,13 +597,25 @@
            (not (subtype? t1 (second t2) (constantly true))))
       false
 
+      ;; (disjoint? 'Number '(not Long))
       (and (class-designator? t1)
            (not? t2)
            (class-designator? (second t2))
            (not (= (resolve (second t2)) (resolve t1)))
            (isa? (resolve (second t2)) (resolve t1)))
       false
-      
+
+      ;; (disjoint? '(not Boolean) '(not Long))
+      ;; (disjoint? '(not A) '(not B))
+      ;; if disjoint classes A and B
+      (and (not? t1)
+           (not? t2)
+           (class-designator? (second t1))
+           (class-designator? (second t2))
+           (disjoint? (second t1) (second t2)))
+      false
+
+      ;; (disjoint? 'java.io.Serializable '(not java.lang.Comparable))
       (and (class-designator? t1)
            (not? t2)
            (class-designator? (second t2))
