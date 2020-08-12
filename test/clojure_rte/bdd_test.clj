@@ -188,26 +188,31 @@
 (deftest t-dnf-previously-failed
   (testing "dnf test which previously failed"
     (with-bdd-hash []
-      (for [td '[(or (and (not java.io.Serializable) java.lang.Comparable) 
-                     (and (not String)               java.lang.Comparable)
-                     (and (not Character) String)
-                     Character)
-                 (or (and (not String)               java.lang.Comparable) 
-                     (and (not Character) String)
-                     Character)
-                 (or (and (not java.io.Serializable) java.lang.Comparable) (and (not Long) java.lang.Comparable) Long)
-                 (or (and (not Long) java.lang.Comparable) Long)
-                 (or (and (not java.io.Serializable) java.lang.Comparable) (and (not String) java.lang.Comparable) String)
-                 (or (and (not String) java.lang.Comparable) String)
-                 (or (not java.io.Serializable) (and java.io.Serializable (not Long)) (and (not Short) Long) Short)
-                 (or (and (not Boolean) (not Double)) (and (not Boolean) Double) Boolean) 
-                 ]
-            bdd-1 (bdd td)
-            serialized-1 (dnf bdd-1)
-            bdd-2 (bdd serialized-1)
-            serialized-2 (dnf bdd-2)]
-        (is (= serialized-1 serialized-2)
-            (cl-format false "dnf serialization failed on ~A: ~A != ~A"
+      (doseq [td '[(or (and (not java.io.Serializable) java.lang.Comparable) 
+                       (and (not String)               java.lang.Comparable)
+                       (and (not Character) String)
+                       Character)
+                   (or (and (not String)               java.lang.Comparable) 
+                       (and (not Character) String)
+                       Character)
+                   (or (and (not java.io.Serializable) java.lang.Comparable) (and (not Long) java.lang.Comparable) Long)
+                   (or (and (not Long) java.lang.Comparable) Long)
+                   (or (and (not java.io.Serializable) java.lang.Comparable) (and (not String) java.lang.Comparable) String)
+                   (or (and (not String) java.lang.Comparable) String)
+                   (or (not java.io.Serializable) (and java.io.Serializable (not Long)) (and (not Short) Long) Short)
+                   (or (and (not Boolean) (not Double)) (and (not Boolean) Double) Boolean) 
+                   ]
+              :let [bdd-1 (bdd td)
+                    serialized-1 (dnf bdd-1)
+                    bdd-2 (bdd serialized-1)
+                    serialized-2 (dnf bdd-2)]]
+        (is (bdd-type-subtype? serialized-1 serialized-2)
+            (cl-format false "failed 1 <: 2, dnf serialization failed on ~A: ~A != ~A"
+                       td
+                       serialized-1
+                       serialized-2))
+        (is (bdd-type-subtype? serialized-2 serialized-1)
+            (cl-format false "failed 2 <: 1, dnf serialization failed on ~A: ~A != ~A"
                        td
                        serialized-1
                        serialized-2))))))
@@ -231,8 +236,14 @@
                     bdd2 (bdd serialized-1)
                     serialized-2 (dnf bdd2)
                     ]]
-        (is (= serialized-1 serialized-2)
-            (cl-format false "dnf serialization failed on ~a, ~A != ~A"
+        (is (bdd-type-subtype? serialized-1 serialized-2)
+            (cl-format false "failed: serialized-1 <: serialized-2, dnf serialization failed on ~a, ~A != ~A"
+                       bdd1
+                       serialized-1
+                       serialized-2
+                       ))
+        (is (bdd-type-subtype? serialized-2 serialized-1)
+            (cl-format false "failed: serialized-2 <: serialized-1, dnf serialization failed on ~a, ~A != ~A"
                        bdd1
                        serialized-1
                        serialized-2
