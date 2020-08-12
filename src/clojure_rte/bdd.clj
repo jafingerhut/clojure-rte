@@ -133,17 +133,21 @@
 
                      (cond
                        (= true node)
-                       ;; we know parents ( ... A ... B ...) that B is not subtype of A, but maybe B subtype A
+                       ;; we know parents ( ... A ... B ...) that B is not subtype of A, but maybe A subtype B
                        ;;   we need to remove the supertypes
                        ;;   E.g., (Long java.io.Comparable java.io.Serializable) -> (Long)
+                       ;;   E.g.  (Long Number) -> Long
                        (collect (pretty-and (loop [tail parents
                                                    done '()]
                                               (if (empty? tail)
                                                 done
                                                 (let [keeping (filter (fn [b]
-                                                                         ;; if we don't know, then keep it.  it might
-                                                                         ;; be redunant, but it won't be wrong.
                                                                          (ty/subtype? b (first tail) (constantly true)))
+                                                                        ;; if we don't know, then keep it.  it might
+                                                                        ;; be redunant, but it won't be wrong.
+                                                                        ;; Is (first tail) <: b ?
+                                                                        ;;   if yes, then omit be in recur call
+                                                                        ;;   if :dont-know then keep it.
                                                                        (rest tail))]
                                                   (recur keeping
                                                          (cons (first tail) done)))))))
