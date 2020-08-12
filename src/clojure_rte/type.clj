@@ -470,6 +470,19 @@
           :else
           :dont-know))
 
+  (defmethod -subtype? :not [sub super]
+    (cond (not (not? sub))
+          :dont-know
+
+          (not (not? super))
+          :dont-know
+
+          :else
+          (let [x (subtype? (second super) (second sub) (constantly :dont-know))]
+            (if (= :dont-know x)
+              :dont-know
+              x))))
+          
   (defmethod -subtype? :member [sub super]
     (cond (member? sub)
           (every? (fn [e1]
