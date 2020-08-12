@@ -185,12 +185,45 @@
         (is (= (bdd-and-not bdd1 bdd2)
                (bdd-and bdd1 (bdd-not bdd2))))))))
 
+(deftest t-dnf-previously-failed
+  (testing "dnf test which previously failed"
+    (with-bdd-hash []
+      (for [td '[(or (and (not java.io.Serializable) java.lang.Comparable) 
+                       (and (not String)               java.lang.Comparable)
+                       (and (not Character) String)
+                       Character)
+                   (or (and (not String)               java.lang.Comparable) 
+                       (and (not Character) String)
+                       Character)
+                   (or (and (not java.io.Serializable) java.lang.Comparable) (and (not Long) java.lang.Comparable) Long)
+                   (or (and (not Long) java.lang.Comparable) Long)
+                   (or (and (not java.io.Serializable) java.lang.Comparable) (and (not String) java.lang.Comparable) String)
+                   (or (and (not String) java.lang.Comparable) String)
+                   (or (not java.io.Serializable) (and java.io.Serializable (not Long)) (and (not Short) Long) Short)
+                   ]
+            bdd-1 (bdd td)
+            serialized-1 (dnf bdd-1)
+            bdd-2 (bdd serialized-1)
+            serialized-2 (dnf bdd-2)]
+        (is (= serialized-1 serialized-2)
+            (cl-format false "dnf serialization failed on ~A: ~A != ~A"
+                       td
+                       serialized-1
+                       serialized-2))))))
+                   
 (deftest t-dnf
   ;; convert bdd to dnf
   ;; convert dnf back to bdd
   ;; compare them
   (testing "dnf by serialization out and in"
     (with-bdd-hash []
+      (let [bdd (bdd '(and
+                       (not Long)
+                       (and (not Long)
+                            (not Boolean))))]
+        (is (member '(not Long) (dnf bdd)))
+        (is (member '(not Boolean) (dnf bdd))))
+               
       (doseq [n (range num-random-samples)
               :let [bdd1 (gen-random)
                     serialized-1 (dnf bdd1)
