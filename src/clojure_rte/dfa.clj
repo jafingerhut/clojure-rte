@@ -435,75 +435,111 @@
       when neither is an accepting state.   In the case that only q1 or only q2
       is an accepting state, this accepting state's exit value is used in the SXP.
       f-arbitrate-exit-value should return the exit value for the state in the SXP."
-  (letfn [(intersection-types [labels-1 labels-2]
-            (with-bdd-hash []
-              (for [label-1 labels-1
-                    label-2 labels-2
-                    :when (not (bdd-type-disjoint? label-1 label-2))
-                    ]
-                (intersect-labels label-1 label-2))))
-          (find-reachable [state-pairs]
-            (loop [state-pairs state-pairs
-                   done #{}]
-              (if (empty? state-pairs)
-                done
-                (let [next (set (for [[id-1 id-2] state-pairs
-                                      [_ dst-1] (:transitions (state-by-index dfa-1 id-1))
-                                      [_ dst-2] (:transitions (state-by-index dfa-2 id-2))]
-                                  [dst-1 dst-2]))]
-                  (recur (difference next done)
-                         (union state-pairs done))))))]
+  (letfn [(compute-state-transitions [state-1 state-2 state-ident-map]
+            (for [
+                  [label-1 dst-1] (:transitions state-1)
+                  [label-2 dst-2] (:transitions state-2)
+                  :when (not (bdd-type-disjoint? label-1 label-2))
+                  :let [label-sxp (intersect-labels label-1 label-2)]]
+              [label-sxp (state-ident-map [dst-1 dst-2])]))
+          (accumulate-states [initial-id-pair state-ident-map ident-state-map]
+            ;; Returns a sequence of pairs [id state], one for each
+            ;;   state in the SXP Dfa being create.
+            ;;
+            ;; This local function allocates the states in the SXP Dfa.
+            ;; It uses a breadth-first-search starting at the initial state [0 0].
+            ;; The result is that only reachable (accessible) states get created.
+            ;; However, it may create some non-co-accessible states, having no path
+            ;; to a final state.  In particular, it will create at least one sink-state
+            ;; if dfa-1 and dfa-2 have sink-states.
+            ;; Caveat some states may appear accessible but really aren't because
+            ;; they might have null-transitions leading to them.   E.g.,
+            ;; There might be a type-designator which is the intersection of two
+            ;; type-designators which bdd-type-disjoint? is not able to determine
+            ;; are really disjoint.   We error on the side of redundancy, leaving
+            ;; transitions which will never be taken at runtime.
+            (loop [work-id-pairs (list initial-id-pair)
+                   done-id-pairs #{}
+                   acc-id-state-pairs ()]
+              (cond
+                (empty? work-id-pairs)
+                acc-id-state-pairs
+
+                (member (first work-id-pairs) done-id-pairs)
+                (recur (rest work-id-pairs)
+                       done-id-pairs
+                       acc-id-state-pairs)
+
+                :else
+                (let [[[id-1 id-2] & more-pairs] work-id-pairs
+                      id-sxp (state-ident-map [id-1 id-2])
+                      state-1 (state-by-index dfa-1 id-1)
+                      state-2 (state-by-index dfa-2 id-2)
+                      new-transitions (compute-state-transitions state-1 state-2 state-ident-map)
+                      ]
+                  (recur (concat more-pairs (map (comp ident-state-map second) new-transitions))
+                         (conj done-id-pairs [id-1 id-2])
+                         (conj acc-id-state-pairs
+                               [id-sxp (map->State
+                                        {:index id-sxp
+                                         :initial (= 0 id-sxp)
+                                         :accepting (f-arbitrate-accepting
+                                                     (:accepting state-1)
+                                                     (:accepting state-2))
+                                         :transitions new-transitions})]))))))
+          ]
+
     (let [sxp-pairs (sort (fn [[a b] [x y]]
+                            ;; sort first by sum, so that [1 0] preceeds [0 2]
                             (cond
+                              (not (= (+ a b) (+ x y)))
+                              (< (+ a b) (+ x y))
+                              
                               (= a x)
                               (< b y)
+                              
                               :else
                               (< a x)))
-                          (find-reachable #{[0 0]}))
-          state-ident-map  (zipmap sxp-pairs (range))
-          ident-state-map  (zipmap (range) sxp-pairs)
-          accepting-ids (for [[id [id-1 id-2]] ident-state-map
-                              :when (f-arbitrate-accepting (:accepting (state-by-index dfa-1 id-1))
-                                                           (:accepting (state-by-index dfa-2 id-2)))]
-                          id)
+                          ;; all possible states in SXP, even those which
+                          ;;   are not accessible or co-accessible
+                          (for [id-1 (ids-as-seq dfa-1)
+                                id-2 (ids-as-seq dfa-2)]
+                            [id-1 id-2]))
+          state-ident-map  (zipmap sxp-pairs (range)) ;; [id id] -> id
+          ident-state-map  (zipmap (range) sxp-pairs) ;; id -> [id id]
+          new-id-state-pairs (accumulate-states [0 0] state-ident-map
+                                                ident-state-map)
+          new-exit-map (for [[sxp-id new-state] new-id-state-pairs
+                             :when (:accepting new-state)
+                             :let [[id-1 id-2] (ident-state-map sxp-id)
+                                   state-1 (state-by-index dfa-1 id-1)
+                                   state-2 (state-by-index dfa-2 id-2)]]
+                         [sxp-id (cond
+                                   (= (boolean (:accepting state-1))
+                                      (boolean (:accepting state-2)))
+                                   (f-arbitrate-exit-value state-1 state-2)
+                                   
+                                   (:accepting state-1)
+                                   (exit-value dfa-1 id-1)
+
+                                   (:accepting state-2)
+                                   (exit-value dfa-2 id-2))])
           ]
-      (assert (= 0 (state-ident-map [0 0])))
-      (assert (= [0 0] (ident-state-map 0)))
+      (assert (member 0 (ids-as-seq dfa-1)))
+      (assert (member 0 (ids-as-seq dfa-2)))
+      (assert (= 0 (state-ident-map [0 0]))
+              (cl-format false
+                         "expecting [0 0] maps to 0, in ~A"
+                         state-ident-map))
+      (assert (= [0 0] (ident-state-map 0))
+              (cl-format false
+                         "expecting 0 maps to [0 0], in ~A"
+                         ident-state-map))
 
       (with-bdd-hash []
-        (make-dfa dfa-1 {:exit-map (into {} (for [[id [id-1 id-2]] ident-state-map
-                                                  :when (member id accepting-ids)
-                                                  :let [state-1 (state-by-index dfa-1 id-1)
-                                                        state-2 (state-by-index dfa-2 id-2)]]
-                                              [id (cond
-                                                    (= (boolean (:accepting state-1))
-                                                       (boolean (:accepting state-2)))
-                                                    (f-arbitrate-exit-value state-1 state-2)
-                                                    
-                                                    (:accepting (state-by-index dfa-1 id-1))
-                                                    (exit-value dfa-1 id-1)
-
-                                                    (:accepting (state-by-index dfa-2 id-2))
-                                                    (exit-value dfa-2 id-2))]))
-
-                         :states (into {} (for [[id-sxp [id-1 id-2]] ident-state-map]
-                                            (let [state-1 (state-by-index dfa-1 id-1)
-                                                  state-2 (state-by-index dfa-2 id-2)
-                                                  transitions-1 (:transitions state-1)
-                                                  transitions-2 (:transitions state-2)
-                                                  labels-1 (map first transitions-1)
-                                                  labels-2 (map first transitions-2)
-                                                  new-transitions 
-                                                  (for [label-sxp (intersection-types labels-1 labels-2)
-                                                        [label-1 dst-1] transitions-1
-                                                        :when (bdd-type-subtype? label-sxp label-1)
-                                                        [label-2 dst-2] transitions-2
-                                                        :when (bdd-type-subtype? label-sxp label-2)]
-                                                    [label-sxp (state-ident-map [dst-1 dst-2])])]
-                                              [id-sxp (map->State {:index id-sxp
-                                                                   :initial (= 0 id-sxp)
-                                                                   :accepting (member id-sxp accepting-ids)
-                                                                   :transitions new-transitions})])))})))))
+        (make-dfa dfa-1
+                  {:exit-map (into {} new-exit-map)
+                   :states (into {} new-id-state-pairs)})))))
 
 (defn synchronized-union
   "Compute the union of two Dfas.  I.e., compute a Dfa which
@@ -512,13 +548,12 @@
   the exit value is determined by dfa-1, and the exit-value of
   dfa-2 is silently ignored."
   [dfa-1 dfa-2]
-  (trim
-   (synchronized-product dfa-1 dfa-2
-                         (fn [a b]
-                           (or a b))
-                         (fn [q1 _q2]
-                           ((:exit-map dfa-1)
-                            (:index q1))))))
+  (synchronized-product dfa-1 dfa-2
+                        (fn [a b]
+                          (or a b))
+                        (fn [q1 _q2]
+                          ((:exit-map dfa-1)
+                           (:index q1)))))
 
 (defn synchronized-intersection [dfa-1 dfa-2]
   "Compute the intersection of two Dfas. I.e., compute the Dfa which
