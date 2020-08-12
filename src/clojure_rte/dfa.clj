@@ -447,11 +447,11 @@
       is an accepting state, this accepting state's exit value is used in the SXP.
       f-arbitrate-exit-value should return the exit value for the state in the SXP."
   (letfn [(compute-state-transitions [state-1 state-2 state-ident-map]
-            (for [
-                  [label-1 dst-1] (:transitions state-1)
+            (for [[label-1 dst-1] (:transitions state-1)
                   [label-2 dst-2] (:transitions state-2)
                   :when (not (bdd-type-disjoint? label-1 label-2))
-                  :let [label-sxp (intersect-labels label-1 label-2)]]
+                  :let [label-sxp (intersect-labels label-1 label-2)]
+                  ]
               [label-sxp (state-ident-map [dst-1 dst-2])]))
           (accumulate-states [initial-id-pair state-ident-map ident-state-map]
             ;; Returns a sequence of pairs [id state], one for each
