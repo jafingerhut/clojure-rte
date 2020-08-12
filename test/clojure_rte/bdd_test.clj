@@ -304,12 +304,11 @@
                           '(and java.lang.Number (not (= 0)) (not (member a b c 1 2 3))))))
       ))))
 
-
 (deftest t-bdd-canonicalize-type
   (testing "bdd-canonicalize-type"
-    (= (member (bdd-canonicalize-type (list 'and
-                                 '(not Long)
-                                 '(and (not Long)
-                                       (not Boolean))))
+    (is (member (bdd-canonicalize-type (list 'and
+                                            '(not Long)
+                                            '(and (not Long)
+                                                  (not Boolean))))
                '((and (not Long) (not Boolean))
                  (and (not Boolean) (not Long)))))))
