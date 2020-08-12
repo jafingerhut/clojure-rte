@@ -130,7 +130,7 @@
                          ;; never called unless (empty? ...) is called below.
                          disjoints (filter (fn [x] (ty/disjoint? x my-label (constantly false))) parents)
                          subtypes  (filter (fn [x] (ty/subtype?  x my-label (constantly false))) parents)]
-                     
+
                      (cond
                        (= true node)
                        ;; we know parents ( ... A ... B ...) that B is not subtype of A, but maybe B subtype A
@@ -140,9 +140,13 @@
                                                    done '()]
                                               (if (empty? tail)
                                                 done
-                                                (recur (filter (fn [b]
-                                                                 (ty/subtype? b (first tail) (constantly false))) (rest tail))
-                                                       (cons (first tail) done))))))
+                                                (let [keeping (filter (fn [b]
+                                                                         ;; if we don't know, then keep it.  it might
+                                                                         ;; be redunant, but it won't be wrong.
+                                                                         (ty/subtype? b (first tail) (constantly true)))
+                                                                       (rest tail))]
+                                                  (recur keeping
+                                                         (cons (first tail) done)))))))
                        
                        (= false node)
                        nil ;; do not collect, and prune recursion
