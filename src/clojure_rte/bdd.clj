@@ -130,19 +130,28 @@
                          ;; never called unless (empty? ...) is called below.
                          disjoints (filter (fn [x] (ty/disjoint? x my-label (constantly false))) parents)
                          subtypes  (filter (fn [x] (ty/subtype?  x my-label (constantly false))) parents)]
-                     
+
                      (cond
                        (= true node)
-                       ;; we know parents ( ... A ... B ...) that B is not subtype of A, but maybe B subtype A
+                       ;; we know parents ( ... A ... B ...) that B is not subtype of A, but maybe A subtype B
                        ;;   we need to remove the supertypes
                        ;;   E.g., (Long java.io.Comparable java.io.Serializable) -> (Long)
+                       ;;   E.g.  (Long Number) -> Long
                        (collect (pretty-and (loop [tail parents
                                                    done '()]
                                               (if (empty? tail)
                                                 done
-                                                (recur (filter (fn [b]
-                                                                 (ty/subtype? b (first tail) (constantly false))) (rest tail))
-                                                       (cons (first tail) done))))))
+                                                (let [keeping (remove (fn [b]
+                                                                        ;; if we don't know, then keep it.  it might
+                                                                        ;; be redunant, but it won't be wrong.
+                                                                        ;; Is (first tail) <: b ?
+                                                                        ;;   if yes, then omit be in recur call
+                                                                        ;;   if :dont-know then keep it.
+                                                                        (ty/subtype? (first tail) b (constantly false)))
+                                                                       (rest tail))]
+                                                  
+                                                  (recur keeping
+                                                         (cons (first tail) done)))))))
                        
                        (= false node)
                        nil ;; do not collect, and prune recursion
@@ -162,18 +171,40 @@
                                  (cons (list 'not (:label node)) parents))))))]
            (walk bdd '()))))))))
 
-(def ^:dynamic *bdd-hash* (atom false))
-(def ^:dynamic *label-to-index* (atom false))
+(def ^:dynamic *bdd-hash*
+  "Hash table storing Bdd instances which have been allocated.   The idea
+  is that if a new Bdd is allocated via a call to Bdd., the funciton, bdd,
+  will recognize this redundant instance, and return the previously allocated
+  instance."
+  (atom false))
+
+(def ^:dynamic *label-to-index*
+  "Hash table mapping type-designators to integers.  Each type designator
+  serves as a label for a Bdd object, but to enforce the ordering of the ROBDD
+  we have to have a way to order any two type designators.  They are ordered
+  according to the integers stored in this hash table."
+  (atom false))
 
 (defn call-with-bdd-hash
-  ""
+  "Allocations two dynamic variables for the dynamic extent of evaluating
+  the given 0-ary function.  The variables are *label-to-index* and *bdd-hash*.
+  This function is part of the implementation of the with-bdd-hash macro.
+  "
   [thunk]
-  (binding [*label-to-index* (atom {})
-            *bdd-hash* (atom {})]
+  (if (= false @*bdd-hash*)
+    (binding [*label-to-index* (atom {})
+              *bdd-hash* (atom {})]
+      (thunk))
+    ;; if call-with-bdd-hash is called recursively, don't rebind anything.
     (thunk)))
 
 (defmacro with-bdd-hash
-  ""
+  "This macro wraps a piece of code which needs to allocate Bdds. The macro
+  wraps a call to the function call-with-bdd-hash, which provides an environment,
+  of sorts, which makes it possible to allocate and manipulate Bdd instances.
+  If with-bdd-hash is called recursively (intentially or accidentally), the
+  inner-most call recognizes this and does not re-bind any dynamic variables,
+  thus the innter-most call is innocuous and harmless."
   [[] & body]
   `(call-with-bdd-hash (fn [] ~@body)))
 
@@ -189,7 +220,7 @@
 (declare bdd-not)
 
 (defn bdd
-  "Programmatic Bdd constructor."
+  "Public interface to programmatic Bdd constructor."
   ([type-designator]
    (cond
      (sequential? type-designator)
@@ -210,9 +241,16 @@
   ([type-designator positive negative]
    (assert (map? @*bdd-hash*) "attempt to allocate a Bdd outside dynamically extend of call-with-bdd-hash")
    (assert (map? @*label-to-index*) "attempt to allocate a Bdd outside dynamically extend of call-with-bdd-hash")
-   (assert (ty/typep positive '(or Boolean clojure_rte.bdd.Bdd)))
-   (assert (ty/typep negative '(or Boolean clojure_rte.bdd.Bdd)))
-   (assert (ty/valid-type? type-designator) (format "invalid type-designator %s" type-designator))
+   (assert (or (instance? Boolean positive)
+               (instance? Bdd positive))
+           (cl-format false "wrong type of positive=~A type=~A"
+                      positive (type positive)))
+   (assert (or (instance? Boolean negative)
+               (instance? Bdd negative))
+           (cl-format false "wrong type of negative=~A type=~A"
+                      negative (type negative)))
+   (assert (ty/valid-type? type-designator)
+           (cl-format false "invalid type-designator ~A" type-designator))
 
    (cond
      (identical? positive negative)
@@ -356,20 +394,23 @@
    The intent is that given two type designators (as possibly different
    s-expressions), if they represent the same type, then they should
    be canonicalized to equal (=) s-expressions."
-  (dnf (bdd type-designator)))
+  (with-bdd-hash []
+    (dnf (bdd type-designator))))
 
 (defn bdd-type-disjoint?
   "Given two type designators, use Bdds to determine whether they are disjoint.
   If it cannot be proven that they are disjoint, false is returned."
   [type-designator-1 type-designator-2]
-  (= :empty-set
-     (bdd-canonicalize-type (list 'and type-designator-1 type-designator-2))))
+  (with-bdd-hash []
+    (= :empty-set
+       (bdd-canonicalize-type (list 'and type-designator-1 type-designator-2)))))
 
 (defn bdd-type-subtype?
   "Given two type designators, use Bdds to determine whether one is a subtype of the other.
   If it cannot be proven, false is returned."
   [subtype-designator supertype-designator]
-  (let [bdd-sub (bdd subtype-designator)
-        bdd-sup (bdd supertype-designator)]
-    (= :empty-set
-       (dnf (bdd-and-not bdd-sub bdd-sup)))))
+  (with-bdd-hash []
+    (let [bdd-sub (bdd subtype-designator)
+          bdd-sup (bdd supertype-designator)]
+      (= :empty-set
+         (dnf (bdd-and-not bdd-sub bdd-sup))))))

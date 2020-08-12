@@ -23,6 +23,7 @@
   (:require [clojure-rte.core :refer :all]
             [clojure-rte.dfa :refer :all]
             [clojure-rte.bdd :refer [with-bdd-hash]]
+            [clojure-rte.util :refer [member]]
             [clojure.test :refer :all]))
 
 (deftest t-split-eqv-class
@@ -221,8 +222,8 @@
           dfa-sxp (synchronized-product dfa-1 dfa-2 
                                         (fn [a b]
                                           (and a b))
-                                        (fn [a b]
-                                          a))
+                                        (fn [q1 q2]
+                                          ((:exit-map dfa-1) (:index q1))))
           dfa-sxp-trim (trim dfa-sxp)
           dfa-sxp-min (minimize dfa-sxp)
           dfa-sxp-trim-min (minimize dfa-sxp-trim)
@@ -263,19 +264,26 @@
             (rte-match dfa-min test-seq))))))
 
 
-;; (defn testing-function ;; function for demo
-;;   []
-;;   (let [dfa-1 (rte-to-dfa '(:* Long) 
-;;                           1)
-;;         dfa-2 (rte-to-dfa '(:or (:+ (:cat String Short))
-;;                                 (:+ (:cat String Long))) 
-;;                           2)
-;;         dfa-sxp (dfa/synchronized-product dfa-1 dfa-2 
-;;                                           (fn [a b]
-;;                                             (and a b))
-;;                                           (fn [a b]
-;;                                             a))]
-;;     (dot/dfa-to-dot  dfa-sxp :title "sxp" :view true)
-;;     (dot/dfa-to-dot (dfa/trim dfa-sxp) :title "sxp-trim" :view true)
-;;     (dot/dfa-to-dot (dfa/minimize dfa-sxp) :title "sxp-min" :view true)
-;;     (dot/dfa-to-dot (dfa/minimize (dfa/trim dfa-sxp)) :title "sxp-trim-min" :view true :verbose true)))
+(deftest t-sxp
+  (testing "sxp"
+    (let [dfa-0 (rte-to-dfa '(:and (:* Long) (:not (:or)))
+                           0)
+          dfa-1 (rte-to-dfa '(:and (:* Boolean) (:not (:or (:* Long))))
+                           1)
+          dfa-2 (rte-to-dfa '(:and (:* String) (:not (:or (:* Boolean) (:* Long))))
+                           2)
+          dfa-01 (synchronized-union dfa-0 dfa-1)
+          dfa-012 (synchronized-union dfa-01 dfa-2)]
+      ;; TODO currently failing, need to debug ?sxp?
+      (is (= 2 (rte-match dfa-012 ["hello" "world"]))))))
+
+(deftest t-cross-intersection
+  (testing "cross-intersection"
+    (let [cx (cross-intersection '((not Long)
+                                   Long)
+                                 '((and (not Long) (not Boolean))
+                                   Long
+                                   Boolean))]
+      (is (member 'Long cx))
+      (is (member '(and (not Long) Boolean) cx))
+      (is (member '(and (not Long) (not Boolean)) cx)))))

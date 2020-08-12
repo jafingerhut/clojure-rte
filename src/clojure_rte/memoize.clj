@@ -37,7 +37,6 @@
 (defmacro with-compile-env [[] & body]
   `(call-with-compile-env (fn [] ~@body)))
 
-
 (defn call-with-rte
   "Call the given 0-ary function with 0 or more rte keys bound to rte patterns.
    with-rte is a macro API to this function.

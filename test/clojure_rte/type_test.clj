@@ -59,6 +59,9 @@
   (when (and (resolve 'java.lang.Number)
              (resolve 'clojure.lang.ISeq))
     (testing "disjoint not"
+      (is (disjoint? '(not Boolean) '(not Object) (constantly false))) ;; currently broken
+      (is (disjoint? 'Long 'Boolean (constantly false)))
+      (is (not (disjoint? '(not Long) '(not Boolean) (constantly true))))
       (is (not (disjoint? 'clojure.lang.ISeq '(not java.lang.Number)))))))
 
 (deftest t-disjoint-2-14
@@ -204,6 +207,10 @@
 
 (deftest t-subtype?
   (testing "subtype?"
+    ;; adding two failing tests, TODO need to fix
+    (is (not (subtype? '(not Long) '(not Boolean) (constantly true))))
+    (is (not (subtype? '(not Boolean) '(not Long) (constantly true))))
+    
     (is (not (subtype? 'Long '(member 1 2 3) (constantly true))))
     (is (not (subtype? 'Long '(member 1 1.2 1.3) (constantly true))))
     (is (not (subtype? 'Long '(member 1.1 1.2 1.3) (constantly true))))

@@ -151,7 +151,7 @@
            (let [stat (sh *dot-path* "-Tpng" "-o" png-file-name
                            :in dot-string)]
              (if (not (= 0 (:exit stat)))
-               (println stat)             ))
+               (println stat)))
            (when (= "Mac OS X" (System/getProperty "os.name"))
              (let [stat (sh "open" "-a" "Preview" png-file-name)]
                (if (not (= 0 (:exit stat)))

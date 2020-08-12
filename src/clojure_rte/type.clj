@@ -470,6 +470,19 @@
           :else
           :dont-know))
 
+  (defmethod -subtype? :not [sub super]
+    (cond (not (not? sub))
+          :dont-know
+
+          (not (not? super))
+          :dont-know
+
+          :else
+          (let [x (subtype? (second super) (second sub) (constantly :dont-know))]
+            (if (= :dont-know x)
+              :dont-know
+              x))))
+          
   (defmethod -subtype? :member [sub super]
     (cond (member? sub)
           (every? (fn [e1]
@@ -511,6 +524,7 @@
                (disjoint? t1 (second t2) (constantly false)))
           false
           
+          ;; (disjoint?   'java.io.Serializable '(not java.lang.Comparable))
           (and (not? t2)
                (class-designator? t1)
                (class-designator? (second t2))
@@ -519,13 +533,14 @@
                (not (= (resolve t1) (resolve (second t2)))))
           false
           
+          ;; (disjoint?   '(not java.io.Serializable) '(not java.lang.Comparable))
           (and (not? t1)
                (not? t2)
                (class-designator? (second t1))
                (class-designator? (second t2))
                (= :interface (class-type (second t1)))
                (= :interface (class-type (second t2)))
-               (not (= (resolve t1) (resolve t2))))
+               (not (= (resolve (second t1)) (resolve (second t2)))))
           false
           
           :else :dont-know))
@@ -569,7 +584,6 @@
       (boolean (rest t1))
       :dont-know))
 
-
   (defmethod -inhabited? := [t1]
     (if (=? t1)
       true
@@ -577,10 +591,18 @@
        
   (defmethod -disjoint? :not [t1 t2]
     (cond
+      ;; (disjoint? (not Object) X)
+      (and (not? t1)
+           (class-designator? (second t1))
+           (isa? Object (resolve (second t1))))
+      true
+
+      ;; (disjoint? X (not X))
       (and (not? t2)
            (= t1 (second t2)))
       true
       
+      ;; (disjoint? X (not Y)) where X||Y
       (and (not? t2)
            (disjoint? (second t2) t1 (constantly false)))
       false
@@ -598,19 +620,32 @@
            (not (subtype? t1 (second t2) (constantly true))))
       false
 
+      ;; (disjoint? 'Number '(not Long))
       (and (class-designator? t1)
            (not? t2)
            (class-designator? (second t2))
            (not (= (resolve (second t2)) (resolve t1)))
            (isa? (resolve (second t2)) (resolve t1)))
       false
-      
+
+
+      ;; (disjoint? '(not Boolean) '(not Long))
+      ;; (disjoint? '(not A) '(not B))
+      ;; if disjoint classes A and B
+      (and (not? t1)
+           (not? t2)
+           (class-designator? (second t1))
+           (class-designator? (second t2))
+           (disjoint? (second t1) (second t2)))
+      false
+
+      ;; (disjoint? 'java.io.Serializable '(not java.lang.Comparable))
       (and (class-designator? t1)
            (not? t2)
            (class-designator? (second t2))
            ;; and neither is final
-           (not (= :final (class-designator? (resolve t1))))
-           (not (= :final (class-designator? (resolve (second t2))))))
+           (not (= :final (class-type t1)))
+           (not (= :final (class-type (second t2)))))
       false
 
       ;; I don't know the general form of this, so make it a special case for the moment.
