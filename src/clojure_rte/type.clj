@@ -591,10 +591,18 @@
        
   (defmethod -disjoint? :not [t1 t2]
     (cond
+      ;; (disjoint? (not Object) X)
+      (and (not? t1)
+           (class-designator? (second t1))
+           (isa? Object (resolve (second t1))))
+      true
+
+      ;; (disjoint? X (not X))
       (and (not? t2)
            (= t1 (second t2)))
       true
       
+      ;; (disjoint? X (not Y)) where X||Y
       (and (not? t2)
            (disjoint? (second t2) t1 (constantly false)))
       false
@@ -619,6 +627,7 @@
            (not (= (resolve (second t2)) (resolve t1)))
            (isa? (resolve (second t2)) (resolve t1)))
       false
+
 
       ;; (disjoint? '(not Boolean) '(not Long))
       ;; (disjoint? '(not A) '(not B))
