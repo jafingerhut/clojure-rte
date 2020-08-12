@@ -609,8 +609,8 @@
            (not? t2)
            (class-designator? (second t2))
            ;; and neither is final
-           (not (= :final (class-designator? (resolve t1))))
-           (not (= :final (class-designator? (resolve (second t2))))))
+           (not (= :final (class-type t1)))
+           (not (= :final (class-type (second t2)))))
       false
 
       ;; I don't know the general form of this, so make it a special case for the moment.
