@@ -511,6 +511,7 @@
                (disjoint? t1 (second t2) (constantly false)))
           false
           
+          ;; (disjoint?   'java.io.Serializable '(not java.lang.Comparable))
           (and (not? t2)
                (class-designator? t1)
                (class-designator? (second t2))
@@ -519,13 +520,14 @@
                (not (= (resolve t1) (resolve (second t2)))))
           false
           
+          ;; (disjoint?   '(not java.io.Serializable) '(not java.lang.Comparable))
           (and (not? t1)
                (not? t2)
                (class-designator? (second t1))
                (class-designator? (second t2))
                (= :interface (class-type (second t1)))
                (= :interface (class-type (second t2)))
-               (not (= (resolve t1) (resolve t2))))
+               (not (= (resolve (second t1)) (resolve (second t2)))))
           false
           
           :else :dont-know))
