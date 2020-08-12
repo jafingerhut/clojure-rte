@@ -354,6 +354,10 @@
          
          (= r 1)
          (bdd (rand-nth '(Long Double String Boolean Character Short
+                               Object Number (= 0) (member -1 0 1)
+                               (member 1 2)
+                               (member 0 2 4 6)
+                               java.lang.CharSequence
                                java.io.Serializable java.lang.Comparable)))
          
          :else
