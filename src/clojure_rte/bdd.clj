@@ -141,14 +141,15 @@
                                                    done '()]
                                               (if (empty? tail)
                                                 done
-                                                (let [keeping (filter (fn [b]
-                                                                         (ty/subtype? b (first tail) (constantly true)))
+                                                (let [keeping (remove (fn [b]
                                                                         ;; if we don't know, then keep it.  it might
                                                                         ;; be redunant, but it won't be wrong.
                                                                         ;; Is (first tail) <: b ?
                                                                         ;;   if yes, then omit be in recur call
                                                                         ;;   if :dont-know then keep it.
+                                                                        (ty/subtype? (first tail) b (constantly false)))
                                                                        (rest tail))]
+                                                  
                                                   (recur keeping
                                                          (cons (first tail) done)))))))
                        
@@ -240,9 +241,16 @@
   ([type-designator positive negative]
    (assert (map? @*bdd-hash*) "attempt to allocate a Bdd outside dynamically extend of call-with-bdd-hash")
    (assert (map? @*label-to-index*) "attempt to allocate a Bdd outside dynamically extend of call-with-bdd-hash")
-   (assert (ty/typep positive '(or Boolean clojure_rte.bdd.Bdd)))
-   (assert (ty/typep negative '(or Boolean clojure_rte.bdd.Bdd)))
-   (assert (ty/valid-type? type-designator) (format "invalid type-designator %s" type-designator))
+   (assert (or (instance? Boolean positive)
+               (instance? Bdd positive))
+           (cl-format false "wrong type of positive=~A type=~A"
+                      positive (type positive)))
+   (assert (or (instance? Boolean negative)
+               (instance? Bdd negative))
+           (cl-format false "wrong type of negative=~A type=~A"
+                      negative (type negative)))
+   (assert (ty/valid-type? type-designator)
+           (cl-format false "invalid type-designator ~A" type-designator))
 
    (cond
      (identical? positive negative)
