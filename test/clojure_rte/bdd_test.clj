@@ -23,7 +23,7 @@
 (ns clojure-rte.bdd-test
   (:require [clojure-rte.bdd :refer :all ]
             [clojure.pprint :refer [cl-format]]
-            [clojure-rte.util :refer [print-vals]]
+            [clojure-rte.util :refer [print-vals member]]
             [clojure.test :refer :all])
   ;; this imports the name of the Bdd record, which is otherwise not imported by :require
   (:import [clojure_rte.bdd Bdd]))
@@ -270,3 +270,13 @@
       (is (not (bdd-type-disjoint? 'java.io.Serializable
                           '(and java.lang.Number (not (= 0)) (not (member a b c 1 2 3))))))
       ))))
+
+
+(deftest t-bdd-canonicalize-type
+  (testing "bdd-canonicalize-type"
+    (= (member (bdd-canonicalize-type (list 'and
+                                 '(not Long)
+                                 '(and (not Long)
+                                       (not Boolean))))
+               '((and (not Long) (not Boolean))
+                 (and (not Boolean) (not Long)))))))
