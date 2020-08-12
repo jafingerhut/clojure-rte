@@ -419,6 +419,17 @@
   [label-1 label-2]
   (bdd-canonicalize-type (list 'and label-1 label-2)))
 
+(defn cross-intersection
+  "Compute a sequence of type designators corresponding to all the
+  inhabited intersesection (and A B) with A coming from type-designators-1
+  and B coming from type-designators-2"
+  [type-designators-1 type-designators-2]
+  (for [
+        label-1 type-designators-1
+        label-2 type-designators-2
+        :when (not (bdd-type-disjoint? label-1 label-2))]
+    (intersect-labels label-1 label-2)))
+
 (defn synchronized-product
   [dfa-1 dfa-2 f-arbitrate-accepting f-arbitrate-exit-value]
   "Assuming that the given Dfas are complete, we compute the syncronized cross product SXP

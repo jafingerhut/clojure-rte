@@ -23,6 +23,7 @@
   (:require [clojure-rte.core :refer :all]
             [clojure-rte.dfa :refer :all]
             [clojure-rte.bdd :refer [with-bdd-hash]]
+            [clojure-rte.util :refer [member]]
             [clojure.test :refer :all]))
 
 (deftest t-split-eqv-class
@@ -275,3 +276,14 @@
           dfa-012 (synchronized-union dfa-01 dfa-2)]
       ;; TODO currently failing, need to debug ?sxp?
       (is (= 2 (rte-match dfa-012 ["hello" "world"]))))))
+
+(deftest t-cross-intersection
+  (testing "cross-intersection"
+    (let [cx (cross-intersection '((not Long)
+                                   Long)
+                                 '((and (not Long) (not Boolean))
+                                   Long
+                                   Boolean))]
+      (is (member 'Long cx))
+      (is (member '(and (not Long) Boolean) cx))
+      (is (member '(and (not Long) (not Boolean)) cx)))))
