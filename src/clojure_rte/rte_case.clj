@@ -36,7 +36,24 @@
 (def memoized-rte-case-helper (memoize rte-case-helper))
 
 (defmacro rte-case
-  ""
+  "Takes an expression, and a set of clauses.
+  The expression should evaluate to an object which is `sequential?`.
+  Each clause is of the form
+     rte consequent.
+  But in the final clause the rte is optional.  In the case of missing
+  rte in the final clause, the rte, :sigma, is assumed, analagous
+  to the final/default clause of the  clojure.core/cond.
+  The rte is NOT evaluated, and should not be quoted.  It should be
+  a syntacticaly correct regular type expression.
+  If the first rte matches the sequence, then the consequent is evaluated
+  and its value is returned.   If the rte fails to match the rte, then
+  the second clause is examined.   The semantics are that the rte's are
+  considered in order, top to bottom, and the first one which matches
+  causes the corresponding consequent to be evaluated.
+  However, the sequence is traverse only once, so the matching process
+  is more efficient than a sequence of consecutive calls to
+  rte-match."
+  (case)
   [sequence & clauses]
   (letfn [(compile-clauses [clauses]
             (loop [remaining-clauses clauses
