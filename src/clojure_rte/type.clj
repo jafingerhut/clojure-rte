@@ -50,7 +50,6 @@
       (first type-designator)
       type-designator)))
 
-
 (defmethod typep :sigma [_ _]
   true)
 

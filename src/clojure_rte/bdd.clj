@@ -341,36 +341,44 @@
   [bdd1]
   (bdd-and-not true bdd1))
 
+(def sample-types '(Long Double String
+                         (= "") (member "hello" "world")
+                         Boolean Character Short
+                         Object Number (= 0) (member -1 0 1)
+                         (member 1 2)
+                         (member 0 2 4 6)
+                         java.lang.CharSequence
+                         java.io.Serializable
+                         java.lang.Comparable))
+
 (defn gen-random
   "Generate a random Bdd"
   ([] (gen-random 15))
   ([max-depth]
    (if (<= max-depth 0)
      (rand-nth '(true false))
-     (let [r (rand-int 4)]
+     (let [r (rand-int 5)]
        (cond
-         (= r 0)
+         (= r 0) ;; 20% chance
          (rand-nth '(true false))
          
-         (= r 1)
-         (bdd (rand-nth '(Long Double String Boolean Character Short
-                               Object Number (= 0) (member -1 0 1)
-                               (member 1 2)
-                               (member 0 2 4 6)
-                               java.lang.CharSequence
-                               java.io.Serializable java.lang.Comparable)))
+         (= r 1) ;; 20% chance
+         (bdd (rand-nth sample-types))
          
-         :else
+         (= r 2) ;; 20% chance
+         (bdd-not (bdd (rand-nth sample-types)))
+         
+         :else ;; 40% chance
          (let [bdd-1 (gen-random (dec max-depth))
                bdd-2 (gen-random (dec max-depth))
-               r (rand-int 3)]
+               r (rand-int 4)]
            (cond
-             (= r 0)
+             (= r 0) ;; 40% * 25% chance
              (bdd-and bdd-1 bdd-2)
-             (= r 1)
-             (bdd-or bdd-1 bdd-2)
-             :else
-             (bdd-and-not bdd-1 bdd-2))))))))
+             (= r 1) ;; 40% * 25% chance
+             (bdd-and-not bdd-1 bdd-2)
+             :else   ;; 40% * 50% chance
+             (bdd-or bdd-1 bdd-2))))))))
 
 (defn bdd-typep
   "Given a value in question, and a Bdd representing a type designator,
