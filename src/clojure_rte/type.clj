@@ -475,7 +475,21 @@
           :dont-know))
 
   (defmethod -subtype? :not [sub super]
-    (cond (not (not? sub))
+    (cond (and (not? super)  ; (subtype? 'Long '(not Double))
+               (class-designator? sub)
+               (class-designator? (second super))
+               (= :final (class-type sub))
+               (= :final (class-type (second super))))
+          true
+
+          (and (not? sub)  ; (subtype? '(not Double) 'Long)
+               (class-designator? super)
+               (class-designator? (second sub))
+               (= :final (class-type super))
+               (= :final (class-type (second sub))))
+          false
+
+          (not (not? sub))
           :dont-know
 
           (not (not? super))

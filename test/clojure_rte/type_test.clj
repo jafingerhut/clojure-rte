@@ -207,7 +207,9 @@
 
 (deftest t-subtype?
   (testing "subtype?"
-    ;; adding two failing tests, TODO need to fix
+    ;; adding failing test, TODO need to fix
+    (is (subtype? 'Long '(not Double) (constantly false)))
+
     (is (not (subtype? '(not Long) '(not Boolean) (constantly true))))
     (is (not (subtype? '(not Boolean) '(not Long) (constantly true))))
     
