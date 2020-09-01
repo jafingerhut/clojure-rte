@@ -53,7 +53,6 @@
   However, the sequence is traverse only once, so the matching process
   is more efficient than a sequence of consecutive calls to
   rte-match."
-  (case)
   [sequence & clauses]
   (letfn [(compile-clauses [clauses]
             (loop [remaining-clauses clauses
