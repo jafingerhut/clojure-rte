@@ -19,12 +19,33 @@
 ;; OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
 ;; WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-(ns clojure-rte.core-test
-  (:require [clojure.test :refer :all]
-            [clojure.pprint :refer [cl-format]]
-            [clojure-rte.cl-compat :refer [cl-cond]]
-            [clojure-rte.util :refer [sort-operands remove-once call-with-collector visit-permutations]]
-            [clojure-rte.type :refer [disjoint? typep inhabited?]]
-            [clojure-rte.core :refer :all]
-            [clojure-rte.rte-tester :refer :all]))
+(ns clojure-rte.all-test
+   (:require  [clojure.test :as t]
+              clojure-rte.api-test
+              clojure-rte.bdd-test
+              clojure-rte.cl-compat-test
+              clojure-rte.core-test
+              clojure-rte.dfa-test
+              clojure-rte.dot-test
+              clojure-rte.rte-test
+              clojure-rte.rte-tester-test
+              clojure-rte.type-test
+              clojure-rte.util-test             
+              ))
 
+(in-ns 'clojure-rte.core)
+
+(defn rte-run-all-test
+  "Run all the tests defined in the clojure-rte project"
+  []
+  (clojure.test/run-tests 'clojure-rte.api-test
+                          'clojure-rte.bdd-test
+                          'clojure-rte.cl-compat-test
+                          'clojure-rte.core-test
+                          'clojure-rte.dfa-test
+                          'clojure-rte.dot-test
+                          'clojure-rte.rte-test
+                          'clojure-rte.rte-tester-test
+                          'clojure-rte.type-test
+                          'clojure-rte.util-test
+                          ))
