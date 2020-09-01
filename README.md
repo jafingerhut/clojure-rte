@@ -607,7 +607,7 @@ and `B` are type designators and `f` is a symbol whose global value
 
   - `(or A B)` is a type designator, designating the set of values which are of type `A` or of type `B`, or perhaps of both. `(or ...)` may have arbitrarily many operands.  `(or A)` means `A`, and `(or)` means the empty set of values.
 
-  - `(not A)` is a type designating, designating the set of values which are *not* of type `A`.
+  - `(not A)` is a type designator, designating the set of values which are *not* of type `A`.
 
   - `(= x)`  is a type designator, designating the set of all values which are equal `=` to its literal operand.  For example `(= 42)` is the set of all values equal to 42, which include among others the `java.lang.Long 42`, the `java.lang.Short 42`, and the  `java.lang.Byte 42`.
 
