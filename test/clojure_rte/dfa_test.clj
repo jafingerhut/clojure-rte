@@ -23,6 +23,7 @@
   (:require [clojure-rte.core :refer :all]
             [clojure-rte.dfa :refer :all]
             [clojure-rte.bdd :refer [with-bdd-hash]]
+            [clojure.pprint :refer [cl-format]]
             [clojure-rte.util :refer [member]]
             [clojure.test :refer :all]))
 
@@ -274,7 +275,6 @@
                            2)
           dfa-01 (synchronized-union dfa-0 dfa-1)
           dfa-012 (synchronized-union dfa-01 dfa-2)]
-      ;; TODO currently failing, need to debug ?sxp?
       (is (= 2 (rte-match dfa-012 ["hello" "world"]))))))
 
 (deftest t-cross-intersection
@@ -284,6 +284,9 @@
                                  '((and (not Long) (not Boolean))
                                    Long
                                    Boolean))]
-      (is (member 'Long cx))
-      (is (member '(and (not Long) Boolean) cx))
-      (is (member '(and (not Long) (not Boolean)) cx)))))
+      (is (member 'Long cx)
+          (cl-format false "cx=~a, expecting to contain Long" cx))
+      (is (member 'Boolean cx)
+          (cl-format false "cx=~a, expecting to contain (and (not Long) Boolean)" cx))
+      (is (member '(and (not Long) (not Boolean)) cx)
+          (cl-format false "cx=~a, expecting to contain (and (not Long) (not Boolean))" cx)))))
