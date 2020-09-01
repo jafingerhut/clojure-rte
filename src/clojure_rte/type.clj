@@ -426,6 +426,31 @@
         :else
         :dont-know))
 
+(def class-type
+  "Takes a class-name and returns either :abstract, :interface, or :final,
+  or throws an ex-info exception."
+  (memoize (fn [t]
+             (let [c (resolve t)
+                   r (refl/type-reflect c)
+                   flags (:flags r)]
+               (cond
+                 (= c Object)
+                 :abstract
+                 (contains? flags :interface)
+                 :interface
+                 (contains? flags :final)
+                 :final
+                 (contains? flags :abstract)
+                 :abstract
+                 (= flags #{:public})
+                 :final
+                 
+                 :else
+                 (throw (ex-info (format "disjoint? type %s flags %s not yet implemented" t flags)
+                                 {:error-type :invalid-type-flags
+                                  :a-type t
+                                  :flags flags})))))))
+
 (letfn [(not? [t]
           (and (sequential? t)
                (= 'not (first t))))
@@ -438,27 +463,7 @@
         (=? [t]
           (and (sequential? t)
                (= '= (first t))))
-        (class-type [t]
-          (let [c (resolve t)
-                r (refl/type-reflect c)
-                flags (:flags r)]
-            (cond
-              (= c Object)
-              :abstract
-              (contains? flags :interface)
-              :interface
-              (contains? flags :final)
-              :final
-              (contains? flags :abstract)
-              :abstract
-              (= flags #{:public})
-              :final
-              
-              :else
-              (throw (ex-info (format "disjoint? type %s flags %s not yet implemented" t flags)
-                              {:error-type :invalid-type-flags
-                               :a-type t
-                               :flags flags})))))]
+        ]
 
   (defmethod -subtype? := [sub super]
     (cond (=? sub)
