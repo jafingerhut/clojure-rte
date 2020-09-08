@@ -84,8 +84,7 @@
   "Serialize a Bdd to dnf disjunctive normal form.
   This dnf form is cleaned up so that an (and ...) or (or ...) clause contains
   no subtype/supertype pairs.  This subtype relation is determined by
-  (ty/subtype? a b (constantly false)).
-  
+  (ty/subtype? a b (constantly false)).  
   "
   [bdd]
   (letfn [(pretty-and [args]
