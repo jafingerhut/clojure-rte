@@ -852,11 +852,6 @@ sh> lein ns-dep-graph -name img/ns-dep-graph
 [lein-ns-dep-graph](https://github.com/hilverd/lein-ns-dep-graph).
 
 
-## Code test coverage
-
-[![codecov](https://codecov.io/gl/jnewton/clojure-rte/branch/master/graph/badge.svg)]
- (https://codecov.io/gl/jnewton/clojure-rte)
-
 ## Contributors
 
 [Jim Newton](https://www.lrde.epita.fr/wiki/User:Jnewton)
