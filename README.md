@@ -310,11 +310,11 @@ string, including matching the empty sequence.
 
 ```clojure
 (rte-match '(:cat (:* (:cat clojure.lang.Keyword java.lang.Long))
-                                  (:? String))
+                  (:? String))
            '(:x 1 :y 2 :z 42)) ;; --> true
 
 (let [rte (rte-compile '(:cat (:* (:cat clojure.lang.Keyword java.lang.Long))
-                                  (:? String)))]
+                              (:? String)))]
   (rte-match '(:x 1 :y 2 :z 42)) ;; --> true
   (rte-match '(:x 1 :y 2 :z 42 "Hello")) ;; --> true
   (rte-match '(:x 1 :y 2 :z 42 "Hello" "World")) ;; --> false
