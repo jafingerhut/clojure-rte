@@ -643,8 +643,8 @@ Example
 
 Example 
 ```clojure
-(subtypep 'Long '(or Long Double)) ;; true
-(subtype 'Long '(or String (not Long))) ;; false
+(subtype? 'Long '(or Long Double)) ;; true
+(subtype? 'Long '(or String (not Long))) ;; false
 ```
 
 * `disjoint? [t1 t2]` --- predicate to determine whether two types are disjoint in the sense that their intersection is empty. There are three possible answers to this question, `true`, `false`, and `:dont-know`.
@@ -652,7 +652,7 @@ Example
 Example 
 ```clojure
 (disjoint? 'Long 'Double) ;; true
-(disjoint 'Number 'java.io.Serializable) ;; false
+(disjoint? 'Number 'java.io.Serializable) ;; false
 ```
 
 * `inhabited? [type-designator]` --- predicate to determine whether there exists an element of a given type.  Any type which is not inhabited is vacuous. There are three possible answers to this question, `true`, `false`, and `:dont-know`.
