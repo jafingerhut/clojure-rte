@@ -287,14 +287,33 @@
         partitions-map (zipmap ids pi-minimized)
         ids-map (zipmap pi-minimized ids)]
     (assert (sequential? pi-minimized))
-    (letfn [(pretty-or [rest-args]
+    (letfn [(pretty-or [rest-args or-keyword]
               (cl-cond
                ((empty? rest-args)
                 :sigma)
                ((empty? (rest rest-args))
                 (first rest-args))
                (:else
-                (conj rest-args  :or))))
+                (conj rest-args or-keyword))))
+            (pretty-or-rte [rest-args]
+              (pretty-or rest-args :or))
+            (pretty-or-type [rest-args]
+              (pretty-or rest-args 'or))
+            (merge-parallel [transitions]
+              ;; if there are two transitions with the same src/dest, then
+              ;;   combine the labels with (or ...)
+              ;; We do not, currently, try to reduce the union type.
+              ;; It may be something like:
+              ;; (or Long
+              ;;     (and (not Long) (not String)))
+              ;; which *could* be reduced to simply: Long
+              (let [grouped (group-by (fn [[from _ to]]
+                                        [from to])
+                                      transitions)]
+                
+                (map (fn [[[from to] transitions]]
+                       [from (pretty-or-type (map second transitions)) to])
+                     grouped)))
             (new-id [state]
               (assert (instance? State state))
               (ids-map (find-eqv-class pi-minimized state)))]
@@ -329,7 +348,7 @@
                                   ]
                               id)
               new-states (for [id new-state-ids
-                               :let [transitions (grouped id)
+                               :let [transitions (merge-parallel (grouped id))
                                      new-transitions (filter (fn [[_ dst-id]]
                                                                (member dst-id new-state-ids))
                                                              (map rest transitions))]
@@ -338,7 +357,7 @@
                            [id (map->State
                                 {:index id
                                  :initial (= 0 id)
-                                 :pattern (pretty-or (map :pattern (partitions-map id)))
+                                 :pattern (pretty-or-rte (map :pattern (partitions-map id)))
                                  :accepting (member id new-fids)
                                  :transitions new-transitions})])]
           (make-dfa dfa { :exit-map (into {} (map (fn [id]
