@@ -301,7 +301,7 @@ not useful to the end user.  However, internally `(:? x)` expands to
 
 * `(:not ...)` --- Takes exactly one operand.  Matches any sequence
 except ones which match the pattern.  This can be confusing. See section
-[Hierarchical Sequences](api.md/#hierarchical-sequences) for details.
+[Hierarchical Sequences](expert.md/#hierarchical-sequences) for details.
 
 Example -- `String` matches a singleton sequence whose element is a string.  
 So `(:not String)` matches any sequence except one of length 1 consisting of a
