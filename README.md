@@ -52,6 +52,10 @@ git clone git@gitlab.lrde.epita.fr:jnewton/clojure-rte.git)
 git clone https://gitlab.lrde.epita.fr/jnewton/clojure-rte.git
 ```
 
+## Related Packages
+
+[Binary Decision Diagrams](bdd.md)
+
 ## Usage
 
 RTE allows the Clojure programmer to specify regular patterns of types
