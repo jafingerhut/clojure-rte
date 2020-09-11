@@ -8,6 +8,16 @@ The theory of how BDDs are used to reason about Common Lisp types can be found h
 [Representing and Computing with Types in Dynamically Typed Languages](https://www.lrde.epita.fr/wiki/Publications/newton.18.phd).
 
 
+A Bdd is implemented as a record
+```clojure
+(defrecord Bdd
+  [label positive negative])
+```
+Thus a Bdd may be allocated as `(bdd. ...)`.
+However, applications are not intended to allocate a bdd using the record interface
+directly. Instead an application should allocate Bdds using `(bdd ...)` or one
+of the Boolean operators `(bdd-and ...)`, `(bdd-or ...)`, `(bdd-and-no ...)`, or `(bdd-not ...)`.
+
 ## API
 
 ### (`bdd` type-designator)
