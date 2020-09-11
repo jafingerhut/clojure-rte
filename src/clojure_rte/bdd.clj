@@ -217,77 +217,82 @@
 (declare bdd-and)
 (declare bdd-or)
 (declare bdd-not)
+(declare bdd-node)
 
 (defn bdd
   "Public interface to programmatic Bdd constructor."
-  ([type-designator]
-   (cond
-     (sequential? type-designator)
-     (case (first type-designator)
-       (and) (reduce bdd-and (map bdd (rest type-designator)))
-       (or)  (reduce bdd-or (map bdd (rest type-designator)))
-       (not) (apply bdd-not (map bdd (rest type-designator)))
-       (bdd type-designator true false))
+  [type-designator]
+  (cond
+    (sequential? type-designator)
+    (case (first type-designator)
+      (and) (reduce bdd-and (map bdd (rest type-designator)))
+      (or)  (reduce bdd-or (map bdd (rest type-designator)))
+      (not) (apply bdd-not (map bdd (rest type-designator)))
+      (bdd-node type-designator true false))
 
-     (= :sigma type-designator)
-     true
+    (= :sigma type-designator)
+    true
 
-     (= :empty-set type-designator)
-     false
+    (= :empty-set type-designator)
+    false
 
-     :else
-     (bdd type-designator true false)))
-  ([type-designator positive negative]
-   (assert (map? @*bdd-hash*) "attempt to allocate a Bdd outside dynamically extend of call-with-bdd-hash")
-   (assert (map? @*label-to-index*) "attempt to allocate a Bdd outside dynamically extend of call-with-bdd-hash")
-   (assert (or (instance? Boolean positive)
-               (instance? Bdd positive))
-           (cl-format false "wrong type of positive=~A type=~A"
-                      positive (type positive)))
-   (assert (or (instance? Boolean negative)
-               (instance? Bdd negative))
-           (cl-format false "wrong type of negative=~A type=~A"
-                      negative (type negative)))
-   (assert (ty/valid-type? type-designator)
-           (cl-format false "invalid type-designator ~A" type-designator))
+    :else
+    (bdd-node type-designator true false)))
 
-   (cond
-     (identical? positive negative)
-     positive
-     :else
-     (let [try-bdd (Bdd. type-designator positive negative)
-           cached-bdd (@*bdd-hash* try-bdd)]
-       (or cached-bdd
-           (do (swap! *bdd-hash* assoc try-bdd try-bdd)
-               (assert (or (instance? Boolean positive)
-                           (< (type-index type-designator)
-                              (type-index (:label positive))))
-                       (format "parent %s must be < positive %s" type-designator (:label positive)))
-               (assert (or (instance? Boolean negative)
-                           (< (type-index type-designator)
-                              (type-index (:label negative))))
-                       (format "parent %s must be < negative %s" type-designator (:label negative)))
-               
-               try-bdd))))))
+(defn bdd-node
+  "Internal function to function `bdd`.  This function is used during the
+  recursive descent of the Bdd construction algorithm.  "
+  [type-designator positive negative] 
+  (assert (map? @*bdd-hash*) "attempt to allocate a Bdd outside dynamically extend of call-with-bdd-hash")
+  (assert (map? @*label-to-index*) "attempt to allocate a Bdd outside dynamically extend of call-with-bdd-hash")
+  (assert (or (instance? Boolean positive)
+              (instance? Bdd positive))
+          (cl-format false "wrong type of positive=~A type=~A"
+                     positive (type positive)))
+  (assert (or (instance? Boolean negative)
+              (instance? Bdd negative))
+          (cl-format false "wrong type of negative=~A type=~A"
+                     negative (type negative)))
+  (assert (ty/valid-type? type-designator)
+          (cl-format false "invalid type-designator ~A" type-designator))
+  
+  (cond
+    (identical? positive negative)
+    positive
+    :else
+    (let [try-bdd (Bdd. type-designator positive negative)
+          cached-bdd (@*bdd-hash* try-bdd)]
+      (or cached-bdd
+          (do (swap! *bdd-hash* assoc try-bdd try-bdd)
+              (assert (or (instance? Boolean positive)
+                          (< (type-index type-designator)
+                             (type-index (:label positive))))
+                      (format "parent %s must be < positive %s" type-designator (:label positive)))
+              (assert (or (instance? Boolean negative)
+                          (< (type-index type-designator)
+                             (type-index (:label negative))))
+                      (format "parent %s must be < negative %s" type-designator (:label negative)))
+              
+              try-bdd)))))
 
 (defn binary-op
   "Bdd abstract binary operation."
   [op bdd1 bdd2]
   (if (= (:label bdd1) (:label bdd2))
-    (bdd (:label bdd1)
-         (op (:positive bdd1) (:positive bdd2))
-         (op (:negative bdd1) (:negative bdd2)))
+    (bdd-node (:label bdd1)
+          (op (:positive bdd1) (:positive bdd2))
+          (op (:negative bdd1) (:negative bdd2)))
     (let [label-index-1 (type-index (:label bdd1))
           label-index-2 (type-index (:label bdd2))]
       (assert (integer? label-index-1) (format "expecting integer got %s" (type label-index-1)))
       (assert (integer? label-index-2) (format "expecting integer got %s" (type label-index-2)))
       (if (< label-index-1 label-index-2)
-        (bdd (:label bdd1)
-             (op (:positive bdd1) bdd2)
-             (op (:negative bdd1) bdd2))
-        (bdd (:label bdd2)
-             (op bdd1 (:positive bdd2))
-             (op bdd1 (:negative bdd2)))))))
+        (bdd-node (:label bdd1)
+                  (op (:positive bdd1) bdd2)
+                  (op (:negative bdd1) bdd2))
+        (bdd-node (:label bdd2)
+                  (op bdd1 (:positive bdd2))
+                  (op bdd1 (:negative bdd2)))))))
   
 (defn bdd-and
   "Perform a Boolean AND on 0 or more Bdds."
@@ -328,9 +333,9 @@
      (= bdd1 false) false
      (= bdd2 true) false
      (= bdd2 false) bdd1
-     (= bdd1 true) (bdd (:label bdd2)
-                        (bdd-and-not true (:positive bdd2))
-                        (bdd-and-not true (:negative bdd2)))
+     (= bdd1 true) (bdd-node (:label bdd2)
+                             (bdd-and-not true (:positive bdd2))
+                             (bdd-and-not true (:negative bdd2)))
      :else (binary-op bdd-and-not bdd1 bdd2)))
   ([bdd1 bdd2 & bdds]
    (reduce bdd-and (apply cons bdd1 bdd2 bdds))))
