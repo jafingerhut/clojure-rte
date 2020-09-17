@@ -82,8 +82,6 @@
       ;; final vs interface is superclass
       (is (not (disjoint? 'Integer 'java.lang.Comparable)))
       (is (not (disjoint? 'java.lang.Comparable 'Integer)))
-
-
       )))
 
 (deftest t-disjoint-2
@@ -92,11 +90,9 @@
     (is (disjoint? 'Integer 'String)) ; final vs final
     (is (disjoint? 'String 'Integer)) ; final vs final
 
-
     ;; final vs interface not a superclass
     (is (disjoint? 'Integer 'java.lang.CharSequence))
     (is (disjoint? 'java.lang.CharSequence 'Integer))
-
 
     ;; abstract vs abstract
     (is (disjoint? 'Number 'clojure.lang.ASeq))
@@ -106,19 +102,16 @@
     (is (not (disjoint? 'clojure.lang.IHashEq 'clojure.lang.ASeq)))
     (is (not (disjoint? 'clojure.lang.ASeq 'clojure.lang.IHashEq)))
 
-
     ;;clojure.lang.PersistentList java.lang.Object  java.lang.Number
     (is (not (disjoint? 'clojure.lang.PersistentList 'java.lang.Object  )))
     (is (not (disjoint? 'java.lang.Object  'java.lang.Number)))
     (is (disjoint? 'clojure.lang.PersistentList 'java.lang.Number))
 
-    
     (is (disjoint? 'Long '(not Long)))
     (is (disjoint? '(not Long) 'Long))
 
     (is (disjoint? 'Long '(not java.io.Serializable)))
     (is (disjoint? '(not java.io.Serializable) 'Long))
-
     ))
 
 (deftest t-typep
@@ -247,4 +240,3 @@
       (is (inhabited? '(rte (:+ Number))))
       (is (not (inhabited? '(rte (:and (:+ Number)
                                        (:+ String)))))))))
-

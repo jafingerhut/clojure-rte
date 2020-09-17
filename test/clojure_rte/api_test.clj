@@ -59,8 +59,6 @@
                           '( 1 2 3 4 "hello" "world"))))
       )))
 
-
-
 (deftest t-types
   (testing "types"
     (with-compile-env ()
