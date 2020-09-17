@@ -52,16 +52,16 @@
 (deftest t-construct
   (testing "bdd construction"
     (with-bdd-hash []
-      (is (= false (bdd 'Long false false)))
-      (is (= true (bdd 'Long true true)))
-      (is (bdd 'Long true false))
-      (is (bdd 'Long false true))
-      (let [long (bdd 'Long true false)
-            string (bdd 'String true false)
-            double (bdd 'Double true false)]
-        (is (= string (bdd 'Long string string)))
-        (is (bdd 'Long string double))
-        (is (bdd 'Long double string))))))
+      (is (= false (bdd-node 'Long false false)))
+      (is (= true (bdd-node 'Long true true)))
+      (is (bdd-node 'Long true false))
+      (is (bdd-node 'Long false true))
+      (let [long (bdd-node 'Long true false)
+            string (bdd-node 'String true false)
+            double (bdd-node 'Double true false)]
+        (is (= string (bdd-node 'Long string string)))
+        (is (bdd-node 'Long string double))
+        (is (bdd-node 'Long double string))))))
 
 (deftest t-commutativity
   (testing "testing Boolean operations commutativity"
