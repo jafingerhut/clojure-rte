@@ -34,5 +34,4 @@
             [clojure-rte.memoize]
             [clojure-rte.api]
             [clojure-rte.type-extend]
-            )
-  (:gen-class))
+            ))

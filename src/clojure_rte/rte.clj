@@ -25,11 +25,6 @@
 
 (in-ns 'clojure-rte.core)
 
-(defn -main
-  "I don't do a whole lot ... yet."
-  [& _args]
-  (println "Hello, World!"))
-
 (declare traverse-pattern)
 (declare canonicalize-pattern)
 

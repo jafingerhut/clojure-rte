@@ -31,9 +31,8 @@
               clojure-rte.rte-tester-test
               clojure-rte.type-test
               clojure-rte.util-test             
-              ))
-
-(in-ns 'clojure-rte.core)
+              )
+  (:gen-class))
 
 (defn rte-run-all-test
   "Run all the tests defined in the clojure-rte project"
@@ -49,3 +48,9 @@
                           'clojure-rte.type-test
                           'clojure-rte.util-test
                           ))
+
+(defn -main []
+  (rte-run-all-test))
+
+
+
