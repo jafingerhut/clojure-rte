@@ -118,5 +118,3 @@
           (= false final-state) false
           (:accepting (state-vec final-state)) ((:exit-map dfa) final-state)
           :else false)))))
-
-

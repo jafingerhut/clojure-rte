@@ -36,4 +36,3 @@
             [clojure-rte.type-extend]
             )
   (:gen-class))
-
