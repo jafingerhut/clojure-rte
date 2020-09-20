@@ -21,9 +21,12 @@
 
 (ns clojure-rte.rte-case-test
   (:require [clojure.test :refer :all]
-            [clojure-rte.core :refer :all]
+            [clojure-rte.core :refer :all :exclude [-main]]
             [clojure-rte.rte-case :refer :all]
 ))
+
+(defn -main []
+  (clojure.test/run-tests 'clojure-rte.rte-case-test))
 
 (deftest t-rte-case
   (testing "rte-case"

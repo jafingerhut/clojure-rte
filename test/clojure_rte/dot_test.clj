@@ -22,8 +22,11 @@
 
 (ns clojure-rte.dot-test
   (:require [clojure-rte.dot :as sut]
-            [clojure-rte.core :refer :all]
+            [clojure-rte.core :refer :all :exclude [-main]]
             [clojure.test :refer :all]))
+
+(defn -main []
+  (clojure.test/run-tests 'clojure-rte.dot-test))
 
 (deftest t-dfa-to-dot
   (testing "dfa-to-dot"

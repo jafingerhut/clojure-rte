@@ -24,7 +24,7 @@
             [clojure.string]
             [clojure.set]
             [clojure-rte.cl-compat :refer [cl-cond]]
-            [clojure-rte.core]
+            [clojure-rte.core :refer :all :exclude [-main]]
             [clojure-rte.dfa :as dfa]
             [clojure-rte.bdd :as bdd]
             [clojure-rte.util :refer [member print-vals mapc]]

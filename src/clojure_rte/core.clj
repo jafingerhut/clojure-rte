@@ -33,5 +33,6 @@
             [clojure-rte.rte]
             [clojure-rte.memoize]
             [clojure-rte.api]
+            [clojure-rte.rte-case]
             [clojure-rte.type-extend]
             ))

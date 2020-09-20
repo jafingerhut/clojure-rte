@@ -23,6 +23,9 @@
   (:require [clojure-rte.rte-tester :refer :all]
             [clojure.test :refer :all]))
 
+(defn -main []
+  (clojure.test/run-tests 'clojure-rte.rte-tester-test))
+
 (deftest t-test-canonicalize-pattern
   (testing "test-canonicalize-pattern"
     (test-canonicalize-pattern 10 4 false)))

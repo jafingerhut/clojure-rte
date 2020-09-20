@@ -20,10 +20,13 @@
 ;; WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 (ns clojure-rte.type-test
-  (:require [clojure-rte.core :refer :all]
+  (:require [clojure-rte.core :refer :all :exclude [-main]]
             [clojure-rte.type :refer :all]
             [clojure-rte.util :refer [call-with-collector]]
             [clojure.test :refer :all]))
+
+(defn -main []
+  (clojure.test/run-tests 'clojure-rte.type-test))
 
 (deftest t-disjoint?
   (when (and (resolve 'java.lang.CharSequence)

@@ -28,6 +28,9 @@
   ;; this imports the name of the Bdd record, which is otherwise not imported by :require
   (:import [clojure_rte.bdd Bdd]))
 
+(defn -main []
+  (clojure.test/run-tests 'clojure-rte.bdd-test))
+
 (def num-random-samples 500)
 
 (deftest t-typep

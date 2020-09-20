@@ -24,6 +24,9 @@
             [clojure-rte.util :refer [call-with-collector]]
             [clojure.test :refer :all]))
 
+(defn -main []
+  (clojure.test/run-tests 'clojure-rte.cl-compat-test))
+
 
 (deftest t-cl-prog1
   (testing "cl-prog1"

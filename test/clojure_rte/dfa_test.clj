@@ -20,12 +20,16 @@
 ;; WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 (ns clojure-rte.dfa-test
-  (:require [clojure-rte.core :refer :all]
+  (:require ;; [clojure-rte.core :refer :all]
+            [clojure-rte.core :refer :all :exclude [-main]]
             [clojure-rte.dfa :refer :all]
             [clojure-rte.bdd :refer [with-bdd-hash]]
             [clojure.pprint :refer [cl-format]]
             [clojure-rte.util :refer [member]]
             [clojure.test :refer :all]))
+
+(defn -main []
+  (clojure.test/run-tests 'clojure-rte.dfa-test))
 
 (deftest t-split-eqv-class
   (testing "split-eqv-class"

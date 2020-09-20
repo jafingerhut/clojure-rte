@@ -23,6 +23,9 @@
   (:require [clojure-rte.util :refer :all]
             [clojure.test :refer :all]))
 
+(defn -main []
+  (clojure.test/run-tests 'clojure-rte.util-test))
+
 (deftest t-partition-by-pred
   (testing "partition-by-pred"
     (let [[odd even] (partition-by-pred odd? (range 100))]
