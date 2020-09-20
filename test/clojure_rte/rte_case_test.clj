@@ -27,6 +27,28 @@
 
 (deftest t-rte-case
   (testing "rte-case"
+    (is (= 1 (rte-case '(1 2 3)
+                       (:* String) 0
+                       (:* Number) 1
+                       (:* Long) 2)))
+    (is (= 1 (rte-case '(1 2 3)
+                       (:* String) 0
+                       (:* Long) 1
+                       (:* Number) 2)))
+    (is (= 2 (rte-case '(1 2 3)
+                       (:* String) 0
+                       (:* Boolean) 1
+                       (:* Long) 2)))
+
+    (is (= 3 (rte-case '(1 "2" false)
+                       (:* String) 0
+                       (:* Boolean) 1
+                       (:* Long) 2
+                       (:cat (:* Number) (:+ String) (:* Boolean)) 3
+                       (:sigma 4))))))
+
+(deftest t-rte-case-helper
+  (testing "rte-case-helper"
     (is (= 0 (rte-match
               ;; I don't know why it is necessary to prefix clojure-rte.core/rte-case-helper
               ;; otherwise the loader complains:

@@ -26,7 +26,6 @@
             [clojure-rte.util :refer [sort-operands remove-once call-with-collector visit-permutations]]
             [clojure-rte.type :refer [disjoint? typep inhabited?]]
             [clojure-rte.core :refer :all]
-            [clojure-rte.rte-case :refer :all]
             [clojure-rte.rte-tester :refer :all]))
 
 (deftest t-nullable
