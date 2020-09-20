@@ -44,6 +44,7 @@
                           'clojure-rte.dfa-test
                           'clojure-rte.dot-test
                           'clojure-rte.rte-test
+                          'clojure-rte.rte-case-test
                           'clojure-rte.rte-tester-test
                           'clojure-rte.type-test
                           'clojure-rte.util-test
