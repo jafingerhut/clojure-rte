@@ -66,6 +66,9 @@
    ((ty/valid-type? tag) tag)
    (:else
     (println (format "resolve-rte-tag: warning unknown type %s" tag))
+    (throw (ex-info (format "resolve-rte-tag: warning unknown type %s" tag)
+                    {:error-type :unknown-type
+                     :type tag }))
     tag))
 )
 
