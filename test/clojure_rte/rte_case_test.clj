@@ -104,3 +104,28 @@
               [false "world"]))
         "case-3")))
     
+(deftest t-destructuring-case
+  (testing "destructuring-case"
+    (is (= 1 (destructuring-case '(true ["hello" 3] true)
+                                 [a [b c] & d]  (a Boolean b String d Boolean)
+                                 1
+
+                                 [a b]          (a Boolean b (or String Boolean))
+                                 2)))
+
+    (is (= 1 (destructuring-case '(true ["hello" 3] true)
+
+                                 [a b]          (a Boolean b (or String Boolean))
+                                 2
+                                 [a [b c] & d]  (a Boolean b String d Boolean)
+                                 1
+
+
+                                 )))
+
+    (is (= nil (destructuring-case '(true [3 3] true)
+                                   [a [b c] & d]  (a Boolean b String d Boolean)
+                                   1
+
+                                   [a b]          {a Boolean b (or String Boolean)}
+                                   2)))))
