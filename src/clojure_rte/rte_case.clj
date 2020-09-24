@@ -81,3 +81,54 @@
     
     (let [[fns int-rte-pairs] (compile-clauses clauses)]
       `((~fns (rte-match (memoized-rte-case-helper '~int-rte-pairs) ~sequence))))))
+
+(defn lambda-list-to-rte
+  "Helper function for destructuring-case macro."
+  [lambda-list types-map]
+  (let [[prefix _ suffix] (partition-by (fn [x] (= x '&)) lambda-list)
+        prefix-rte (for [var prefix]
+                     (cond (and (sequential? var)
+                                     (empty? var))
+                                nil
+
+                                (sequential? var)
+                                (cons :rte (lambda-list-to-rte var types-map))
+                                
+                                (symbol? var)
+                                (get types-map var :sigma)
+                                
+                                :else
+                                (throw (ex-info (cl-format false "invalid lambda-list ~A" lambda-list)
+                                                {:error-type "cannot parse prefix"}))))
+        suffix-rte (cond
+                     (empty? suffix)
+                     nil
+
+                     (empty? (rest suffix))
+                     (lambda-list-to-rte suffix types-map)
+                     
+                     :else
+                     (throw (ex-info (cl-format false "invalid lambda-list ~A" lambda-list)
+                                     {:error-type "cannot parse suffix"})))]
+    (if (not (empty? suffix))
+      `(:cat ~@prefix-rte (:* ~suffix-rte))
+      `(:cat ~@prefix-rte))))
+
+(defmacro destructuring-case
+  "After evaluating the expression (only once) determine whether its return value
+  conforms to any of the given lambda lists and type restrictions.  If so,
+  bind the variables as if by let, and evaluate the corresponding form."
+  [expr & triples]
+  (if (not= 0 (mod (count triples) 3))
+    (throw (ex-info (cl-format false "destructuring-case expects multiple of 3 number of arguments: not ~A, ~A"
+                               (count triples) (apply list 'destructuring-case expr triples))
+                    {}))
+    (let [var (gensym "v")]
+      (letfn [(xxx [[lambda-list types-map consequence]]
+                [(lambda-list-to-rte lambda-list (apply assoc {} types-map))
+                 `(let [~lambda-list ~var]
+                    consequence)])]
+        (let [triples (partition 3 triples)
+              cases (mapcat xxx triples)]
+          `(let [~var ~expr]
+             (rte-case ~var ~@cases)))))))
