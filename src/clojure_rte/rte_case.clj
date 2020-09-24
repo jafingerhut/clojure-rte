@@ -92,7 +92,7 @@
                                 nil
 
                                 (sequential? var)
-                                (cons :rte (lambda-list-to-rte var types-map))
+                                (list 'rte (lambda-list-to-rte var types-map))
                                 
                                 (symbol? var)
                                 (get types-map var :sigma)
