@@ -127,7 +127,7 @@
       (letfn [(xxx [[lambda-list types-map consequence]]
                 [(lambda-list-to-rte lambda-list (apply assoc {} types-map))
                  `(let [~lambda-list ~var]
-                    consequence)])]
+                    ~consequence)])]
         (let [triples (partition 3 triples)
               cases (mapcat xxx triples)]
           `(let [~var ~expr]
