@@ -131,4 +131,4 @@
         (let [triples (partition 3 triples)
               cases (mapcat xxx triples)]
           `(let [~var ~expr]
-             (rte-case ~var ~@cases)))))))
+             (rte-case ~var ~@cases (:* :sigma) nil)))))))
