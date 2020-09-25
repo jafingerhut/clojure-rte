@@ -117,6 +117,7 @@
 (defmethod registered-type? 'rte [_] true)
 (defmethod registered-type? 'member [_] true)
 
+
 (defn supported-nontrivial-types []
   "Which types are currently supported?  This list denotes the
   type names which appear as (something maybe-args), which are
@@ -212,7 +213,8 @@
              ([_ _ _ & _] 
               (invalid-pattern pattern functions)))
            (rest pattern))))
-  
+
+
 (defn traverse-pattern
   "Workhorse function for walking an rte pattern.
    This function is the master of understanding the syntax of an rte
@@ -231,8 +233,22 @@
               ((:type functions) pattern functions)))
           (if-nil []
             ((:type functions) () functions))
+          (convert-type-designator-to-rte [obj]
+            ;; e.g convert (and a b c) => (:and a b c)
+            ;;             (or a b c) => (:or a b c)
+            ;;             (not a) => (:and :sigma (:not a))
+            (if (not (sequential? obj))
+              obj
+              ;; TODO if and,or,not need to verify that it is a valid.
+              ;;  i.e., (or (:and ...)) is not allowed.
+              (case (first obj)
+                (or) (cons :or (rest obj))
+                (and) (cons :and (rest obj))
+                (not) `(:and :sigma (:not ~(rest obj)))
+                obj)))
           (if-singleton-list [] ;; (:or)  (:and)
-            (let [[keyword] pattern]
+            (let [pattern (convert-type-designator-to-rte pattern)
+                  [keyword] pattern]
               (case keyword
                 (:or)  (traverse-pattern :empty-set functions)
                 (:and) (traverse-pattern :sigma functions)
@@ -254,7 +270,8 @@
                   :else
                   (traverse-pattern (rte-expand pattern functions) functions)))))
           (if-exactly-one-operand [] ;; (:or Long) (:* Long)
-            (let [[token operand] pattern]
+            (let [pattern (convert-type-designator-to-rte pattern)
+                  [token operand] pattern]
               (case token
                 (:or :and :cat)
                 (traverse-pattern operand functions)
@@ -267,7 +284,8 @@
                   ((:type functions) pattern functions)
                   (traverse-pattern (rte-expand pattern functions) functions)))))
           (if-multiple-operands []
-            (let [[token & operands] pattern]
+            (let [pattern (convert-type-designator-to-rte pattern)
+                  [token & operands] pattern]
               (case token
                 (:or
                  :and

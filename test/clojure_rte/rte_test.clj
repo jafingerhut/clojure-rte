@@ -321,8 +321,6 @@
       (is (thrown? clojure.lang.ExceptionInfo (rte-compile '(:? :epsilon :epsilon))))
       (is (thrown? clojure.lang.ExceptionInfo (rte-compile '(:+ :epsilon :epsilon)))))))
 
-
-
 (deftest t-mdtd
   (testing "mdtd"
     (with-compile-env ()
@@ -334,17 +332,17 @@
 (deftest t-boolean-types
   (testing "rte-match with Boolean types"
     (with-compile-env []
-      (is (rte-match '(:cat (or Boolean Long)) [42]))
-      (is (rte-match '(:* (or Boolean Long)) []))
-      (is (rte-match '(:* (or Boolean Long)) [42 ]))
-      (is (rte-match '(:* (or Boolean Long)) [42 43]))
-      (is (rte-match '(:* (or Boolean Long)) [42 43 false]))
+      (is (rte-match '(:cat (or Boolean Long)) [42]) "test 1")
+      (is (rte-match '(:* (or Boolean Long)) [])  "test 2")
+      (is (rte-match '(:* (or Boolean Long)) [42 ])  "test 3")
+      (is (rte-match '(:* (or Boolean Long)) [42 43])  "test 4")
+      (is (rte-match '(:* (or Boolean Long)) [42 43 false])  "test 5")
 
-      (is (rte-match '(:* (and Number Long (not (= 0)))) []))
-      (is (rte-match '(:* (and Number Long (not (= 0)))) [42]))
-      (is (rte-match '(:* (and Number Long (not (= 0)))) [42 43 ]))
-      (is (not (rte-match '(:* (and Number Long (not (= 0)))) [42 43 0 44]))))))
-
+      (is (rte-match '(:* (and Number Long (not (= 0)))) [])  "test 6")
+      (is (rte-match '(:* (and Number Long (not (= 0)))) [42])  "test 7")
+      (is (rte-match '(:* (and Number Long (not (= 0)))) [42 43 ])  "test 8")
+      (is (not (rte-match '(:* (:and Number Long (:not (:and :sigma (= 0))))) [42 43 0 44])) "test 9a")
+      (is (not (rte-match '(:* (and Number Long (not (= 0)))) [42 43 0 44]))  "test 9b"))))
 
 (deftest t-?
   (testing "rte :?"
