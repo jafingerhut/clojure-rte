@@ -224,13 +224,12 @@
    *traversal-functions*, indicating the callbacks for each rte
    keyword such as :* :cat etc.  The philosophy is that no other
    function needs to understand how to walk an rte pattern."
-  [pattern functions]
-
+  [given-pattern functions]
   (letfn [(if-atom []
-            (case pattern
+            (case given-pattern
               (:epsilon :empty-set :sigma)
-              ((functions pattern) pattern functions)
-              ((:type functions) pattern functions)))
+              ((functions given-pattern) given-pattern functions)
+              ((:type functions) given-pattern functions)))
           (if-nil []
             ((:type functions) () functions))
           (convert-type-designator-to-rte [obj]
@@ -247,7 +246,7 @@
                 (not) `(:and :sigma (:not ~(rest obj)))
                 obj)))
           (if-singleton-list [] ;; (:or)  (:and)
-            (let [pattern (convert-type-designator-to-rte pattern)
+            (let [pattern (convert-type-designator-to-rte given-pattern)
                   [keyword] pattern]
               (case keyword
                 (:or)  (traverse-pattern :empty-set functions)
@@ -270,7 +269,7 @@
                   :else
                   (traverse-pattern (rte-expand pattern functions) functions)))))
           (if-exactly-one-operand [] ;; (:or Long) (:* Long)
-            (let [pattern (convert-type-designator-to-rte pattern)
+            (let [pattern (convert-type-designator-to-rte given-pattern)
                   [token operand] pattern]
               (case token
                 (:or :and :cat)
@@ -284,7 +283,7 @@
                   ((:type functions) pattern functions)
                   (traverse-pattern (rte-expand pattern functions) functions)))))
           (if-multiple-operands []
-            (let [pattern (convert-type-designator-to-rte pattern)
+            (let [pattern (convert-type-designator-to-rte given-pattern)
                   [token & operands] pattern]
               (case token
                 (:or
@@ -305,16 +304,16 @@
                 (if (registered-type? token)
                   ((:type functions) pattern functions)
                   (traverse-pattern (rte-expand pattern functions) functions)))))]
-    (cond (not (seq? pattern))
+    (cond (not (seq? given-pattern))
           (if-atom)
 
-          (empty? pattern)
+          (empty? given-pattern)
           (if-nil)
 
-          (empty? (rest pattern)) ;; singleton list, (:and), (:or) etc
+          (empty? (rest given-pattern)) ;; singleton list, (:and), (:or) etc
           (if-singleton-list)
 
-          (empty? (rest (rest pattern))) ;; (:and x)
+          (empty? (rest (rest given-pattern))) ;; (:and x)
           (if-exactly-one-operand)
 
           ;; cond-else (:keyword args) or list-expr ;; (:and x y)
