@@ -331,6 +331,21 @@
                `(~'and java.lang.Exception (~'not clojure.lang.ExceptionInfo))
                'clojure.lang.ExceptionInfo})))))
 
+(deftest t-boolean-types
+  (testing "rte-match with Boolean types"
+    (with-compile-env []
+      (is (rte-match '(:cat (or Boolean Long)) [42]))
+      (is (rte-match '(:* (or Boolean Long)) []))
+      (is (rte-match '(:* (or Boolean Long)) [42 ]))
+      (is (rte-match '(:* (or Boolean Long)) [42 43]))
+      (is (rte-match '(:* (or Boolean Long)) [42 43 false]))
+
+      (is (rte-match '(:* (and Number Long (not (= 0)))) []))
+      (is (rte-match '(:* (and Number Long (not (= 0)))) [42]))
+      (is (rte-match '(:* (and Number Long (not (= 0)))) [42 43 ]))
+      (is (not (rte-match '(:* (and Number Long (not (= 0)))) [42 43 0 44]))))))
+
+
 (deftest t-?
   (testing "rte :?"
     (with-compile-env []
