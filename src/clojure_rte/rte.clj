@@ -483,8 +483,6 @@
                                         (list :not operand))
                                       )))
                            :and (fn [operands _functions]
-                                  (assert (< 1 (count operands))
-                                          (format "traverse-pattern should have already eliminated this case: re=%s count=%s operands=%s" re (count operands) operands))
                                   (let [operands (dedupe (sort-operands (map canonicalize-pattern operands)))]
                                     (cl-cond
                                      ((some and? operands)
@@ -572,7 +570,6 @@
 (defn canonicalize-pattern 
   "find the fixed point of canonicalize-pattern-once"
   [pattern]
-
   (loop [old-pattern []
          new-pattern pattern]
     (if (= old-pattern new-pattern)
