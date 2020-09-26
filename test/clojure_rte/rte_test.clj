@@ -593,26 +593,28 @@
 
 (deftest t-rte-combine-labels
   (testing "rte-combine-labels"
-    (is (= '(or Long String)
-           (rte-combine-labels 'Long
-                               'String)))
-    (is (= '(or Long String Double)
-           (rte-combine-labels '(or Long String)
-                               'Double)))
-    (is (= '(or Double Long String)
-           (rte-combine-labels 'Double
-                               '(or Long String))))
-    (is (= '(or Double String Long String)
-           (rte-combine-labels '(or Double String)
-                               '(or Long String))))))
+    (with-compile-env ()
+      (is (= '(or Long String)
+             (rte-combine-labels 'Long
+                                 'String)))
+      (is (= '(or Long String Double)
+             (rte-combine-labels '(or Long String)
+                                 'Double)))
+      (is (= '(or Double Long String)
+             (rte-combine-labels 'Double
+                                 '(or Long String))))
+      (is (= '(or Double String Long String)
+             (rte-combine-labels '(or Double String)
+                                 '(or Long String)))))))
 
 (deftest t-rte-combine-labels
   (testing "and/not conversion"
-    (is (not= '(:not (= 0))
-              (canonicalize-pattern '(not (= 0)))) "test 0")
-    (is (not (rte-match '(:* (and Number Long (not (= 0)))) [0])) "test 1")
-    (is (rte-match '(:* (and Number Long (not (= 0)))) [1]) "test 2")
-    (is (not (rte-match '(:* (and  Long (not (= 0)))) [0])) "test 3")
-    (is (rte-match '(:* (and Long (not (= 0)))) [1]) "test 4")
-    (is (not (rte-match '(:* (and  Number (not (= 0)))) [0])) "test 5")
-    (is (rte-match '(:* (and  Number (not (= 0)))) [1]) "test 6")))
+    (with-compile-env ()
+      (is (not= '(:not (= 0))
+                (canonicalize-pattern '(not (= 0)))) "test 0")
+      (is (not (rte-match '(:* (and Number Long (not (= 0)))) [0])) "test 1")
+      (is (rte-match '(:* (and Number Long (not (= 0)))) [1]) "test 2")
+      (is (not (rte-match '(:* (and  Long (not (= 0)))) [0])) "test 3")
+      (is (rte-match '(:* (and Long (not (= 0)))) [1]) "test 4")
+      (is (not (rte-match '(:* (and  Number (not (= 0)))) [0])) "test 5")
+      (is (rte-match '(:* (and  Number (not (= 0)))) [1]) "test 6"))))
