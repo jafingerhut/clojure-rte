@@ -233,7 +233,7 @@
           (if-nil [_]
             ((:type functions) () functions))
           (verify-type [obj]
-            (if (valid-type? obj)
+            (if (ty/valid-type? obj)
               obj
               (throw (ex-info (cl-format false "invalid type designator ~A" obj)
                               {:error-type :invalid-type-designator
