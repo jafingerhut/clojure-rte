@@ -618,3 +618,13 @@
       (is (rte-match '(:* (and Long (not (= 0)))) [1]) "test 4")
       (is (not (rte-match '(:* (and  Number (not (= 0)))) [0])) "test 5")
       (is (rte-match '(:* (and  Number (not (= 0)))) [1]) "test 6"))))
+
+(deftest t-invalid-type
+  (testing "for invalid type within rte"
+    (with-compile-env ()
+      (is (thrown? Exception (canonicalize-pattern '(not (:or String Number)))) "test 0")
+      (is (thrown? Exception (canonicalize-pattern '(and (:or String Number)
+                                                         (:or :sigma)))) "test 1")
+      (is (thrown? Exception (canonicalize-pattern '(or (:and String Number)))) "test 2"))))
+
+    
