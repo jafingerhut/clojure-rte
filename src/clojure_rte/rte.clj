@@ -225,13 +225,20 @@
    keyword such as :* :cat etc.  The philosophy is that no other
    function needs to understand how to walk an rte pattern."
   [given-pattern functions]
-  (letfn [(if-atom []
-            (case given-pattern
+  (letfn [(if-atom [pattern]
+            (case pattern
               (:epsilon :empty-set :sigma)
-              ((functions given-pattern) given-pattern functions)
-              ((:type functions) given-pattern functions)))
-          (if-nil []
+              ((functions pattern) pattern functions)
+              ((:type functions) pattern functions)))
+          (if-nil [_]
             ((:type functions) () functions))
+          (verify-type [obj]
+            (if (valid-type? obj)
+              obj
+              (throw (ex-info (cl-format false "invalid type designator ~A" obj)
+                              {:error-type :invalid-type-designator
+                               :obj obj
+                               :given-pattern given-pattern}))))
           (convert-type-designator-to-rte [obj]
             ;; e.g convert (and a b c) => (:and a b c)
             ;;             (or a b c) => (:or a b c)
@@ -241,25 +248,24 @@
             (if (not (sequential? obj))
               obj
               (case (first obj)
-                (or) (cons :or (rest obj))
-                (and) (cons :and (rest obj))
-                (not) `(:and :sigma (:not ~(rest obj)))
+                (or) (cons :or (rest (verify-type obj)))
+                (and) (cons :and (rest (verify-type obj)))
+                (not) `(:and (:not ~@(rest (verify-type obj))) :sigma)
                 obj)))
-          (if-singleton-list [] ;; (:or)  (:and)
-            (let [pattern (convert-type-designator-to-rte given-pattern)
-                  [keyword] pattern]
+          (if-singleton-list [pattern] ;; (:or)  (:and)
+            (let [[keyword] pattern]
               (case keyword
                 (:or)  (traverse-pattern :empty-set functions)
                 (:and) (traverse-pattern :sigma functions)
                 (:cat) (traverse-pattern :epsilon functions)
                 (:not
                  :*) (throw (ex-info (format "invalid pattern %s, expecting exactly one operand" pattern)
-                                       {:error-type :rte-syntax-error
-                                        :keyword keyword
-                                        :pattern pattern
-                                        :functions functions
-                                        :cause :unary-keyword
-                                        }))
+                                     {:error-type :rte-syntax-error
+                                      :keyword keyword
+                                      :pattern pattern
+                                      :functions functions
+                                      :cause :unary-keyword
+                                      }))
                 ;; case-else
                 (cond
                   (and (sequential? keyword)
@@ -268,9 +274,8 @@
 
                   :else
                   (traverse-pattern (rte-expand pattern functions) functions)))))
-          (if-exactly-one-operand [] ;; (:or Long) (:* Long)
-            (let [pattern (convert-type-designator-to-rte given-pattern)
-                  [token operand] pattern]
+          (if-exactly-one-operand [pattern] ;; (:or Long) (:* Long)
+            (let [[token operand] pattern]
               (case token
                 (:or :and :cat)
                 (traverse-pattern operand functions)
@@ -282,9 +287,8 @@
                 (if (registered-type? (first pattern))
                   ((:type functions) pattern functions)
                   (traverse-pattern (rte-expand pattern functions) functions)))))
-          (if-multiple-operands []
-            (let [pattern (convert-type-designator-to-rte given-pattern)
-                  [token & operands] pattern]
+          (if-multiple-operands [pattern]
+            (let [[token & operands] pattern]
               (case token
                 (:or
                  :and
@@ -304,20 +308,21 @@
                 (if (registered-type? token)
                   ((:type functions) pattern functions)
                   (traverse-pattern (rte-expand pattern functions) functions)))))]
-    (cond (not (seq? given-pattern))
-          (if-atom)
+    (let [pattern (convert-type-designator-to-rte given-pattern)]
+      (cond (not (seq? pattern))
+            (if-atom pattern)
 
-          (empty? given-pattern)
-          (if-nil)
+            (empty? pattern)
+            (if-nil pattern)
 
-          (empty? (rest given-pattern)) ;; singleton list, (:and), (:or) etc
-          (if-singleton-list)
+            (empty? (rest pattern)) ;; singleton list, (:and), (:or) etc
+            (if-singleton-list pattern)
 
-          (empty? (rest (rest given-pattern))) ;; (:and x)
-          (if-exactly-one-operand)
+            (empty? (rest (rest pattern))) ;; (:and x)
+            (if-exactly-one-operand pattern)
 
-          ;; cond-else (:keyword args) or list-expr ;; (:and x y)
-          :else (if-multiple-operands))))
+            ;; cond-else (:keyword args) or list-expr ;; (:and x y)
+            :else (if-multiple-operands pattern)))))
 
 (defn nullable 
   "Determine whether the given rational type expression is nullable.
