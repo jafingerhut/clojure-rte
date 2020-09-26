@@ -85,34 +85,41 @@
 (defn lambda-list-to-rte
   "Helper function for destructuring-case macro."
   [lambda-list types-map]
-  (let [[prefix _ suffix] (partition-by (fn [x] (= x '&)) lambda-list)
-        prefix-rte (for [var prefix]
-                     (cond (and (sequential? var)
-                                     (empty? var))
-                                nil
+  (letfn [(pretty-and [a b]
+            (let [args (list a b)]
+              (cond
+                (empty? args) :sigma
+                (empty? (rest args)) (first args)
+                :else (cons 'and args))))]
+    (let [[prefix _ suffix] (partition-by (fn [x] (= x '&)) lambda-list)
+          prefix-rte (for [var prefix]
+                       (cond (and (sequential? var)
+                                  (empty? var))
+                             nil
 
-                                (sequential? var)
-                                (list 'rte (lambda-list-to-rte var types-map))
-                                
-                                (symbol? var)
-                                (get types-map var :sigma)
-                                
-                                :else
-                                (throw (ex-info (cl-format false "invalid lambda-list ~A" lambda-list)
-                                                {:error-type "cannot parse prefix"}))))
-        suffix-rte (cond
-                     (empty? suffix)
-                     nil
+                             (sequential? var)
+                             (list 'rte (lambda-list-to-rte var types-map))
+                             
+                             (symbol? var)
+                             (pretty-and (get (meta var) :tag :sigma)
+                                         (get types-map var :sigma))
+                             
+                             :else
+                             (throw (ex-info (cl-format false "invalid lambda-list ~A" lambda-list)
+                                             {:error-type "cannot parse prefix"}))))
+          suffix-rte (cond
+                       (empty? suffix)
+                       nil
 
-                     (empty? (rest suffix))
-                     (lambda-list-to-rte suffix types-map)
-                     
-                     :else
-                     (throw (ex-info (cl-format false "invalid lambda-list ~A" lambda-list)
-                                     {:error-type "cannot parse suffix"})))]
-    (if (not (empty? suffix))
-      `(:cat ~@prefix-rte (:* ~suffix-rte))
-      `(:cat ~@prefix-rte))))
+                       (empty? (rest suffix))
+                       (lambda-list-to-rte suffix types-map)
+                       
+                       :else
+                       (throw (ex-info (cl-format false "invalid lambda-list ~A" lambda-list)
+                                       {:error-type "cannot parse suffix"})))]
+      (if (not (empty? suffix))
+        `(:cat ~@prefix-rte (:* ~suffix-rte))
+        `(:cat ~@prefix-rte)))))
 
 (defmacro destructuring-case
   "After evaluating the expression (only once) determine whether its return value
@@ -125,7 +132,9 @@
                     {}))
     (let [var (gensym "v")]
       (letfn [(xxx [[lambda-list types-map consequence]]
-                [(lambda-list-to-rte lambda-list (apply assoc {} types-map))
+                (assert (map? types-map)
+                        (cl-format false "destructuring-case expecting a map, not ~A" types-map))
+                [(lambda-list-to-rte lambda-list types-map)
                  `(let [~lambda-list ~var]
                     ~consequence)])]
         (let [triples (partition 3 triples)

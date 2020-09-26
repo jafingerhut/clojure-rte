@@ -628,5 +628,3 @@
       (is (thrown? Exception (canonicalize-pattern '(and (:or String Number)
                                                          (:or :sigma)))) "test 2")
       (is (thrown? Exception (canonicalize-pattern '(or (:and String Number)))) "test 3"))))
-
-    
