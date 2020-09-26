@@ -236,10 +236,10 @@
             ;; e.g convert (and a b c) => (:and a b c)
             ;;             (or a b c) => (:or a b c)
             ;;             (not a) => (:and :sigma (:not a))
+            ;; We also verify that it is a valid.
+            ;;  i.e., (or (:and ...)) is not allowed, which probably means the user forgot a :
             (if (not (sequential? obj))
               obj
-              ;; TODO if and,or,not need to verify that it is a valid.
-              ;;  i.e., (or (:and ...)) is not allowed.
               (case (first obj)
                 (or) (cons :or (rest obj))
                 (and) (cons :and (rest obj))
