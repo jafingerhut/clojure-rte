@@ -623,8 +623,10 @@
   (testing "for invalid type within rte"
     (with-compile-env ()
       (is (thrown? Exception (canonicalize-pattern '(not (:or String Number)))) "test 0")
+      (is (thrown? Exception (canonicalize-pattern '(not (or String Number)
+                                                         (or Long Number)))) "test 1")
       (is (thrown? Exception (canonicalize-pattern '(and (:or String Number)
-                                                         (:or :sigma)))) "test 1")
-      (is (thrown? Exception (canonicalize-pattern '(or (:and String Number)))) "test 2"))))
+                                                         (:or :sigma)))) "test 2")
+      (is (thrown? Exception (canonicalize-pattern '(or (:and String Number)))) "test 3"))))
 
     
