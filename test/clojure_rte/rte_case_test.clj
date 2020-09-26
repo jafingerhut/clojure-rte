@@ -107,18 +107,19 @@
 (deftest t-destructuring-case
   (testing "destructuring-case"
     (is (= 1 (destructuring-case '(true ["hello" 3] true)
-                                 [a [b c] & d]  {a Boolean b String d Boolean}
+                                 [[a [b c] & d]  {a Boolean b String d Boolean}]
                                  1
 
-                                 [a b]          {a Boolean b (or String Boolean)}
+                                 [[a b]          {a Boolean b (or String Boolean)}]
                                  2))
         "test 1")
 
     (is (= 1 (destructuring-case '(true ["hello" 3] true)
 
-                                 [a b]          {a Boolean b (or String Boolean)}
+                                 [[a b]          {a Boolean b (or String Boolean)}]
                                  2
-                                 [a [b c] & d]  {a Boolean b String d Boolean}
+                                 
+                                 [[a [b c] & d]  {a Boolean b String d Boolean}]
                                  1
 
 
@@ -126,36 +127,72 @@
         "test 2")
 
     (is (= nil (destructuring-case '(true [3 3] true)
-                                   [a [b c] & d]  {a Boolean b String d Boolean}
+                                   [[a [b c] & d]  {a Boolean b String d Boolean}]
                                    1
 
-                                   [a b]          {a Boolean b (or String Boolean)}
+                                   [[a b]          {a Boolean b (or String Boolean)}]
                                    2))
         "test 3")
 
     (is (= 1
            (destructuring-case '(true ["hello" xyz] true false true)
-                               [^Boolean a [^String b c] & ^Boolean d]  {}
+                               [[^Boolean a [^String b c] & ^Boolean d]  {}]
                                1 ;; this is returned
 
-                               [a b]          {a Boolean b (or String Boolean)}
+                               [[a b]          {a Boolean b (or String Boolean)}]
                                2))
         "test 4")
     (is (= 2
            (destructuring-case '(true ["hello" xyz] true false 1 2 3)
-                               [^Boolean a [^String b c] & ^Boolean d]  {}
+                               [[^Boolean a [^String b c] & ^Boolean d]  {}]
                                1
 
-                               [^Boolean a [^String b c] & d]  {}
+                               [[^Boolean a [^String b c] & d]  {}]
                                2 ;; this is returned
                                ))
         "test 5")
-     (is (= nil
+    (is (= nil
            (destructuring-case '(true ["hello" xyz] true false 1 2 3)
-                               [^Boolean a [^String b c] & ^Boolean d]  {d Number}
+                               [[^Boolean a [^String b c] & ^Boolean d]  {d Number}]
                                1 ;; this is NOT returned
 
-                               [^Boolean a [^String b c] & ^Number d]  {d Boolean}
+                               [[^Boolean a [^String b c] & ^Number d]  {d Boolean}]
                                2 ;; this is NOT returned
                                ))
-        "test 6")))
+        "test 6")
+
+    (is (= 1 (destructuring-case '(true ["3" 3] true)
+                                 [[a [b c] & d]  {[a d] Boolean b String}]
+                                 1
+
+                                 [[a b]          {a Boolean b (or String Boolean)}]
+                                 2))
+        "test 7")
+
+    (is (= 1 (destructuring-case '(true ["3" 3] true)
+                                 [[a b]          {a Boolean b (or String Boolean)}]
+                                 2
+
+                                 [[a [b c] & d]  {[a d] Boolean b String}]
+                                 1
+                                 ))
+        "test 8")
+
+    (is (= 1 (destructuring-case '(true ["3" 3] true)
+                                 [[a b]          {a Boolean b (or String Boolean)}]
+                                 2
+
+                                 [[a [b c] & d]  {[a d] Boolean a (not Number) b String}]
+                                 1
+                                 ))
+        "test 9")
+    (is (= 1 (destructuring-case '(true ["3" 3] true)
+                                 [[a b]          {a Boolean b (or String Boolean)}]
+                                 2
+
+                                 [[a [b c] & d]  {[a d] (not Number) a Boolean b String}]
+                                 1
+                                 ))
+        "test 10")))
+
+     

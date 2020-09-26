@@ -85,6 +85,7 @@
 (defn lambda-list-to-rte
   "Helper function for destructuring-case macro."
   [lambda-list types-map]
+  (assert (map? types-map))
   (letfn [(pretty-and [a b]
             (let [args (list a b)]
               (cond
@@ -125,19 +126,35 @@
   "After evaluating the expression (only once) determine whether its return value
   conforms to any of the given lambda lists and type restrictions.  If so,
   bind the variables as if by let, and evaluate the corresponding form."
-  [expr & triples]
-  (if (not= 0 (mod (count triples) 3))
-    (throw (ex-info (cl-format false "destructuring-case expects multiple of 3 number of arguments: not ~A, ~A"
-                               (count triples) (apply list 'destructuring-case expr triples))
-                    {}))
+  [expr & pairs]
+  (cond
+    (not= 0 (mod (count pairs) 2))
+    (throw (ex-info (cl-format false "destructuring-case expects multiple of 2 number of arguments after the first: not ~A, ~A"
+                               (count pairs) (apply list 'destructuring-case expr pairs))
+                    {:error-type :invalid-destructuring-case-call-site
+                     :expr expr
+                     :pairs pairs}))
+
+    :else
     (let [var (gensym "v")]
-      (letfn [(xxx [[lambda-list types-map consequence]]
+      (letfn [(expand-multi-restructions [types-map]
+                (assert (map? types-map))
+                (merge types-map
+                       (into {} (for [key (keys types-map)
+                                      :when (sequential? key)
+                                      :let [type-1 (get types-map key)]
+                                      var key
+                                      :let [type-2 (get types-map var)]]
+                                  (if type-2
+                                    [var (list 'and type-1 type-2)]
+                                    [var type-1])))))
+              (conv-1-case-clause [[[lambda-list types-map] consequence]]
                 (assert (map? types-map)
                         (cl-format false "destructuring-case expecting a map, not ~A" types-map))
-                [(lambda-list-to-rte lambda-list types-map)
+                [(lambda-list-to-rte lambda-list (expand-multi-restructions types-map))
                  `(let [~lambda-list ~var]
                     ~consequence)])]
-        (let [triples (partition 3 triples)
-              cases (mapcat xxx triples)]
+        (let [pairs (partition 2 pairs)
+              cases (mapcat conv-1-case-clause pairs)]
           `(let [~var ~expr]
              (rte-case ~var ~@cases (:* :sigma) nil)))))))
