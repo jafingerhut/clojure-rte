@@ -203,7 +203,7 @@
                   [[a [b c] & d]  {a Boolean b String d Boolean}]
                   1)]
                   
-             (f  '(true ["hello" 3] true))))
+             (apply f  '(true ["hello" 3] true))))
         "test 1")))
 
 (deftest t-destructuring-fn-many
@@ -215,7 +215,7 @@
                    2)
                   ([[a [b c] & d]  {a Boolean b String d Boolean}]
                    1))]
-             (f  '(true ["hello" 3] true))))
+             (apply f  '(true ["hello" 3] true))))
 
         "test 2")))
 
@@ -229,9 +229,7 @@
           2)
          ([[a [b c] & d]  {a Boolean b String d Boolean}]
           1))]
-    ;; (f  '(true ["hello" 3] true))
-    f
-
+     (apply f  '(true ["hello" 3] true))
     )
 
   (let [f
@@ -249,7 +247,7 @@
 
                       (:* :sigma)
                       nil)))]
-    (f  '(true ["hello" 3] true)))
+    (apply f  '(true ["hello" 3] true)))
 
   (let [f
         (fn [& fn-var-41956]
@@ -290,9 +288,7 @@
                 (rte-match
                  dfa
                  v41977))))))]
-    (f  '(true ["hello" 3] true)))
-
-
+    (apply f  '(true ["hello" 3] true)))
   )
 
 (deftest t-destructuring-fn
@@ -304,7 +300,7 @@
 
                     ([[a b]          {a Boolean b (or String Boolean)}]
                      2))]
-             (f  '(true [3 3] true))))
+             (apply f  '(true [3 3] true))))
         "test 3")
 
     (is (= 1
@@ -314,7 +310,7 @@
                      )
                     ([[a b]          {a Boolean b (or String Boolean)}]
                      2))]
-             (f '(true ["hello" xyz] true false true))))
+             (apply f '(true ["hello" xyz] true false true))))
         "test 4")
     (is (= 2
            (let [f (destructuring-fn
@@ -324,7 +320,7 @@
                     ([[^Boolean a [^String b c] & d]  {}]
                      2 ;; this is returned
                      ))]
-             (f '(true ["hello" xyz] true false 1 2 3))))
+             (apply f '(true ["hello" xyz] true false 1 2 3))))
         "test 5")
     (is (= nil
            (let [f (destructuring-fn
@@ -334,7 +330,7 @@
                     ([[^Boolean a [^String b c] & ^Number d]  {d Boolean}]
                      2 ;; this is NOT returned
                      ))]
-             (f '(true ["hello" xyz] true false 1 2 3))))
+             (apply f '(true ["hello" xyz] true false 1 2 3))))
         "test 6")
 
     (is (= 1 
@@ -344,7 +340,7 @@
                     
                     ([[a b]          {a Boolean b (or String Boolean)}]
                      2))]
-             (f '(true ["3" 3] true))))
+             (apply f '(true ["3" 3] true))))
         "test 7")
 
     (is (= 1
@@ -353,7 +349,7 @@
                      2)
                     ([[a [b c] & d]  {[a d] Boolean b String}]
                      1))]
-             (f '(true ["3" 3] true))))
+             (apply f '(true ["3" 3] true))))
         "test 8")
 
     (is (= 1
@@ -362,7 +358,7 @@
                      2)
                     ([[a [b c] & d]  {[a d] Boolean a (not Number) b String}]
                      1))]
-             (f '(true ["3" 3] true))))
+             (apply f '(true ["3" 3] true))))
         "test 9")
     (is (= 1 
            (let [f (destructuring-fn
@@ -370,8 +366,29 @@
                      2)
                     ([[a [b c] & d]  {[a d] (not Number) a Boolean b String}]
                      1))]
-             (f  '(true ["3" 3] true))))
+             (apply f  '(true ["3" 3] true))))
         "test 10")))
+
+(deftest t-destructuring-fn-374
+  (testing "special case which was failing 374"
+    (is (= 1
+           (let [f (destructuring-fn
+                    ([[^Boolean a]  {}]
+                     1)
+                    ([[a]          {a String}]
+                     2))]
+             (apply f '(true  ))))
+        "test-374")))
+
+(deftest t-destructuring-fn-385
+  (testing "special case which was failing 385"
+    (is (= 1
+           (destructuring-case '(true  )
+                               [[^Boolean a]  {}]
+                               1
+                               [[a]          {a String}]
+                               2))
+        "test-385")))
 
 (deftest t-rte-match-376
   (testing "special case which was failing 376"
