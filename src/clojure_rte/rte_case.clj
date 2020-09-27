@@ -47,7 +47,8 @@
                         {}))
 
         (<= num-fns index)
-        (throw (ex-info (cl-format false "rte-match returned index out of range ~A <= ~A" num-fns index)
+        (throw (ex-info (cl-format false "rte-match returned index out of range ~A <= ~A"
+                                   num-fns index)
                         {}))
         :else
         index))
