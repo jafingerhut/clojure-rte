@@ -195,4 +195,105 @@
                                  ))
         "test 10")))
 
-     
+(deftest t-destructuring-fn-1
+  (testing "destructuring-fn simple form"
+    (is (= 1 
+           (let [f 
+                 (destructuring-fn
+                  [[a [b c] & d]  {a Boolean b String d Boolean}]
+                  1)]
+                  
+             (f  '(true ["hello" 3] true))))
+        "test 1")))
+
+(deftest t-destructuring-fn-many
+  (testing "destructuring-fn-many"
+    (is (= 1
+           (let [f
+                 (destructuring-fn-many
+                  ([[a b]          {a Boolean b (or String Boolean)}]
+                   2)
+                  ([[a [b c] & d]  {a Boolean b String d Boolean}]
+                   1))]
+             (f  '(true ["hello" 3] true))))
+
+        "test 2")))
+
+(deftest t-destructuring-fn
+  (testing "destructuring-fn"
+    (is (= nil
+           (let [f (destructuring-fn
+                    ([[a [b c] & d]  {a Boolean b String d Boolean}]
+                     1)
+
+                    ([[a b]          {a Boolean b (or String Boolean)}]
+                     2))]
+             (f  '(true [3 3] true))))
+        "test 3")
+
+    (is (= 1
+           (let [f (destructuring-fn
+                    ([[^Boolean a [^String b c] & ^Boolean d]  {}]
+                     1 ;; this is returned
+                     )
+                    ([[a b]          {a Boolean b (or String Boolean)}]
+                     2))]
+             (f '(true ["hello" xyz] true false true))))
+        "test 4")
+    (is (= 2
+           (let [f (destructuring-fn
+                    ([[^Boolean a [^String b c] & ^Boolean d]  {}]
+                     1
+                     )
+                    ([[^Boolean a [^String b c] & d]  {}]
+                     2 ;; this is returned
+                     ))]
+             (f '(true ["hello" xyz] true false 1 2 3))))
+        "test 5")
+    (is (= nil
+           (let [f (destructuring-fn
+                    ([[^Boolean a [^String b c] & ^Boolean d]  {d Number}]
+                     1 ;; this is NOT returned
+                     )
+                    ([[^Boolean a [^String b c] & ^Number d]  {d Boolean}]
+                     2 ;; this is NOT returned
+                     ))]
+             (f '(true ["hello" xyz] true false 1 2 3))))
+        "test 6")
+
+    (is (= 1 
+           (let [f (destructuring-fn
+                    ([[a [b c] & d]  {[a d] Boolean b String}]
+                     1)
+                    
+                    ([[a b]          {a Boolean b (or String Boolean)}]
+                     2))]
+             (f '(true ["3" 3] true))))
+        "test 7")
+
+    (is (= 1
+           (let [f (destructuring-fn
+                    ([[a b]          {a Boolean b (or String Boolean)}]
+                     2)
+                    ([[a [b c] & d]  {[a d] Boolean b String}]
+                     1))]
+             (f '(true ["3" 3] true))))
+        "test 8")
+
+    (is (= 1
+           (let [f (destructuring-fn
+                    ([[a b]          {a Boolean b (or String Boolean)}]
+                     2)
+                    ([[a [b c] & d]  {[a d] Boolean a (not Number) b String}]
+                     1))]
+             (f '(true ["3" 3] true))))
+        "test 9")
+    (is (= 1 
+           (let [f (destructuring-fn
+                    ([[a b]          {a Boolean b (or String Boolean)}]
+                     2)
+                    ([[a [b c] & d]  {[a d] (not Number) a Boolean b String}]
+                     1))]
+             (f  '(true ["3" 3] true))))
+        "test 10")))
+    

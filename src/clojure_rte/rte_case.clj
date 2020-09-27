@@ -159,19 +159,67 @@
           `(let [~var ~expr]
              (rte-case ~var ~@cases (:* :sigma) nil)))))))
 
-(defmacro destructuring-fn-1
+(defmacro destructuring-fn-many
   [& args]
   (cond (empty? args)
         nil
 
         (and (not (symbol? (first args)))
              (not (= nil (first args))))
-        `(destructuring-fn-1 nil ~@args)
+        `(destructuring-fn-many nil ~@args)
 
-        ;; now we should have (destructuring-fn-1 name|nil [param* types-map] exprs*)
         :else
-        (let [[name pair & exprs] args ]
-          `(destructuring-fn-many
+        (let [var (gensym "fn-var-")
+              [name & given-clauses] args
+              clauses (mapcat (fn [[structured-lambda-list & exprs]]
+                                `(~structured-lambda-list (do ~@exprs))) given-clauses)
+              ]
+          `(fn
              ~@(if name (list name) nil) ;; either name or nothing
-             (~pair ~@exprs)))))
+             [& ~var]
+             (destructuring-case ~var
+                                 ~@clauses)))))
 
+(defmacro destructuring-fn
+  [& args]
+  (cond (empty? args)
+        nil
+
+        (and (not (symbol? (first args)))
+             (not (= nil (first args))))
+        `(destructuring-fn nil ~@args)
+
+        :else
+        (let [[name & clauses] args]
+          (cond
+            (empty? clauses)
+            nil
+
+            (vector? (first clauses))
+            ;; either first clause is a vector like [a b c]
+            `(destructuring-fn-many
+              ~@(if name (list name) nil) ;; either name or nothing
+              ~clauses ;; i.e., with a set of parens around it.
+              )
+
+            (every? (fn [clause]
+                      (and (list? clause)
+                           (not (empty? clause))
+                           (vector? (first clause))))
+                    clauses)
+            ;; or all the clauses are lists whose first element is always a vector
+            `(destructuring-fn-many
+              ~@(if name (list name) nil) ;; either name or nothing
+              ~@clauses)
+
+            :else
+            (throw (IllegalArgumentException. 
+                    (cl-format false
+                               "destructuring-fn, invalid argument list: ~A"
+                               args)))))))
+
+
+        
+          
+        
+  
