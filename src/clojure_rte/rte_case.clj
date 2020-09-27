@@ -158,3 +158,20 @@
               cases (mapcat conv-1-case-clause pairs)]
           `(let [~var ~expr]
              (rte-case ~var ~@cases (:* :sigma) nil)))))))
+
+(defmacro destructuring-fn-1
+  [& args]
+  (cond (empty? args)
+        nil
+
+        (and (not (symbol? (first args)))
+             (not (= nil (first args))))
+        `(destructuring-fn-1 nil ~@args)
+
+        ;; now we should have (destructuring-fn-1 name|nil [param* types-map] exprs*)
+        :else
+        (let [[name pair & exprs] args ]
+          `(destructuring-fn-many
+             ~@(if name (list name) nil) ;; either name or nothing
+             (~pair ~@exprs)))))
+
