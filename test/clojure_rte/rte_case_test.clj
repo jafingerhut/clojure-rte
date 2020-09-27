@@ -219,6 +219,82 @@
 
         "test 2")))
 
+(deftest t-destructuring-fn-many-2
+  ;; some of these were/are getting index invalid
+  ;; we run them here to assure that we don't get index invalid.
+  (let [f
+
+        (destructuring-fn-many
+         ([[a b]          {a Boolean b (or String Boolean)}]
+          2)
+         ([[a [b c] & d]  {a Boolean b String d Boolean}]
+          1))]
+    ;; (f  '(true ["hello" 3] true))
+    f
+
+    )
+
+  (let [f
+        (fn [& fn-var-41956]
+          (let [v41977 fn-var-41956]
+            (rte-case v41977
+                      (:cat (and :sigma Boolean) (and :sigma (or String Boolean)))
+                      (let [[a b] v41977] (do 2))
+
+                      (:cat
+                       (and :sigma Boolean)
+                       (rte (:cat (and :sigma String) (and :sigma :sigma)))
+                       (:* (:cat (and :sigma Boolean))))
+                      (let [[a [b c] & d] v41977] (do 1))
+
+                      (:* :sigma)
+                      nil)))]
+    (f  '(true ["hello" 3] true)))
+
+  (let [f
+        (fn [& fn-var-41956]
+          (let [v41977 fn-var-41956]
+            (([(fn [] (let [[a b] v41977] (do 2)))
+               (fn [] (let [[a [b c] & d] v41977] (do 1)))
+               (fn [] nil)]
+              (let [dfa (memoized-rte-case-helper
+                         '[[0
+                            (:and
+                             (:cat
+                              (and :sigma Boolean)
+                              (and :sigma (or String Boolean)))
+                             (:not (:or)))]
+                           [1
+                            (:and
+                             (:cat
+                              (and :sigma Boolean)
+                              (rte (:cat (and :sigma String) (and :sigma :sigma)))
+                              (:* (:cat (and :sigma Boolean))))
+                             (:not
+                              (:or
+                               (:cat
+                                (and :sigma Boolean)
+                                (and :sigma (or String Boolean))))))]
+                           [2
+                            (:and
+                             (:* :sigma)
+                             (:not
+                              (:or
+                               (:cat
+                                (and :sigma Boolean)
+                                (rte (:cat (and :sigma String) (and :sigma :sigma)))
+                                (:* (:cat (and :sigma Boolean))))
+                               (:cat
+                                (and :sigma Boolean)
+                                (and :sigma (or String Boolean))))))]])]
+                (rte-match
+                 dfa
+                 v41977))))))]
+    (f  '(true ["hello" 3] true)))
+
+
+  )
+
 (deftest t-destructuring-fn
   (testing "destructuring-fn"
     (is (= nil
@@ -296,3 +372,35 @@
                      1))]
              (f  '(true ["3" 3] true))))
         "test 10")))
+
+(deftest t-rte-match-376
+  (testing "special case which was failing 376"
+    (is (= 1
+           (with-compile-env ()
+             (rte-match
+              (memoized-rte-case-helper
+               '[[0
+                  (:and (:cat Boolean (or String Boolean))
+                        (:not (:or)))]
+                 [1
+                  (:and
+                   (:cat
+                    Boolean
+                    (rte (:cat String :sigma))
+                    (:* Boolean))
+                   (:not
+                    (:cat Boolean (or String Boolean))))]
+                 [2
+                  (:and
+                   (:* :sigma)
+                   (:not
+                    (:or
+                     (:cat
+                      (and :sigma Boolean)
+                      (rte
+                       (:cat String :sigma))
+                      (:* Boolean))
+                     (:cat
+                      Boolean
+                      (or String Boolean)))))]])
+              '(true ["hello" 3] true)))))))
