@@ -35,6 +35,23 @@
 
 (def memoized-rte-case-helper (memoize rte-case-helper))
 
+(defn ensure-fns-index
+  "Internal function used in macro expansion of rte-case, to assure the index is in range
+  or print a reasonable error message."
+  [index num-fns]
+  (cond (not (integer? index))
+        (throw (ex-info (cl-format false "rte-match returned non-integer ~A" index)
+                        {}))
+        (< 0 index)
+        (throw (ex-info (cl-format false "rte-match returned negative integer ~A" index)
+                        {}))
+
+        (<= num-fns index)
+        (throw (ex-info (cl-format false "rte-match returned index out of range ~A <= ~A" num-fns index)
+                        {}))
+        :else
+        index))
+
 (defmacro rte-case
   "Takes an expression, and a set of clauses.
   The expression should evaluate to an object which is `sequential?`.
@@ -79,8 +96,11 @@
                          (conj acc-int-rte-pairs [index `(:and ~rte (:not (:or ~@used-rtes)))])
                          (conj acc-fns `(fn [] ~consequent)))))))]
     
-    (let [[fns int-rte-pairs] (compile-clauses clauses)]
-      `((~fns (rte-match (memoized-rte-case-helper '~int-rte-pairs) ~sequence))))))
+    (let [[fns int-rte-pairs] (compile-clauses clauses)
+          num-fns (count fns)
+          var (gensym "index")]
+      `((~fns (ensure-fns-index (rte-match (memoized-rte-case-helper '~int-rte-pairs) ~sequence)
+                                ~num-fns))))))
 
 (defn lambda-list-to-rte
   "Helper function for destructuring-case macro."
