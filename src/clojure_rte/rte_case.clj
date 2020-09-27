@@ -42,7 +42,7 @@
   (cond (not (integer? index))
         (throw (ex-info (cl-format false "rte-match returned non-integer ~A" index)
                         {}))
-        (< 0 index)
+        (< index 0)
         (throw (ex-info (cl-format false "rte-match returned negative integer ~A" index)
                         {}))
 
