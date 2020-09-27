@@ -181,6 +181,17 @@
                                  ~@clauses)))))
 
 (defmacro destructuring-fn
+  "params => positional-params* , or positional-params* & next-param
+  positional-param => binding-form
+  next-param => binding-form
+  name => symbol
+  constr-map => a map to constrain variables by type.
+  
+  Defines a function.  When the function is called,  the
+  clause whose parameters match the argument in structure and type
+  will be evaluated;  otherwise nil is returned."
+  {:forms '[(destructuring-fn name? [[params* ] constr-map] exprs*)
+            (destructuring-fn name? ([[params*] constr-map ] exprs*)+)]}
   [& args]
   (cond (empty? args)
         (throw (IllegalArgumentException. 
