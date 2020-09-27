@@ -183,7 +183,8 @@
 (defmacro destructuring-fn
   [& args]
   (cond (empty? args)
-        nil
+        (throw (IllegalArgumentException. 
+                    "destructuring-fn, empty argument list not supported"))
 
         (and (not (symbol? (first args)))
              (not (= nil (first args))))
