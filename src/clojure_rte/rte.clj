@@ -458,9 +458,9 @@
                            :not (fn [operand _functions]
                                   (let [operand (canonicalize-pattern operand)]
                                     (case operand
-                                      (:sigma) :epsilon
+                                      (:sigma) '(:or (:cat :sigma (:* :sigma)) :epsilon)
                                       ((:* :sigma)) :empty-set
-                                      (:epsilon) (canonicalize-pattern '(:+ :sigma))
+                                      (:epsilon) '(:cat :sigma (:* :sigma))
                                       (:empty-set) '(:* :sigma)
                                       (cond
                                         (not? operand) ;; (:not (:not A)) --> A
