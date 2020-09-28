@@ -104,65 +104,92 @@
                                 ~num-fns))))))
 
 (defn lambda-list-to-rte
-  "Helper function for destructuring-case macro."
+  "Helper function for destructuring-case macro.
+  Returns an rte either of one of the following forms:
+    (:cat ... (:* ...)) -- if the given lambda-list contains &
+    (:cat ...) -- if the given lambda list only has required parametes."
   [lambda-list types-map]
   (assert (map? types-map))
   (letfn [(pretty-and [a b]
-            (let [args (list a b)]
-              (cond
-                (empty? args) :sigma
-                (empty? (rest args)) (first args)
-                :else (cons 'and args))))
-          (parse-lambda-list [lambda-list]
-            (let [parsed (partition-by (fn [x] (= x '&)) lambda-list)]
-              (case (count parsed)
-                (0) [nil nil] ;; lambda-list = [], parsed = ()
-                (1) (if (= '(&) (first parsed))
-                      (throw (ex-info (cl-format false "invalid lambda list ~A" lambda-list)
-                                      {:origin 122
-                                       :lambda-list lambda-list
-                                       :parsed parsed})) ;; lambda-list = [&], parsed = [(&)]
-                      [(first parsed) nil]) ;; lambda-list = [a b c], parsed = [(a b c)]
-                (2) (if (= '(&) (second parsed))
-                      (throw (ex-info (cl-format false "invalid lambda list ~A" lambda-list)
-                                      {:origin 128
-                                       :lambda-list lambda-list
-                                       :parsed parsed})) ;; lambda-list = [a b c &], parsed = [(a b c) (&)]
-                      [nil (second parsed)]) ;; lambda-list = [& others], parsed = [(^) (others)]
-                (3) [(first parsed) (nth parsed 2)] ;; lambda-list = [a b c & others], parsed = [(a b c) (&) (others)]
-                (throw (ex-info (cl-format false "invalid lambda list ~A" lambda-list)
-                                {:origin 134
-                                 :lambda-list lambda-list
-                                 :parsed parsed})))))]
-    (let [[prefix suffix] (parse-lambda-list lambda-list)
-          prefix-rte (for [var prefix]
-                       (cond (and (sequential? var)
-                                  (empty? var))
-                             nil
+            (cond
+              (= :sigma a)  b
+              (= :sigma b)  a
+              (= a b)       a
+              :else         (list 'and a b)))]
+    (loop [required lambda-list
+           others ()
+           prefix-rte []
+           suffix-rte []
+           parsed []]
+      (cond (and (empty? required)
+                 (empty? others))
+            ;; finished parsing
+            (if (empty? suffix-rte)
+              `(:cat ~@prefix-rte)
+              `(:cat ~@prefix-rte (:* ~@suffix-rte)))
 
-                             (sequential? var)
-                             (list 'rte (lambda-list-to-rte var types-map))
-                             
-                             (symbol? var)
-                             (pretty-and (get (meta var) :tag :sigma)
-                                         (get types-map var :sigma))
-                             
-                             :else
-                             (throw (ex-info (cl-format false "invalid lambda-list ~A" lambda-list)
-                                             {:error-type "cannot parse prefix"}))))
-          suffix-rte (cond
-                       (empty? suffix)
-                       nil
+            (and (not (empty? required))
+                 (= '& (first required)))
+            ;; found & in the correct place
+            (recur nil ; required
+                   (rest required) ; rest
+                   prefix-rte ; prefix-rte
+                   suffix-rte ; suffix-rte
+                   (conj parsed '&))
 
-                       (empty? (rest suffix))
-                       (lambda-list-to-rte suffix types-map)
-                       
-                       :else
-                       (throw (ex-info (cl-format false "invalid lambda-list ~A" lambda-list)
-                                       {:error-type "cannot parse suffix"})))]
-      (if (not (empty? suffix))
-        `(:cat ~@prefix-rte (:* ~suffix-rte))
-        `(:cat ~@prefix-rte)))))
+            (not (empty? required))
+            (let [var (first required)]
+              (recur (rest required)
+                     others
+                     (conj prefix-rte
+                           (cond (symbol? var)
+                                 ;; parsing required section, found a var
+                                 (pretty-and (get (meta var) :tag :sigma)
+                                             (get types-map var :sigma))
+                                 (vector? var)
+                                 ;; parsing required section, found a vector
+                                 (list 'rte
+                                       (lambda-list-to-rte (first required) types-map))
+
+                                 :else ;; found non-symbol non-vector
+                                 (throw (ex-info (cl-format false "invalid lambda-list ~A, at ~A"
+                                                            lambda-list required)
+                                                 {:error-type "cannot parse prefix"
+                                                  :lambda-list lambda-list
+                                                  :parsed parsed
+                                                  :unparsed required}))))
+                     suffix-rte
+                     (conj parsed var)))
+
+            (and (not (empty? others))
+                 (not (empty? suffix-rte)))
+            (throw (ex-info (cl-format false "invalid lambda-list ~A, at ~A"
+                                       lambda-list others)
+                            {:error-type "cannot parse suffix"
+                             :lambda-list lambda-list
+                             :parsed parsed
+                             :unparsed others}))
+
+            (and (not (empty? others))
+                 (symbol? (first others)))
+            (let [var (first others)]
+              (recur required
+                     (rest others)
+                     prefix-rte
+                     (conj suffix-rte
+                           (pretty-and (get (meta var) :tag :sigma)
+                                       (get types-map var :sigma)))
+                     (conj parsed var)))
+
+            (not (empty? others))
+            (throw (ex-info (cl-format false "invalid lambda-list ~A, at ~A"
+                                       lambda-list others)
+                            {:error-type "cannot parse suffix"
+                             :lambda-list lambda-list
+                             :parsed parsed
+                             :unparsed others}))))))
+            
+            
 
 (defmacro destructuring-case
   "After evaluating the expression (only once) determine whether its return value
