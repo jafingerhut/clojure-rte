@@ -94,7 +94,9 @@
                   (recur more
                          (inc index)
                          (cons rte used-rtes)
-                         (conj acc-int-rte-pairs [index `(:and ~rte (:not (:or ~@used-rtes)))])
+                         (conj acc-int-rte-pairs [index (if (empty? used-rtes)
+                                                          rte
+                                                          `(:and ~rte (:not (:or ~@used-rtes))))])
                          (conj acc-fns `(fn [] ~consequent)))))))]
     
     (let [[fns int-rte-pairs] (compile-clauses clauses)
