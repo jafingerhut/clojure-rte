@@ -112,8 +112,29 @@
               (cond
                 (empty? args) :sigma
                 (empty? (rest args)) (first args)
-                :else (cons 'and args))))]
-    (let [[prefix _ suffix] (partition-by (fn [x] (= x '&)) lambda-list)
+                :else (cons 'and args))))
+          (parse-lambda-list [lambda-list]
+            (let [parsed (partition-by (fn [x] (= x '&)) lambda-list)]
+              (case (count parsed)
+                (0) [nil nil] ;; lambda-list = [], parsed = ()
+                (1) (if (= '(&) (first parsed))
+                      (throw (ex-info (cl-format false "invalid lambda list ~A" lambda-list)
+                                      {:origin 122
+                                       :lambda-list lambda-list
+                                       :parsed parsed})) ;; lambda-list = [&], parsed = [(&)]
+                      [(first parsed) nil]) ;; lambda-list = [a b c], parsed = [(a b c)]
+                (2) (if (= '(&) (second parsed))
+                      (throw (ex-info (cl-format false "invalid lambda list ~A" lambda-list)
+                                      {:origin 128
+                                       :lambda-list lambda-list
+                                       :parsed parsed})) ;; lambda-list = [a b c &], parsed = [(a b c) (&)]
+                      [nil (second parsed)]) ;; lambda-list = [& others], parsed = [(^) (others)]
+                (3) [(first parsed) (nth parsed 2)] ;; lambda-list = [a b c & others], parsed = [(a b c) (&) (others)]
+                (throw (ex-info (cl-format false "invalid lambda list ~A" lambda-list)
+                                {:origin 134
+                                 :lambda-list lambda-list
+                                 :parsed parsed})))))]
+    (let [[prefix suffix] (parse-lambda-list lambda-list)
           prefix-rte (for [var prefix]
                        (cond (and (sequential? var)
                                   (empty? var))
@@ -158,7 +179,7 @@
 
     :else
     (let [var (gensym "v")]
-      (letfn [(expand-multi-restructions [types-map]
+      (letfn [(expand-multi-restrictions [types-map]
                 (assert (map? types-map))
                 (merge types-map
                        (into {} (for [key (keys types-map)
@@ -172,7 +193,7 @@
               (conv-1-case-clause [[[lambda-list types-map] consequence]]
                 (assert (map? types-map)
                         (cl-format false "destructuring-case expecting a map, not ~A" types-map))
-                [(lambda-list-to-rte lambda-list (expand-multi-restructions types-map))
+                [(lambda-list-to-rte lambda-list (expand-multi-restrictions types-map))
                  `(let [~lambda-list ~var]
                     ~consequence)])]
         (let [pairs (partition 2 pairs)
@@ -250,9 +271,3 @@
                     (cl-format false
                                "destructuring-fn, invalid argument list: ~A"
                                args)))))))
-
-
-        
-          
-        
-  
