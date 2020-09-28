@@ -397,6 +397,28 @@
              (apply f  '(true ["3" 3] true "miss" false true))))
         "test 13")))
 
+(deftest t-destructuring-fn-401
+  (testing "special case which was failing 401"
+    (let [f (destructuring-fn
+             ([[a b]          {a Boolean b (or String Boolean)}]
+              2)
+             ([[a [b c] & d]  {d Boolean
+                               a ((not Number) Boolean)
+                               b String}]
+              1)
+             ([[& others] {}]
+              3))]
+      (is (= 2 (f true "hello")) "test 1")
+      (is (= 2 (f true false)) "test 2")
+      (is (= 1 (f "string" [true false])) "test 3")
+      (is (= 1 (f "string" [true false] true)) "test 3")
+      (is (= 1 (f "string" [true false] true false)) "test 3")
+
+      (is (= 3 (f "string" [true false] true 1 false)) "test 4")
+      (is (= 3 (f 3 [true false] true false)) "test 5")
+      (is (= 3 (f '(1 2 3))) "test 6"))))
+
+
 (deftest t-destructuring-fn-400
   (testing "special case which was failing 400"
     (let [f (destructuring-fn
