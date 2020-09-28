@@ -50,13 +50,13 @@
                        (:cat (:* Number) (:+ String) (:* Boolean)) 3
                        (:sigma 4))))))
 
-(deftest t-rte-case-helper
-  (testing "rte-case-helper"
+(deftest t-rte-case-clauses-to-dfa
+  (testing "rte-case-clauses-to-dfa"
     (is (= 0 (rte-match
-              ;; I don't know why it is necessary to prefix clojure-rte.core/rte-case-helper
+              ;; I don't know why it is necessary to prefix clojure-rte.core/rte-case-clauses-to-dfa
               ;; otherwise the loader complains:
-              ;; java.lang.RuntimeException: Unable to resolve symbol: rte-case-helper in this context
-              (clojure-rte.core/rte-case-helper
+              ;; java.lang.RuntimeException: Unable to resolve symbol: rte-case-clauses-to-dfa in this context
+              (clojure-rte.core/rte-case-clauses-to-dfa
 
                '[[0 (:and (:* Long) (:not (:or)))]
                  [1 (:and (:* Boolean) (:not (:or (:* Long))))]
@@ -69,7 +69,7 @@
         "case-0")
 
     (is (= 1 (rte-match
-              (clojure-rte.core/rte-case-helper
+              (clojure-rte.core/rte-case-clauses-to-dfa
                '[[0 (:and (:* Long) (:not (:or)))]
                  [1 (:and (:* Boolean) (:not (:or (:* Long))))]
                  [2 (:and (:* String) (:not (:or (:* Boolean) (:* Long))))]
@@ -81,7 +81,7 @@
         "case-1")
 
     (is (= 2 (rte-match
-              (clojure-rte.core/rte-case-helper
+              (clojure-rte.core/rte-case-clauses-to-dfa
                '[[0 (:and (:* Long) (:not (:or)))]
                  [1 (:and (:* Boolean) (:not (:or (:* Long))))]
                  [2 (:and (:* String) (:not (:or (:* Boolean) (:* Long))))]
@@ -93,7 +93,7 @@
         "case-2")
 
     (is (= 3 (rte-match
-              (clojure-rte.core/rte-case-helper
+              (clojure-rte.core/rte-case-clauses-to-dfa
                '[[0 (:and (:* Long) (:not (:or)))]
                  [1 (:and (:* Boolean) (:not (:or (:* Long))))]
                  [2 (:and (:* String) (:not (:or (:* Boolean) (:* Long))))]
@@ -255,7 +255,7 @@
             (([(fn [] (let [[a b] v41977] (do 2)))
                (fn [] (let [[a [b c] & d] v41977] (do 1)))
                (fn [] nil)]
-              (let [dfa (memoized-rte-case-helper
+              (let [dfa (memoized-rte-case-clauses-to-dfa
                          '[[0
                             (:and
                              (:cat
@@ -464,7 +464,7 @@
     (is (= 1
            (with-compile-env ()
              (rte-match
-              (memoized-rte-case-helper
+              (memoized-rte-case-clauses-to-dfa
                '[[0
                   (:and (:cat Boolean (or String Boolean))
                         (:not (:or)))]
