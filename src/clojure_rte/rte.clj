@@ -554,7 +554,7 @@
                                            others (remove not? operands)]
                                        (when (some (fn [item]
                                                      (some #{(list :not item)} nots)) others)
-                                         :sigma)))
+                                         '(:* :sigma))))
 
                                     ;; (:or subtype supertype x y z) --> (:and supertype x y z)
                                     ((let [atoms (filter (complement seq?) operands)
