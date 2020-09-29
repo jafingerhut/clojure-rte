@@ -29,26 +29,11 @@
   "Helper function for macro-expanding rte-case.
   Returns a Dfa which is the union of the input clauses."
   [pairs]
-  (let [dfa
-        (reduce (fn [a b]
-                  (let [dfa (dfa/synchronized-union a b)]
-                    ;; (clojure-rte.dot/dfa-to-dot dfa
-                    ;;                             :view true
-                    ;;                             :title (format "union-%s" (gensym)))
-                    dfa))
-                (map (fn [[index rte]]
-                       (let [dfa (rte-to-dfa rte index)]
-                         ;;(println [:finals (filter (comp boolean :accepting) (clojure-rte.dfa/states-as-seq dfa))
-                         ;;            :index index :rte rte])
-                         ;; (clojure-rte.dot/dfa-to-dot dfa
-                         ;;                             :view true
-                         ;;                             :title (format "dfa-%s" (gensym)))
-                         dfa))
-                     pairs))]
-    ;; (clojure-rte.dot/dfa-to-dot dfa
-    ;;                             :view true
-    ;;                             :title "rte-case-clauses-to-dfa")
-    dfa))
+  (reduce (fn [a b]
+            (dfa/synchronized-union a b))
+          (map (fn [[index rte]]
+                 (rte-to-dfa rte index))
+               pairs)))
 
 (def memoized-rte-case-clauses-to-dfa rte-case-clauses-to-dfa )
 ;;(def memoized-rte-case-clauses-to-dfa (memoize rte-case-clauses-to-dfa))
