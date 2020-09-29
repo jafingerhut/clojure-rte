@@ -209,14 +209,10 @@
     (doseq [
             rte-1 test-rtes
             rte-2 test-rtes
-            rte-3 [rte-1 (list :not rte-1)]
-            rte-4 [rte-2 (list :not rte-2)]
-            rte [`(:and ~rte-3 ~rte-4)
-                 `(:or  ~rte-3 ~rte-4)]
+            rte [`(:and ~rte-1 (:not ~rte-2))
+                 `(:or  ~rte-1 (:not ~rte-2))]
             ]
-      (t-acceptance-test-rte rte)
-      )))
-
+      (t-acceptance-test-rte rte))))
 
 (deftest t-test-1
   (testing "particular case 1 which was failing"
