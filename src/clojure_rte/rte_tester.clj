@@ -21,7 +21,8 @@
 
 (ns clojure-rte.rte-tester
   (:require [clojure-rte.tester  :as tester]
-            [clojure-rte.core :refer [rte-to-dfa canonicalize-pattern]]
+            [clojure.pprint :refer [cl-format]]
+            [clojure-rte.core :refer [rte-to-dfa canonicalize-pattern nullable]]
             ))
 
 (defn rte-components [pattern]
@@ -95,3 +96,43 @@
   (tester/random-test num-tries canonicalize-pattern
                       (fn [] (gen-rte size *test-types*))
                       rte-components verbose))
+
+
+(defn test-rte-not-nullable
+  "Run some tests to assure that if an rte r is nullable if and only
+  if (:not r) is not nullable."
+  [num-tries size verbose]
+  (tester/random-test num-tries
+                      (fn [rte]
+                        (if (nullable rte)
+                          (assert (not (nullable (list :not rte)))
+                                  (cl-format false
+                                             "rte ~A is nullable but its complement (:not ...) is not nullable"
+                                             rte))
+                          (assert (nullable (list :not rte))
+                                  (cl-format false
+                                             "rte ~A is not nullable but its complement (:not ...) is nullable"
+                                             rte))))                          
+                      (fn [] (gen-rte size *test-types*))
+                      rte-components
+                      verbose))
+
+(defn test-rte-caonicalize-nullable
+  "Run some tests to assure that if an rte r is nullable if and only
+  if (canonicalize-pattern r) is nullable."
+  [num-tries size verbose]
+  (tester/random-test num-tries
+                      (fn [rte]
+                        (let [can (canonicalize-pattern rte)]
+                          (if (nullable rte)
+                            (assert (nullable can)
+                                    (cl-format false
+                                               "rte ~A is nullable but its canonicalization ~A is not"
+                                               rte can))
+                            (assert (not (nullable can))
+                                    (cl-format false
+                                               "rte ~A is not nullable but its canonicalization ~A is nullable"
+                                               rte can)))))
+                      (fn [] (gen-rte size *test-types*))
+                      rte-components
+                      verbose))
