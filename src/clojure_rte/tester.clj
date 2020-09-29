@@ -39,7 +39,7 @@
   unary-test-fun is a unary function which can be called with the return value of
      arg-generator as sole argument.   If the function returns, it is deemed successful.
      If the function needs to indicate failure, it should throw an exception as if by
-     (assert false "some error message").
+     (assert false \"some error message\").
   arg-generator is called num-tries number of times to generate input for
   num-tries number of calls to function unary-test-fun.
   gen-components is currently unused, but in the future will be used to simply expression
