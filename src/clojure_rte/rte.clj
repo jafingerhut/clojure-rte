@@ -256,7 +256,7 @@
             (let [[keyword] pattern]
               (case keyword
                 (:or)  (traverse-pattern :empty-set functions)
-                (:and) (traverse-pattern :sigma functions)
+                (:and) (traverse-pattern '(:* :sigma) functions)
                 (:cat) (traverse-pattern :epsilon functions)
                 (:not
                  :*) (throw (ex-info (format "invalid pattern %s, expecting exactly one operand" pattern)
