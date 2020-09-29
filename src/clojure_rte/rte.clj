@@ -429,6 +429,10 @@
                                     (assert (< 1 (count operands))
                                             (format "traverse-pattern should have already eliminated this case: re=%s count=%s operands=%s" re (count operands) operands))
                                     (cl-cond
+                                     ;; TODO (:cat A (:* :sigma) (:* :sigma) B)
+                                     ;;  --> (:cat A (:* :sigma) B)
+
+
                                       ;; (:cat x (:cat a b) y) --> (:cat x a b y)
                                       ((some cat? operands)
                                       (cons :cat (mapcat (fn [obj]
@@ -485,6 +489,16 @@
                            :and (fn [operands _functions]
                                   (let [operands (dedupe (sort-operands (map canonicalize-pattern operands)))]
                                     (cl-cond
+                                     ;; TODO - (:and :epsilon ...)
+                                     ;;    if any of the :and arguments is not nullable,
+                                     ;;    then the result is :empty-set
+                                     ;;    otherwise the result is :epsilon
+
+                                     ;; TODO (:and (:cat A B (:* :sigma))
+                                     ;;            (:cat A B ))
+                                     ;;  --> (:and (:cat A B))
+
+
                                      ((some and? operands)
                                       (cons :and (mapcat (fn [obj]
                                                            (if (and? obj)
@@ -537,6 +551,10 @@
                                          (format "traverse-pattern should have already eliminated this case: re=%s count=%s operands=%s" re (count operands) operands))
                                  (let [operands (dedupe (sort-operands (map canonicalize-pattern operands)))]
                                    (cl-cond
+                                    ;; TODO (:or (:cat A B (:* :sigma))
+                                    ;;           (:cat A B ))
+                                    ;;  --> (:or (:cat A B (:* :sigma)))
+
                                     ((some or? operands)
                                      (cons :or (mapcat (fn [obj]
                                                          (if (or? obj)
