@@ -279,7 +279,8 @@
         (let [[name & clauses] args]
           (cond
             (empty? clauses)
-            nil
+            (throw (IllegalArgumentException. 
+                    "destructuring-fn, empty list of clauses"))
 
             (vector? (first clauses))
             ;; either first clause is a vector like [a b c]
