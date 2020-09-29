@@ -74,15 +74,19 @@
 
 (deftest t-canonicalize-pattern-subtypes
   (testing "canonicalize-pattern with subtypes"
-    (is (= 'Number (canonicalize-pattern '(:or Integer Number))) "Number")
-    (is (= :sigma (canonicalize-pattern '(:or Number (:not Number)))) "sigma")
+    (is (= 'Number (canonicalize-pattern '(:or Integer Number))) 
+        "Number")
+    (is (= '(:* :sigma) (canonicalize-pattern '(:or Number (:not Number))))
+        "sigma")
 
-    (is (= 'Integer (canonicalize-pattern '(:and Integer Number))) "Integer")
-    (is (= :empty-set (canonicalize-pattern '(:and Number (:not Number)))) "empty-set 1")
+    (is (= 'Integer (canonicalize-pattern '(:and Integer Number))) 
+        "Integer")
+    (is (= :empty-set (canonicalize-pattern '(:and Number (:not Number)))) 
+        "empty-set 1")
 
     ;; intersection of disjoint types
-    (is (= :empty-set (canonicalize-pattern '(:and String Integer))) "empty-set 2")
-    ))
+    (is (= :empty-set (canonicalize-pattern '(:and String Integer))) 
+        "empty-set 2")))
 
 (deftest t-canonicalize-pattern-14
   (when (and (resolve 'java.lang.Comparable)
@@ -161,7 +165,6 @@
            '(:cat Number (:* :sigma) String)) "cat sigma* sigma*")
 
     ;; :not
-    (is (= :epsilon (canonicalize-pattern-once '(:not :sigma))) "not sigma")
     (is (= :empty-set (canonicalize-pattern-once '(:not (:* :sigma)))) "not sigma*")
     (is (= (canonicalize-pattern-once '(:+ :sigma))
            (canonicalize-pattern-once '(:not :epsilon))) "not epsilon")
@@ -195,7 +198,7 @@
            (canonicalize-pattern '(:not (:or java.io.Serializable java.io.Serializable)))) "not or 4")
 
     ;; and
-    (is (= (canonicalize-pattern '(:and)) :sigma))    
+    (is (= (canonicalize-pattern '(:and)) '(:* :sigma)) "(:and)")
     (is (= 'java.io.Serializable
            (canonicalize-pattern '(:and java.io.Serializable
                                         java.io.Serializable))) "and remove duplicate 1")
@@ -339,7 +342,17 @@
       (is (rte-match '(:* (and Number Long (not (= 0)))) [])  "test 6")
       (is (rte-match '(:* (and Number Long (not (= 0)))) [42])  "test 7")
       (is (rte-match '(:* (and Number Long (not (= 0)))) [42 43 ])  "test 8")
-      (is (not (rte-match '(:* (:and Number Long (:not (:and :sigma (= 0))))) [42 43 0 44])) "test 9a")
+      (is (not (rte-match '(:* (:and Number
+                                     Long
+                                     (:and :sigma
+                                           (:not (= 0)))))
+                          [42 43 0 44])) "test 9b")
+      (is (rte-match '(:* (:and Number
+                                Long
+                                ;; (:not (:and :sigma (= 0))) is all of (:* :sigma) except 0
+                                ;;   this includes :epsilon
+                                (:not (:and :sigma (= 0)))))
+                     [42 43 0 44]) "test 9a")
       (is (not (rte-match '(:* (and Number Long (not (= 0)))) [42 43 0 44]))  "test 9b"))))
 
 (deftest t-?
