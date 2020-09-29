@@ -408,9 +408,9 @@
               3))]
       (is (= 2 (f true "hello")) "test 1")
       (is (= 2 (f true false)) "test 2")
-      (is (= 1 (f "string" [true false])) "test 3")
-      (is (= 1 (f "string" [true false] true)) "test 3")
-      (is (= 1 (f "string" [true false] true false)) "test 3")
+      (is (= 1 (f true ["true" false])) "test 3a")
+      (is (= 1 (f false ["true" false] true)) "test 3b")
+      (is (= 1 (f true ["hello" false] true false)) "test 3c")
 
       (is (= 3 (f "string" [true false] true 1 false)) "test 4")
       (is (= 3 (f 3 [true false] true false)) "test 5")
@@ -494,7 +494,7 @@
 
 (deftest t-destructuring-case-404
   (testing "special case which was failing 404"
-    (is (= 1 (destructuring-case [ 2 3 4]
+    (is (= 3 (destructuring-case [ 2 3 4]
                                  [[a b] {}]
                                  2
 
@@ -503,28 +503,30 @@
 
                                  [[& others] {}]
                                  3
-                                 )))))
+                                 ))
+        "test 404")))
 
 (deftest t-destructuring-fn-401
   (testing "special case which was failing 401"
     (let [f (destructuring-fn
              ([[a b]          {a Boolean b (or String Boolean)}]
               2)
-             ([[a [b c] & d]  {d Boolean
-                               a (and (not Number) Boolean)
-                               b String}]
+             ([[a [b c] & d]  {a (and (not Number) Boolean)
+                               b String
+                               d Boolean}]
               1)
              ([[& others] {}]
               3))]
       (is (= 2 (f true "hello")) "test 1")
       (is (= 2 (f true false)) "test 2")
-      (is (= 1 (f "string" [true false])) "test 3")
-      (is (= 1 (f "string" [true false] true)) "test 3")
-      (is (= 1 (f "string" [true false] true false)) "test 3")
-
-      (is (= 3 (f "string" [true false] true 1 false)) "test 4")
-      (is (= 3 (f 3 [true false] true false)) "test 5")
-      (is (= 3 (f '(1 2 3))) "test 6"))))
+      (is (= 1 (f true ["hello" 1])) "test 2a")
+      (is (= 1 (f true ["hello" 1] false)) "test 2b")
+      (is (= 3 (f "string" [true false])) "test 3")
+      (is (= 3 (f "string" [true false] true)) "test 4")
+      (is (= 3 (f "string" [true false] true false)) "test 5")
+      (is (= 3 (f "string" [true false] true 1 false)) "test 6")
+      (is (= 3 (f 3 [true false] true false)) "test 7")
+      (is (= 3 (f '(1 2 3))) "test 8"))))
 
 (deftest t-destructuring-fn-405
   (testing "special case which was failing 405"
