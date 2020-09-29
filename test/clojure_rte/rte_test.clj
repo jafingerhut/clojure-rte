@@ -49,8 +49,6 @@
     (is (not (nullable '(:+ :empty-set))) "2")
     (is (nullable '(:? :epsilon)) "1")))
 
-
-
 (deftest t-first-types
   (testing "first-types"
     (is (= #{'a} (first-types 'a)))
@@ -628,3 +626,11 @@
       (is (thrown? Exception (canonicalize-pattern '(and (:or String Number)
                                                          (:or :sigma)))) "test 2")
       (is (thrown? Exception (canonicalize-pattern '(or (:and String Number)))) "test 3"))))
+
+(deftest t-derivative-2
+  (testing "derivative previous failure"
+    (is (nullable (derivative '(:and (:cat (:* :sigma))
+                                     (:not (:or (:cat Boolean :sigma (:* :sigma))
+                                                (:cat Boolean :sigma))))
+                              '(not Boolean)))
+        "derivative 2")))

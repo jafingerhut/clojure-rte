@@ -479,6 +479,32 @@
                                  1
                                  )))))
 
+(deftest t-destructuring-case-403
+  (testing "special case which was failing 403"
+    (is (= 1 (destructuring-case [false 2 3 4]
+                                 [[a b] {}]
+                                 2
+
+                                 [[^Boolean a b & d] {}]
+                                 1
+
+                                 [[& others] {}]
+                                 3
+                                 )))))
+
+(deftest t-destructuring-case-404
+  (testing "special case which was failing 404"
+    (is (= 1 (destructuring-case [ 2 3 4]
+                                 [[a b] {}]
+                                 2
+
+                                 [[^Boolean a b & d] {}]
+                                 1
+
+                                 [[& others] {}]
+                                 3
+                                 )))))
+
 (deftest t-destructuring-fn-401
   (testing "special case which was failing 401"
     (let [f (destructuring-fn
@@ -498,4 +524,15 @@
 
       (is (= 3 (f "string" [true false] true 1 false)) "test 4")
       (is (= 3 (f 3 [true false] true false)) "test 5")
+      (is (= 3 (f '(1 2 3))) "test 6"))))
+
+(deftest t-destructuring-fn-405
+  (testing "special case which was failing 405"
+    (let [f (destructuring-fn
+                           ([[a b]          {a Boolean}]
+                            2)
+                           ([[a b & d]  {a  Boolean}]
+                            1)
+                           ([[& others] {}]
+                            3))]
       (is (= 3 (f '(1 2 3))) "test 6"))))

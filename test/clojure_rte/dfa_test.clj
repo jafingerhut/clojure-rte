@@ -302,3 +302,12 @@
                           12)]
       (is (not (empty? (filter (comp boolean :accepting) (states-as-seq dfa))))
           "missing final 1"))))
+
+(deftest t-missing-final-2
+  (testing "missing final 2?"
+    (let [dfa (rte-to-dfa '(:and (:cat (:* :sigma))
+                                 (:not (:or (:cat Boolean :sigma (:* :sigma))
+                                            (:cat Boolean :sigma))))
+                          13)]
+      (is (not (empty? (filter (comp boolean :accepting) (states-as-seq dfa))))
+          "missing final 2"))))
