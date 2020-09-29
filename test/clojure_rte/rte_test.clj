@@ -117,6 +117,13 @@
                                        (:cat java.lang.Comparable java.lang.Comparable java.io.Serializable)))) "permute 3 args"))))
 
 
+(deftest t-canonicalize-pattern-116
+  (testing "previous failure"
+    (is (= '(:* :sigma)
+           (canonicalize-pattern '(:and (:* :sigma)
+                                        (:* :sigma))))
+        "test 116")))
+
 (deftest t-canonicalize-pattern
   (testing "canonicalize-pattern"
 
@@ -303,6 +310,21 @@
                        'String)
            '(:cat Number Number))  "line 280")
     ))
+
+(deftest t-derivative-1
+  (testing "previous failure"
+    (is (= '(:* :sigma)
+           (derivative '(:not (:cat Boolean :sigma)) '(not Boolean)))
+        "test 308")
+
+    (is (= '(:* :sigma)
+           (derivative '(:not (:cat Boolean :sigma (:* :sigma))) '(not Boolean)))
+        "test 312")
+    
+    (is (= '(:* :sigma)
+           (derivative '(:and (:not (:cat Boolean :sigma (:* :sigma)))
+                              (:not (:cat Boolean :sigma))) '(not Boolean))))))
+
 
 (deftest t-rte-to-dfa
 

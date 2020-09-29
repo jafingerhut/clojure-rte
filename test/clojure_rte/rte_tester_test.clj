@@ -51,7 +51,12 @@
     (test-rte-not-nullable 100000 7 false)))
 
 (deftest t-rte-nullable-canonicalize-random
-  (testing "nullability of :not"
-    ;; if an rte is nullable, then (:not rte) is not nullable
-    ;; if an rte is not nullable, then (:not rte) is nullable
-    (test-rte-caonicalize-nullable 1000 6 false)))
+  (testing "canonicalize of :not"
+    (test-rte-canonicalize-nullable 1000 6 false)))
+
+;; this test is not yet correctly implemented,
+;;    need a good way to compare two rtes for equivalence
+;; (deftest t-rte-not-not-canonicalize-random
+;;   (testing "nullability of :not"
+;;     (test-rte-not-not-canonicalize 1000 5 false)))
+
