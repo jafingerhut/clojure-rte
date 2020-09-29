@@ -22,7 +22,7 @@
 (ns clojure-rte.type
   (:require [clojure.set :refer [intersection]]
             [clojure.pprint :refer [cl-format]]
-            [clojure-rte.util :refer [call-with-collector]]
+            [clojure-rte.util :refer [call-with-collector member]]
             [clojure-rte.cl-compat :refer [cl-cond]]
             [clojure.reflect :as refl]
   ))
@@ -142,8 +142,18 @@
   true)
 
 (defn disjoint?-false-warn [t1 t2]
-  (cl-format true "disjoint? cannot decide ~A vs ~A -- assuming not disjoint~%" t1 t2)
-  false)
+  ;; don't complain about rte nor satisfies
+  (letfn [(dont-complain [t]
+            (and (sequential? t)
+                 (not (empty? t))
+                 (member (first t) '(satisfies rte))))]
+    (cond (or (dont-complain t1)
+              (dont-complain 2))
+          false
+          :else
+          (do
+            (cl-format true "disjoint? cannot decide ~A vs ~A -- assuming not disjoint~%" t1 t2)
+            false))))
 
 (def ^:dynamic *disjoint?-default*
   "Default to return when disjoint-ness cannot be determined.  This value is a binary
@@ -178,6 +188,8 @@
   method has been filtered away."
   (memoize (fn [f]
              (cons :primary (remove #{:primary :default} (keys (methods f)))))))
+
+
 
 (defmulti -disjoint?
   "This function should never be called.
@@ -293,7 +305,10 @@
                (= 'not (first t))))
         (member? [t]
           (and (sequential? t)
-               (= 'member (first t))))]
+               (= 'member (first t))))
+        (satisfies? [t]
+          (and (sequential? t)
+               (= 'satisfies (first t))))]
 
   (defmethod -disjoint? := [t1 t2]
     (cond (=? t1)
@@ -309,6 +324,27 @@
           :else
           :dont-know))
           
+  ;; (defmethod -disjoint? :satisfies [t1 t2]
+  ;;   (cond (and (satisfies? t1)
+  ;;              (not? t2)
+  ;;              (= t1 (second t2)))
+  ;;         true
+
+  ;;         (and (satisfies? t2)
+  ;;              (not? t1)
+  ;;              (= t2 (second t1)))
+  ;;         true
+          
+  ;;         (and (not? t1)
+  ;;              (satisfies? (second t1)))
+  ;;         false               
+
+  ;;         (satisfies? t1)
+  ;;         false
+
+  ;;         :else
+  ;;         :dont-know))
+
   (defmethod -disjoint? :member [t1 t2]
     (cond (member? t1)
           (every? (fn [e1]

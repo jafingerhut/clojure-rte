@@ -267,40 +267,36 @@
   {:forms '[(destructuring-fn name? [[params* ] constr-map] exprs*)
             (destructuring-fn name? ([[params*] constr-map ] exprs*)+)]}
   [& args]
-  (cond (empty? args)
-        (throw (IllegalArgumentException. 
-                    "destructuring-fn, empty argument list not supported"))
+  (destructuring-case
+   args
+   [[] {}]
+   (throw (IllegalArgumentException. 
+           "destructuring-fn, empty argument list not supported"))
 
-        (and (not (symbol? (first args)))
-             (not (= nil (first args))))
-        `(destructuring-fn nil ~@args)
+   [[name & others] {name (not (or (satisfies symbol?)
+                                   (= nil))) }]
+   `(destructuring-fn nil ~@args)
 
-        :else
-        (let [[name & clauses] args]
-          (cond
-            (empty? clauses)
-            (throw (IllegalArgumentException. 
-                    "destructuring-fn, empty list of clauses"))
+   [[name] {}]
+   (throw (IllegalArgumentException. 
+           "destructuring-fn, invalid function body or clauses clauses"))
 
-            (vector? (first clauses))
-            ;; either first clause is a vector like [a b c]
-            `(destructuring-fn-many
-              ~@(if name (list name) nil) ;; either name or nothing
-              ~clauses ;; i.e., with a set of parens around it.
-              )
+   [[name lambda-list & others] {lambda-list (satisfies vector?)}]
+   `(destructuring-fn-many
+     ~@(if name (list name) nil) ;; either name or nothing
+     (~lambda-list
+      ~@others))
+   
+   [[name & clauses] {clauses (and (satisfies list?)
+                                   (not (= ()))
+                                   (rte (:* (:cat vector? (:* :sigma)))))}]
+   `(destructuring-fn-many
+     ~@(if name (list name) nil) ;; either name or nothing
+     ~@clauses)
 
-            (every? (fn [clause]
-                      (and (list? clause)
-                           (not (empty? clause))
-                           (vector? (first clause))))
-                    clauses)
-            ;; or all the clauses are lists whose first element is always a vector
-            `(destructuring-fn-many
-              ~@(if name (list name) nil) ;; either name or nothing
-              ~@clauses)
-
-            :else
-            (throw (IllegalArgumentException. 
-                    (cl-format false
-                               "destructuring-fn, invalid argument list: ~A"
-                               args)))))))
+   [[& others] {}]
+   (throw (IllegalArgumentException. 
+           (cl-format false
+                      "destructuring-fn, invalid argument list: ~A"
+                      args)))))
+    

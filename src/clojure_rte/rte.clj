@@ -43,6 +43,8 @@
    'rational? '(:or integer? ratio? decimal?)
    'number? 'Number
    'float? '(:or Double Float)
+   'vector? 'clojure.lang.IPersistentList
+   'list? 'clojure.lang.IPersistentList
    'real? '(:or rational? number? decimal? float?)
    'string? 'String
    'keyword? 'clojure.lang.Keyword
@@ -116,7 +118,7 @@
 (defmethod registered-type? '= [_] true)
 (defmethod registered-type? 'rte [_] true)
 (defmethod registered-type? 'member [_] true)
-
+(defmethod registered-type? 'satisfies [_] true)
 
 (defn supported-nontrivial-types []
   "Which types are currently supported?  This list denotes the
@@ -129,7 +131,7 @@
   "macro-like facility for rte" (fn [pattern _functions] (first pattern)))
 
 (defn invalid-pattern [pattern functions]
-  (throw (ex-info (format "invalid pattern %s" pattern)
+  (throw (ex-info (format "[134] invalid pattern %s" pattern)
                   {:error-type :rte-expand-error
                    :keyword (first pattern)
                    :pattern pattern
@@ -259,7 +261,7 @@
                 (:and) (traverse-pattern '(:* :sigma) functions)
                 (:cat) (traverse-pattern :epsilon functions)
                 (:not
-                 :*) (throw (ex-info (format "invalid pattern %s, expecting exactly one operand" pattern)
+                 :*) (throw (ex-info (format "[264] invalid pattern %s, expecting exactly one operand" pattern)
                                      {:error-type :rte-syntax-error
                                       :keyword keyword
                                       :pattern pattern
@@ -296,7 +298,7 @@
                 ((functions token) operands functions)
 
                 (:not :*)
-                (throw (ex-info (format "invalid pattern %s, expecting exactly one operand" pattern)
+                (throw (ex-info (format "[301] invalid pattern %s, expecting exactly one operand" pattern)
                                 {:error-type :rte-syntax-error
                                  :keyword keyword
                                  :pattern pattern
