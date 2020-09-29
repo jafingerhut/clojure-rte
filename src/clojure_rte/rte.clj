@@ -117,6 +117,7 @@
 (defmethod registered-type? 'rte [_] true)
 (defmethod registered-type? 'member [_] true)
 
+
 (defn supported-nontrivial-types []
   "Which types are currently supported?  This list denotes the
   type names which appear as (something maybe-args), which are
@@ -212,7 +213,8 @@
              ([_ _ _ & _] 
               (invalid-pattern pattern functions)))
            (rest pattern))))
-  
+
+
 (defn traverse-pattern
   "Workhorse function for walking an rte pattern.
    This function is the master of understanding the syntax of an rte
@@ -222,29 +224,48 @@
    *traversal-functions*, indicating the callbacks for each rte
    keyword such as :* :cat etc.  The philosophy is that no other
    function needs to understand how to walk an rte pattern."
-  [pattern functions]
-
-  (letfn [(if-atom []
+  [given-pattern functions]
+  (letfn [(if-atom [pattern]
             (case pattern
               (:epsilon :empty-set :sigma)
               ((functions pattern) pattern functions)
               ((:type functions) pattern functions)))
-          (if-nil []
+          (if-nil [_]
             ((:type functions) () functions))
-          (if-singleton-list [] ;; (:or)  (:and)
+          (verify-type [obj]
+            (if (ty/valid-type? obj)
+              obj
+              (throw (ex-info (cl-format false "invalid type designator ~A" obj)
+                              {:error-type :invalid-type-designator
+                               :obj obj
+                               :given-pattern given-pattern}))))
+          (convert-type-designator-to-rte [obj]
+            ;; e.g convert (and a b c) => (:and a b c)
+            ;;             (or a b c) => (:or a b c)
+            ;;             (not a) => (:and :sigma (:not a))
+            ;; We also verify that it is a valid.
+            ;;  i.e., (or (:and ...)) is not allowed, which probably means the user forgot a :
+            (if (not (sequential? obj))
+              obj
+              (case (first obj)
+                (or) (cons :or (rest (verify-type obj)))
+                (and) (cons :and (rest (verify-type obj)))
+                (not) `(:and (:not ~@(rest (verify-type obj))) :sigma)
+                obj)))
+          (if-singleton-list [pattern] ;; (:or)  (:and)
             (let [[keyword] pattern]
               (case keyword
                 (:or)  (traverse-pattern :empty-set functions)
-                (:and) (traverse-pattern :sigma functions)
+                (:and) (traverse-pattern '(:* :sigma) functions)
                 (:cat) (traverse-pattern :epsilon functions)
                 (:not
                  :*) (throw (ex-info (format "invalid pattern %s, expecting exactly one operand" pattern)
-                                       {:error-type :rte-syntax-error
-                                        :keyword keyword
-                                        :pattern pattern
-                                        :functions functions
-                                        :cause :unary-keyword
-                                        }))
+                                     {:error-type :rte-syntax-error
+                                      :keyword keyword
+                                      :pattern pattern
+                                      :functions functions
+                                      :cause :unary-keyword
+                                      }))
                 ;; case-else
                 (cond
                   (and (sequential? keyword)
@@ -253,7 +274,7 @@
 
                   :else
                   (traverse-pattern (rte-expand pattern functions) functions)))))
-          (if-exactly-one-operand [] ;; (:or Long) (:* Long)
+          (if-exactly-one-operand [pattern] ;; (:or Long) (:* Long)
             (let [[token operand] pattern]
               (case token
                 (:or :and :cat)
@@ -266,7 +287,7 @@
                 (if (registered-type? (first pattern))
                   ((:type functions) pattern functions)
                   (traverse-pattern (rte-expand pattern functions) functions)))))
-          (if-multiple-operands []
+          (if-multiple-operands [pattern]
             (let [[token & operands] pattern]
               (case token
                 (:or
@@ -287,20 +308,21 @@
                 (if (registered-type? token)
                   ((:type functions) pattern functions)
                   (traverse-pattern (rte-expand pattern functions) functions)))))]
-    (cond (not (seq? pattern))
-          (if-atom)
+    (let [pattern (convert-type-designator-to-rte given-pattern)]
+      (cond (not (seq? pattern))
+            (if-atom pattern)
 
-          (empty? pattern)
-          (if-nil)
+            (empty? pattern)
+            (if-nil pattern)
 
-          (empty? (rest pattern)) ;; singleton list, (:and), (:or) etc
-          (if-singleton-list)
+            (empty? (rest pattern)) ;; singleton list, (:and), (:or) etc
+            (if-singleton-list pattern)
 
-          (empty? (rest (rest pattern))) ;; (:and x)
-          (if-exactly-one-operand)
+            (empty? (rest (rest pattern))) ;; (:and x)
+            (if-exactly-one-operand pattern)
 
-          ;; cond-else (:keyword args) or list-expr ;; (:and x y)
-          :else (if-multiple-operands))))
+            ;; cond-else (:keyword args) or list-expr ;; (:and x y)
+            :else (if-multiple-operands pattern)))))
 
 (defn nullable 
   "Determine whether the given rational type expression is nullable.
@@ -407,6 +429,10 @@
                                     (assert (< 1 (count operands))
                                             (format "traverse-pattern should have already eliminated this case: re=%s count=%s operands=%s" re (count operands) operands))
                                     (cl-cond
+                                     ;; TODO (:cat A (:* :sigma) (:* :sigma) B)
+                                     ;;  --> (:cat A (:* :sigma) B)
+
+
                                       ;; (:cat x (:cat a b) y) --> (:cat x a b y)
                                       ((some cat? operands)
                                       (cons :cat (mapcat (fn [obj]
@@ -436,9 +462,9 @@
                            :not (fn [operand _functions]
                                   (let [operand (canonicalize-pattern operand)]
                                     (case operand
-                                      (:sigma) :epsilon
+                                      (:sigma) '(:or (:cat :sigma (:* :sigma)) :epsilon)
                                       ((:* :sigma)) :empty-set
-                                      (:epsilon) (canonicalize-pattern '(:+ :sigma))
+                                      (:epsilon) '(:cat :sigma (:* :sigma))
                                       (:empty-set) '(:* :sigma)
                                       (cond
                                         (not? operand) ;; (:not (:not A)) --> A
@@ -461,10 +487,18 @@
                                         (list :not operand))
                                       )))
                            :and (fn [operands _functions]
-                                  (assert (< 1 (count operands))
-                                          (format "traverse-pattern should have already eliminated this case: re=%s count=%s operands=%s" re (count operands) operands))
                                   (let [operands (dedupe (sort-operands (map canonicalize-pattern operands)))]
                                     (cl-cond
+                                     ;; TODO - (:and :epsilon ...)
+                                     ;;    if any of the :and arguments is not nullable,
+                                     ;;    then the result is :empty-set
+                                     ;;    otherwise the result is :epsilon
+
+                                     ;; TODO (:and (:cat A B (:* :sigma))
+                                     ;;            (:cat A B ))
+                                     ;;  --> (:and (:cat A B))
+
+
                                      ((some and? operands)
                                       (cons :and (mapcat (fn [obj]
                                                            (if (and? obj)
@@ -517,6 +551,10 @@
                                          (format "traverse-pattern should have already eliminated this case: re=%s count=%s operands=%s" re (count operands) operands))
                                  (let [operands (dedupe (sort-operands (map canonicalize-pattern operands)))]
                                    (cl-cond
+                                    ;; TODO (:or (:cat A B (:* :sigma))
+                                    ;;           (:cat A B ))
+                                    ;;  --> (:or (:cat A B (:* :sigma)))
+
                                     ((some or? operands)
                                      (cons :or (mapcat (fn [obj]
                                                          (if (or? obj)
@@ -534,7 +572,7 @@
                                            others (remove not? operands)]
                                        (when (some (fn [item]
                                                      (some #{(list :not item)} nots)) others)
-                                         :sigma)))
+                                         '(:* :sigma))))
 
                                     ;; (:or subtype supertype x y z) --> (:and supertype x y z)
                                     ((let [atoms (filter (complement seq?) operands)
@@ -550,7 +588,6 @@
 (defn canonicalize-pattern 
   "find the fixed point of canonicalize-pattern-once"
   [pattern]
-
   (loop [old-pattern []
          new-pattern pattern]
     (if (= old-pattern new-pattern)

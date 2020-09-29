@@ -99,21 +99,24 @@
 (defmethod typep 'not [a-value [_a-type t]]
   (not (typep a-value t)))
 
-(defmethod valid-type? 'not [[_ type-designator]]
-  (valid-type? type-designator))
+(defmethod valid-type? 'not [[_not & type-designators]]
+  (and (sequential? type-designators)
+       (not (empty? type-designators))
+       (empty? (rest type-designators))
+       (valid-type? (first type-designators))))
 
 (defmethod typep 'and [a-value [_a-type & others]]
   (every? (fn [t1]
             (typep a-value t1)) others))
 
-(defmethod valid-type? 'and [_ & others]
+(defmethod valid-type? 'and [[_and & others]]
   (every? valid-type? others))
 
 (defmethod typep 'or [a-value [_a-type & others]]
   (some (fn [t1]
           (typep a-value t1)) others))
 
-(defmethod valid-type? 'or [_ & others]
+(defmethod valid-type? 'or [[_or & others]]
   (every? valid-type? others))
 
 (defmethod typep 'satisfies [a-value [_a-type f]]

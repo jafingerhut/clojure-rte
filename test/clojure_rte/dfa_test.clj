@@ -294,3 +294,20 @@
           (cl-format false "cx=~a, expecting to contain (and (not Long) Boolean)" cx))
       (is (member '(and (not Long) (not Boolean)) cx)
           (cl-format false "cx=~a, expecting to contain (and (not Long) (not Boolean))" cx)))))
+
+(deftest t-missing-final
+  (testing "missing final?"
+    (let [dfa (rte-to-dfa '(:and (:cat :sigma (:* :sigma))
+                                 (:not (:or (:cat :sigma))))
+                          12)]
+      (is (not (empty? (filter (comp boolean :accepting) (states-as-seq dfa))))
+          "missing final 1"))))
+
+(deftest t-missing-final-2
+  (testing "missing final 2?"
+    (let [dfa (rte-to-dfa '(:and (:cat (:* :sigma))
+                                 (:not (:or (:cat Boolean :sigma (:* :sigma))
+                                            (:cat Boolean :sigma))))
+                          13)]
+      (is (not (empty? (filter (comp boolean :accepting) (states-as-seq dfa))))
+          "missing final 2"))))

@@ -49,8 +49,6 @@
     (is (not (nullable '(:+ :empty-set))) "2")
     (is (nullable '(:? :epsilon)) "1")))
 
-
-
 (deftest t-first-types
   (testing "first-types"
     (is (= #{'a} (first-types 'a)))
@@ -76,15 +74,19 @@
 
 (deftest t-canonicalize-pattern-subtypes
   (testing "canonicalize-pattern with subtypes"
-    (is (= 'Number (canonicalize-pattern '(:or Integer Number))) "Number")
-    (is (= :sigma (canonicalize-pattern '(:or Number (:not Number)))) "sigma")
+    (is (= 'Number (canonicalize-pattern '(:or Integer Number))) 
+        "Number")
+    (is (= '(:* :sigma) (canonicalize-pattern '(:or Number (:not Number))))
+        "sigma")
 
-    (is (= 'Integer (canonicalize-pattern '(:and Integer Number))) "Integer")
-    (is (= :empty-set (canonicalize-pattern '(:and Number (:not Number)))) "empty-set 1")
+    (is (= 'Integer (canonicalize-pattern '(:and Integer Number))) 
+        "Integer")
+    (is (= :empty-set (canonicalize-pattern '(:and Number (:not Number)))) 
+        "empty-set 1")
 
     ;; intersection of disjoint types
-    (is (= :empty-set (canonicalize-pattern '(:and String Integer))) "empty-set 2")
-    ))
+    (is (= :empty-set (canonicalize-pattern '(:and String Integer))) 
+        "empty-set 2")))
 
 (deftest t-canonicalize-pattern-14
   (when (and (resolve 'java.lang.Comparable)
@@ -114,6 +116,13 @@
                                        (:cat java.lang.Comparable  java.io.Serializable java.lang.Comparable)
                                        (:cat java.lang.Comparable java.lang.Comparable java.io.Serializable)))) "permute 3 args"))))
 
+
+(deftest t-canonicalize-pattern-116
+  (testing "previous failure"
+    (is (= '(:* :sigma)
+           (canonicalize-pattern '(:and (:* :sigma)
+                                        (:* :sigma))))
+        "test 116")))
 
 (deftest t-canonicalize-pattern
   (testing "canonicalize-pattern"
@@ -163,7 +172,6 @@
            '(:cat Number (:* :sigma) String)) "cat sigma* sigma*")
 
     ;; :not
-    (is (= :epsilon (canonicalize-pattern-once '(:not :sigma))) "not sigma")
     (is (= :empty-set (canonicalize-pattern-once '(:not (:* :sigma)))) "not sigma*")
     (is (= (canonicalize-pattern-once '(:+ :sigma))
            (canonicalize-pattern-once '(:not :epsilon))) "not epsilon")
@@ -197,7 +205,7 @@
            (canonicalize-pattern '(:not (:or java.io.Serializable java.io.Serializable)))) "not or 4")
 
     ;; and
-    (is (= (canonicalize-pattern '(:and)) :sigma))    
+    (is (= (canonicalize-pattern '(:and)) '(:* :sigma)) "(:and)")
     (is (= 'java.io.Serializable
            (canonicalize-pattern '(:and java.io.Serializable
                                         java.io.Serializable))) "and remove duplicate 1")
@@ -303,6 +311,21 @@
            '(:cat Number Number))  "line 280")
     ))
 
+(deftest t-derivative-1
+  (testing "previous failure"
+    (is (= '(:* :sigma)
+           (derivative '(:not (:cat Boolean :sigma)) '(not Boolean)))
+        "test 308")
+
+    (is (= '(:* :sigma)
+           (derivative '(:not (:cat Boolean :sigma (:* :sigma))) '(not Boolean)))
+        "test 312")
+    
+    (is (= '(:* :sigma)
+           (derivative '(:and (:not (:cat Boolean :sigma (:* :sigma)))
+                              (:not (:cat Boolean :sigma))) '(not Boolean))))))
+
+
 (deftest t-rte-to-dfa
 
   (testing "rte-to-dfa"
@@ -321,8 +344,6 @@
       (is (thrown? clojure.lang.ExceptionInfo (rte-compile '(:? :epsilon :epsilon))))
       (is (thrown? clojure.lang.ExceptionInfo (rte-compile '(:+ :epsilon :epsilon)))))))
 
-
-
 (deftest t-mdtd
   (testing "mdtd"
     (with-compile-env ()
@@ -330,6 +351,31 @@
              #{`(~'not java.lang.Exception)
                `(~'and java.lang.Exception (~'not clojure.lang.ExceptionInfo))
                'clojure.lang.ExceptionInfo})))))
+
+(deftest t-boolean-types
+  (testing "rte-match with Boolean types"
+    (with-compile-env []
+      (is (rte-match '(:cat (or Boolean Long)) [42]) "test 1")
+      (is (rte-match '(:* (or Boolean Long)) [])  "test 2")
+      (is (rte-match '(:* (or Boolean Long)) [42 ])  "test 3")
+      (is (rte-match '(:* (or Boolean Long)) [42 43])  "test 4")
+      (is (rte-match '(:* (or Boolean Long)) [42 43 false])  "test 5")
+
+      (is (rte-match '(:* (and Number Long (not (= 0)))) [])  "test 6")
+      (is (rte-match '(:* (and Number Long (not (= 0)))) [42])  "test 7")
+      (is (rte-match '(:* (and Number Long (not (= 0)))) [42 43 ])  "test 8")
+      (is (not (rte-match '(:* (:and Number
+                                     Long
+                                     (:and :sigma
+                                           (:not (= 0)))))
+                          [42 43 0 44])) "test 9b")
+      (is (rte-match '(:* (:and Number
+                                Long
+                                ;; (:not (:and :sigma (= 0))) is all of (:* :sigma) except 0
+                                ;;   this includes :epsilon
+                                (:not (:and :sigma (= 0)))))
+                     [42 43 0 44]) "test 9a")
+      (is (not (rte-match '(:* (and Number Long (not (= 0)))) [42 43 0 44]))  "test 9b"))))
 
 (deftest t-?
   (testing "rte :?"
@@ -580,15 +626,46 @@
 
 (deftest t-rte-combine-labels
   (testing "rte-combine-labels"
-    (is (= '(or Long String)
-           (rte-combine-labels 'Long
-                               'String)))
-    (is (= '(or Long String Double)
-           (rte-combine-labels '(or Long String)
-                               'Double)))
-    (is (= '(or Double Long String)
-           (rte-combine-labels 'Double
-                               '(or Long String))))
-    (is (= '(or Double String Long String)
-           (rte-combine-labels '(or Double String)
-                               '(or Long String))))))
+    (with-compile-env ()
+      (is (= '(or Long String)
+             (rte-combine-labels 'Long
+                                 'String)))
+      (is (= '(or Long String Double)
+             (rte-combine-labels '(or Long String)
+                                 'Double)))
+      (is (= '(or Double Long String)
+             (rte-combine-labels 'Double
+                                 '(or Long String))))
+      (is (= '(or Double String Long String)
+             (rte-combine-labels '(or Double String)
+                                 '(or Long String)))))))
+
+(deftest t-rte-combine-labels
+  (testing "and/not conversion"
+    (with-compile-env ()
+      (is (not= '(:not (= 0))
+                (canonicalize-pattern '(not (= 0)))) "test 0")
+      (is (not (rte-match '(:* (and Number Long (not (= 0)))) [0])) "test 1")
+      (is (rte-match '(:* (and Number Long (not (= 0)))) [1]) "test 2")
+      (is (not (rte-match '(:* (and  Long (not (= 0)))) [0])) "test 3")
+      (is (rte-match '(:* (and Long (not (= 0)))) [1]) "test 4")
+      (is (not (rte-match '(:* (and  Number (not (= 0)))) [0])) "test 5")
+      (is (rte-match '(:* (and  Number (not (= 0)))) [1]) "test 6"))))
+
+(deftest t-invalid-type
+  (testing "for invalid type within rte"
+    (with-compile-env ()
+      (is (thrown? Exception (canonicalize-pattern '(not (:or String Number)))) "test 0")
+      (is (thrown? Exception (canonicalize-pattern '(not (or String Number)
+                                                         (or Long Number)))) "test 1")
+      (is (thrown? Exception (canonicalize-pattern '(and (:or String Number)
+                                                         (:or :sigma)))) "test 2")
+      (is (thrown? Exception (canonicalize-pattern '(or (:and String Number)))) "test 3"))))
+
+(deftest t-derivative-2
+  (testing "derivative previous failure"
+    (is (nullable (derivative '(:and (:cat (:* :sigma))
+                                     (:not (:or (:cat Boolean :sigma (:* :sigma))
+                                                (:cat Boolean :sigma))))
+                              '(not Boolean)))
+        "derivative 2")))

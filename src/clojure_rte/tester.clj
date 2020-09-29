@@ -34,7 +34,18 @@
                        (simplify unary component gen-components)) (gen-components error-case))
                error-case)))))
 
-(defn random-test [num-tries unary-test-fun arg-generator gen-components verbose]
+(defn random-test
+  "Call a testing function, unary-test-fun, on *randomly* generated values.
+  unary-test-fun is a unary function which can be called with the return value of
+     arg-generator as sole argument.   If the function returns, it is deemed successful.
+     If the function needs to indicate failure, it should throw an exception as if by
+     (assert false \"some error message\").
+  arg-generator is called num-tries number of times to generate input for
+  num-tries number of calls to function unary-test-fun.
+  gen-components is currently unused, but in the future will be used to simply expression
+      to attempt to generate a simpler test case, if test fails.
+  verbose indicates whether to print verbose information about progression of tests."
+  [num-tries unary-test-fun arg-generator gen-components verbose]
   (loop [n num-tries]
     (if (< 0 n)
       (let [data (arg-generator)]
