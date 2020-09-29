@@ -117,7 +117,29 @@
                       rte-components
                       verbose))
 
-(defn test-rte-caonicalize-nullable
+;; this test is not yet correctly implemented,
+;;    need a good way to compare two rtes for equivalence
+;; (defn test-rte-not-not-canonicalize
+;;   "Run some tests to assure that an rte r is equivalent to
+;;   (:not (:not r))"
+;;   [num-tries size verbose]
+;;   (tester/random-test
+;;    num-tries
+;;    (fn [rte]
+;;      (let [not-1 (canonicalize-pattern `(:not ~rte))
+;;            not-2 (canonicalize-pattern `(:not ~not-1))
+;;            a-and-not-b (canonicalize-pattern `(:and ~rte (:not ~not-2)))
+;;            b-and-not-a (canonicalize-pattern `(:and ~not-2 (:not ~rte)))
+;;            ]
+;;        (assert (= :empty-set a-and-not-b)
+;;                (cl-format false "expecting :empty-set, got a-and-not-b=~A" a-and-not-b))
+;;        (assert (= :empty-set b-and-not-a)
+;;                (cl-format false "expecting :empty-set, got b-and-not-a=~A" b-and-not-a))))
+;;    (fn [] (gen-rte size *test-types*))
+;;    rte-components
+;;    verbose))
+
+(defn test-rte-canonicalize-nullable
   "Run some tests to assure that if an rte r is nullable if and only
   if (canonicalize-pattern r) is nullable."
   [num-tries size verbose]
