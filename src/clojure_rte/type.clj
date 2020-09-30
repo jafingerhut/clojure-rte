@@ -21,6 +21,7 @@
 
 (ns clojure-rte.type
   (:require [clojure.set :refer [intersection]]
+            [clojure.repl :refer [source-fn]]
             [clojure.pprint :refer [cl-format]]
             [clojure-rte.util :refer [call-with-collector member]]
             [clojure-rte.cl-compat :refer [cl-cond]]
@@ -858,3 +859,113 @@
     (recurring items () ())))
 
 
+(defn- get-fn-source
+  "Use the clojure.repl/source-fn function to extract a string representing the
+  code body of the definition of the named function, fn-name.
+  We then parse this string with read-string.
+  If unable to get the string representing the function, nil is returned."
+  [fn-name]
+  (let [src-str (source-fn fn-name)]
+    (cond
+      (= nil src-str)
+      nil
+
+      :else
+      (read-string src-str))))
+
+(declare type-predicate-to-type-designator)
+
+(defn- extract-type-from-expression
+  "After the expression representing the code body has been extracted from the code body
+  of a type predicate, use several heursitics to match the code, to extract the type
+  which is being implemented in the expression."
+  [var-1 expr]
+  (cond
+    (not (sequential? expr))
+    nil
+    
+    ;; (instance? clojure.lang.Symbol x)
+    (and (= 3 (count expr))
+         (= 'instance? (first expr)))
+    (let [[_i type-designator var-2] expr]
+      (if (and (= var-1 var-2)
+               (symbol? type-designator))
+        type-designator
+        nil))
+         
+    ;; (symbol? x)
+    (= 2 (count expr))
+    (let [[type-predicate var-2] expr]
+      (if (and (= var-1 var-2)
+               (symbol? type-predicate))
+        (type-predicate-to-type-designator type-predicate)
+        nil))
+
+    ;; (or ...)
+    (= 'or (first expr))
+    (let  [[_or & exprs] expr
+           expanded (map (fn [ex]
+                           (extract-type-from-expression var-1 ex))
+                         exprs)
+           ]
+      (if (not (member nil expanded))
+        (cons 'or expanded)
+        nil))
+
+    :else
+    nil))
+
+(defn- type-predicate-to-type-designator 
+  "Look at the function definition s-expression of the named function, type-predicate,
+  and apply heuristics to attempt to reverse-engineer the type being checked.  
+  This works for type predicates as they are defined in core.clj."
+  [type-predicate]
+  (let [fn-s-expression (get-fn-source type-predicate)]
+    (cond
+      (not (sequential? fn-s-expression))
+      nil
+
+      (empty? fn-s-expression)
+      nil
+
+      (= 6 (count fn-s-expression))
+      (let [[_defn name doc-string attr-map [var-1] expr]
+            fn-s-expression]
+        (if (and (= _defn 'defn)
+                 (symbol? name)
+                 (string? doc-string)
+                 (map? attr-map)
+                 (symbol? var-1))
+          (extract-type-from-expression var-1 expr)
+          nil))
+
+      :else
+      nil)))
+
+(defn expand-satisfies [type-designator]
+  "Expand (satisfies rational? to
+  (or
+    (or Integer Long clojure.lang.BigInt BigInteger Short Byte)
+    clojure.lang.Ratio BigDecimal)
+  if possible.  Otherwise expand the given type-designator simply to itself."
+
+  (cl-cond
+   ((not (sequential? type-designator))
+    type-designator)
+
+   ((empty? type-designator)
+    type-designator)
+
+   ((not= 'satisfies (first type-designator))
+    type-designator)
+
+   ((empty? (rest type-designator))
+    type-designator)
+
+   ((not (empty? (rest (rest type-designator))))
+    type-designator)
+
+   ((type-predicate-to-type-designator (second type-designator)))
+
+   (:else
+    type-designator)))

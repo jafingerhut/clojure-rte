@@ -21,7 +21,6 @@
 
 (ns clojure-rte.core
   (:require [clojure.set :refer [union]]
-            [clojure.repl :refer [source-fn]]
             [clojure.pprint :refer [cl-format]]
             [clojure-rte.cl-compat :refer [cl-cond]]
             [clojure-rte.util :refer [with-first-match call-with-collector
