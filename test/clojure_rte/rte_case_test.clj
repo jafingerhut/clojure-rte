@@ -56,7 +56,7 @@
               ;; I don't know why it is necessary to prefix clojure-rte.core/rte-case-clauses-to-dfa
               ;; otherwise the loader complains:
               ;; java.lang.RuntimeException: Unable to resolve symbol: rte-case-clauses-to-dfa in this context
-              (clojure-rte.core/rte-case-clauses-to-dfa
+              (#'clojure-rte.core/rte-case-clauses-to-dfa
 
                '[[0 (:and (:* Long) (:not (:or)))]
                  [1 (:and (:* Boolean) (:not (:or (:* Long))))]
@@ -69,7 +69,7 @@
         "case-0")
 
     (is (= 1 (rte-match
-              (clojure-rte.core/rte-case-clauses-to-dfa
+              (#'clojure-rte.core/rte-case-clauses-to-dfa
                '[[0 (:and (:* Long) (:not (:or)))]
                  [1 (:and (:* Boolean) (:not (:or (:* Long))))]
                  [2 (:and (:* String) (:not (:or (:* Boolean) (:* Long))))]
@@ -81,7 +81,7 @@
         "case-1")
 
     (is (= 2 (rte-match
-              (clojure-rte.core/rte-case-clauses-to-dfa
+              (#'clojure-rte.core/rte-case-clauses-to-dfa
                '[[0 (:and (:* Long) (:not (:or)))]
                  [1 (:and (:* Boolean) (:not (:or (:* Long))))]
                  [2 (:and (:* String) (:not (:or (:* Boolean) (:* Long))))]
@@ -93,7 +93,7 @@
         "case-2")
 
     (is (= 3 (rte-match
-              (clojure-rte.core/rte-case-clauses-to-dfa
+              (#'clojure-rte.core/rte-case-clauses-to-dfa
                '[[0 (:and (:* Long) (:not (:or)))]
                  [1 (:and (:* Boolean) (:not (:or (:* Long))))]
                  [2 (:and (:* String) (:not (:or (:* Boolean) (:* Long))))]
