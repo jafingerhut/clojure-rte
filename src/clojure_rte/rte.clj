@@ -60,8 +60,9 @@
   (cl-cond   
    ((*rte-known* tag))
    ((and (symbol? tag)
-         (resolve tag)
-         (class? (resolve tag)))
+         ;;(resolve tag)
+         (ns-resolve (find-ns 'clojure-rte.core) tag)
+         (class? (ns-resolve (find-ns 'clojure-rte.core) tag)))
     tag)
    ((not-empty (or (descendants tag)
                    (ancestors tag))) tag)
@@ -114,7 +115,15 @@
 
 
 (defmulti registered-type? identity)
-(defmethod registered-type? :default [_] false)
+(defmethod registered-type? :default
+  [type-designator]
+  (cond
+    (not (sequential? type-designator))
+    false
+    (empty? type-designator)
+    false
+    :else
+    (registered-type? (first type-designator))))
 (defmethod registered-type? '= [_] true)
 (defmethod registered-type? 'rte [_] true)
 (defmethod registered-type? 'member [_] true)
@@ -130,29 +139,30 @@
 (defmulti rte-expand
   "macro-like facility for rte" (fn [pattern _functions] (first pattern)))
 
-(defn invalid-pattern [pattern functions]
+(defn invalid-pattern [pattern functions culprit]
   (throw (ex-info (format "[134] invalid pattern %s" pattern)
                   {:error-type :rte-expand-error
                    :keyword (first pattern)
+                   :culprit culprit
                    :pattern pattern
                    :functions functions
                    })))
 
 (defmethod rte-expand :default [pattern functions]
-  (invalid-pattern pattern functions))
+  (invalid-pattern pattern functions :default))
 
 (defmethod rte-expand :? [pattern functions]
   (apply (fn
-           ([] (invalid-pattern pattern functions))
+           ([] (invalid-pattern pattern functions '[:? []]))
            ([operand] `(:or :epsilon ~operand))
-           ([_ & _] (invalid-pattern pattern functions)))
+           ([_ & _] (invalid-pattern pattern functions '[:? [_ & _]]))) 
          (rest pattern)))
 
 (defmethod rte-expand :+ [pattern functions]
   (apply (fn
-           ([] (invalid-pattern pattern functions))
+           ([] (invalid-pattern pattern functions '[:+ []]))
            ([operand] `(:cat ~operand (:* ~operand)))
-           ([_ & _] (invalid-pattern pattern functions)))
+           ([_ & _] (invalid-pattern pattern functions '[:+ [_ & _]])))
          (rest pattern)))
 
 (defmethod rte-expand :permute [pattern functions]
@@ -206,14 +216,14 @@
                   ]
               (traverse-pattern `(:cat ~@repeated-operand ~@optional-operand) functions)))]
     (apply (fn
-             ([] (invalid-pattern pattern functions))
-             ([_] (invalid-pattern pattern functions))
+             ([] (invalid-pattern pattern functions '[:exp []]))
+             ([_] (invalid-pattern pattern functions '[:exp [_]]))
              ([n pattern]
               (expand n n pattern))
              ([n m pattern] 
               (expand n m pattern))
              ([_ _ _ & _] 
-              (invalid-pattern pattern functions)))
+              (invalid-pattern pattern functions '[:exp [_ _ _ & _]])))
            (rest pattern))))
 
 

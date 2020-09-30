@@ -35,7 +35,7 @@
   (not A)
   (and A B)
   (or A B)
-  (satisfies A B)
+  (satisfies A)
   (= obj)
   (member a b c)"
   (fn [_value type-designator]
@@ -188,8 +188,6 @@
   method has been filtered away."
   (memoize (fn [f]
              (cons :primary (remove #{:primary :default} (keys (methods f)))))))
-
-
 
 (defmulti -disjoint?
   "This function should never be called.
@@ -858,4 +856,5 @@
                       (recurring (rest items) left right) ;;   Double & !Float, we can omit Float in right
                       (recurring (rest items) left (cons new-type right)))))))))]
     (recurring items () ())))
+
 
