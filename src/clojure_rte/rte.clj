@@ -36,20 +36,8 @@
   ;; TODO - is it interesting to allow parameterized types here?
   ;;    E.g., these types would work similar to CL deftype,
   ;;    we'd need a macro expander based on quasi-quote.
-  {'int? '(:or Long Integer Short Byte)
-   'integer? '(:or int? clojure.lang.BigInt BigInteger)
-   'ratio? 'clojure.lang.Ratio
-   'decimal? 'BigDecimal
-   'rational? '(:or integer? ratio? decimal?)
-   'number? 'Number
-   'float? '(:or Double Float)
-   'vector? 'clojure.lang.IPersistentList
-   'list? 'clojure.lang.IPersistentList
+  {
    'real? '(:or rational? number? decimal? float?)
-   'string? 'String
-   'keyword? 'clojure.lang.Keyword
-   'symbol? 'clojure.lang.Symbol
-   'seq? 'clojure.lang.ISeq
    })
 
 (defn resolve-rte-tag
