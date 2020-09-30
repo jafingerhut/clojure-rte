@@ -234,6 +234,7 @@
              (rte-case ~var ~@cases (:* :sigma) nil)))))))
 
 (defmacro destructuring-fn-many
+  "Internal macro used in the exapansion of destructuring-fn"
   [& args]
   (cond (empty? args)
         nil
