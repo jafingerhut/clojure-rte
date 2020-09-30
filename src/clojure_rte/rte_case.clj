@@ -25,7 +25,7 @@
 
 (in-ns 'clojure-rte.core)
 
-(defn rte-case-clauses-to-dfa
+(defn- rte-case-clauses-to-dfa
   "Helper function for macro-expanding rte-case.
   Returns a Dfa which is the union of the input clauses."
   [pairs]
@@ -108,7 +108,7 @@
       `((~fns (ensure-fns-index (rte-match (memoized-rte-case-clauses-to-dfa '~int-rte-pairs) ~sequence)
                                 ~num-fns))))))
 
-(defn lambda-list-to-rte
+(defn- lambda-list-to-rte
   "Helper function for destructuring-case macro.
   Returns an rte either of one of the following forms:
     (:cat ... (:* ...)) -- if the given lambda-list contains &
