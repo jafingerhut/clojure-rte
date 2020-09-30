@@ -290,7 +290,7 @@
    
    [[name & clauses] {clauses (and (satisfies list?)
                                    (not (= ()))
-                                   (rte (:* (:cat vector? (:* :sigma)))))}]
+                                   (rte (:* (:cat (satisfies vector?) (:* :sigma)))))}]
    `(destructuring-fn-many
      ~@(if name (list name) nil) ;; either name or nothing
      ~@clauses)
@@ -300,4 +300,3 @@
            (cl-format false
                       "destructuring-fn, invalid argument list: ~A"
                       args)))))
-    
