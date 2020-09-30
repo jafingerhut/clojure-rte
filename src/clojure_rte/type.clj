@@ -44,6 +44,12 @@
       (first type-designator)
       type-designator)))
 
+(defmulti canonicalize-type
+  (fn [type-designator]
+    (if (sequential? type-designator)
+      (first type-designator)
+      type-designator)))
+
 (defmulti valid-type?
   "Look at a type-designator and determine whether it is syntactically correct"
   (fn [type-designator]
@@ -129,6 +135,12 @@
   (or (fn? f)
       (and (symbol? f)
            (resolve f))))
+
+(declare expand-satisfies)
+
+(defmethod canonicalize-type 'satisfies
+  [type-designator]
+  (expand-satisfies type-designator))
 
 (defmethod typep '= [a-value [_type value]]
   (= value a-value))
@@ -977,3 +989,25 @@
 
    (:else
     type-designator)))
+
+
+(defmethod canonicalize-type :default
+  [type-designator]
+  (cond   
+    (and (symbol? type-designator)
+         ;;(resolve type-designator)
+         (ns-resolve (find-ns 'clojure-rte.core) type-designator)
+         (class? (ns-resolve (find-ns 'clojure-rte.core) type-designator)))
+    type-designator
+    
+    (not (sequential? type-designator))
+    (throw (ex-info (format "canonicalize-type: warning unknown type %s" type-designator)
+                    {:error-type :not-a-sequence
+                     :type type-designator }))
+
+    (valid-type? type-designator) type-designator
+
+    :else
+    (throw (ex-info (format "canonicalize-type: warning unknown type %s" type-designator)
+                    {:error-type :unknown-type
+                     :type type-designator }))))

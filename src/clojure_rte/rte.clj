@@ -40,29 +40,6 @@
    'real? '(:or rational? number? decimal? float?)
    })
 
-(defn resolve-rte-tag
-  "Look up a tag in *rte-known*, or return the given tag
-   if not found"
-  [tag]
-
-  (cl-cond   
-   ((*rte-known* tag))
-   ((and (symbol? tag)
-         ;;(resolve tag)
-         (ns-resolve (find-ns 'clojure-rte.core) tag)
-         (class? (ns-resolve (find-ns 'clojure-rte.core) tag)))
-    tag)
-   ((not-empty (or (descendants tag)
-                   (ancestors tag))) tag)
-   ((ty/valid-type? tag) tag)
-   (:else
-    (println (format "resolve-rte-tag: warning unknown type %s" tag))
-    (throw (ex-info (format "resolve-rte-tag: warning unknown type %s" tag)
-                    {:error-type :unknown-type
-                     :type tag }))
-    tag))
-)
-
 (def ^:dynamic *traversal-functions*
   "Default callbacks for walking an rte tree.
   A function which wants to perform a recursive action on an
@@ -79,7 +56,7 @@
   {:client (fn [pattern functions]
              (traverse-pattern pattern functions))
    :type (fn [tag functions]
-           ((:client functions) (resolve-rte-tag tag) functions))
+           ((:client functions) tag functions))
    :* (fn [pattern functions]
         (cons :* ((:client functions) pattern functions)))
    :and (fn [patterns functions]
@@ -214,7 +191,6 @@
               (invalid-pattern pattern functions '[:exp [_ _ _ & _]])))
            (rest pattern))))
 
-
 (defn traverse-pattern
   "Workhorse function for walking an rte pattern.
    This function is the master of understanding the syntax of an rte
@@ -226,9 +202,14 @@
    function needs to understand how to walk an rte pattern."
   [given-pattern functions]
   (letfn [(if-atom [pattern]
-            (case pattern
-              (:epsilon :empty-set :sigma)
+            (cond
+              (member pattern (:epsilon :empty-set :sigma))
               ((functions pattern) pattern functions)
+
+              (*rte-known* pattern)
+              (traverse-pattern (*rte-known* pattern) functions)
+
+              :else
               ((:type functions) pattern functions)))
           (if-nil [_]
             ((:type functions) () functions))
@@ -283,6 +264,11 @@
                 (:not :*)
                 ((functions token) operand functions)
 
+                (satisfies)
+                (if (not= pattern (ty/expand-satisfies pattern))
+                  (traverse-pattern (ty/expand-satisfies pattern) functions)
+                  ((:type functions) pattern functions))
+                
                 ;;case-else
                 (if (registered-type? (first pattern))
                   ((:type functions) pattern functions)
@@ -400,6 +386,10 @@
   "Predicate determining whether its object is of the form (:or ...)"
   (seq-matcher :or))
 
+(defmethod ty/canonicalize-type 'rte
+  [type-designator]
+  (cons 'rte (map canonicalize-pattern (rest type-designator))))
+
 (defn canonicalize-pattern-once 
   "Rewrite the given rte patter to a canonical form.
   This involves recursive re-writing steps for each sub form,
@@ -412,7 +402,7 @@
   (traverse-pattern re
                     (assoc *traversal-functions*
                            :type (fn [tag _functions]
-                                   (resolve-rte-tag tag))
+                                   (ty/canonicalize-type tag))
                            :empty-set rte-identity
                            :epsilon rte-identity
                            :sigma rte-identity
