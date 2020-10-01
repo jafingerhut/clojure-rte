@@ -216,7 +216,7 @@
           (verify-type [obj]
             (if (ty/valid-type? obj)
               obj
-              (throw (ex-info (cl-format false "invalid type designator ~A" obj)
+              (throw (ex-info (cl-format false "[219] invalid type designator ~A" obj)
                               {:error-type :invalid-type-designator
                                :obj obj
                                :given-pattern given-pattern}))))

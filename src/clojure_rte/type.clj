@@ -75,21 +75,21 @@
     (instance? a-type a-value)
     
     (not (symbol? a-type))
-    (throw (ex-info (format "typep: invalid type of %s, expecting a symbol or class , got %s" a-type (type a-type))
+    (throw (ex-info (format "typep: [178] invalid type of %s, expecting a symbol or class , got %s" a-type (type a-type))
                     {:error-type :invalid-type-designator
                      :a-type a-type
                      :a-value a-value
                      }))
 
     (not (resolve a-type))
-    (throw (ex-info (format "typep: invalid type %s, no resolvable value" a-type)
+    (throw (ex-info (format "typep: [179] invalid type %s, no resolvable value" a-type)
                     {:error-type :invalid-type-designator
                      :a-type a-type
                      :a-value a-value
                      }))
 
     (not (class? (resolve a-type)))
-    (throw (ex-info (format "typep: invalid type of %s, does not resolve to a class, got %s of type %s"
+    (throw (ex-info (format "typep: [180] invalid type of %s, does not resolve to a class, got %s of type %s"
                             a-type (resolve a-type) (type (resolve a-type)))
                     {:error-type :invalid-type-designator
                      :a-type a-type
