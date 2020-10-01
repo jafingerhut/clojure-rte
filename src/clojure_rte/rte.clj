@@ -37,7 +37,7 @@
   ;;    E.g., these types would work similar to CL deftype,
   ;;    we'd need a macro expander based on quasi-quote.
   {
-   'real? '(:or rational? number? decimal? float?)
+   'real? 'Number
    })
 
 (def ^:dynamic *traversal-functions*
