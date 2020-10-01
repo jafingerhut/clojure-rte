@@ -203,7 +203,7 @@
   [given-pattern functions]
   (letfn [(if-atom [pattern]
             (cond
-              (member pattern (:epsilon :empty-set :sigma))
+              (member pattern '(:epsilon :empty-set :sigma))
               ((functions pattern) pattern functions)
 
               (*rte-known* pattern)
