@@ -942,22 +942,27 @@
          nil
 
          (= 3 (count fn-s-expression))
-         (let [[_def name-1 [_fn name-2 [var-1] expr]] fn-s-expression]
-           (if (and (= name-1 name-2)
-                    (= _def 'def)
-                    (= _fn 'fn))
-             (extract-type-from-expression var-1 expr)
-             nil))
+         (try (let [[_def name-1 [_fn name-2 [var-1] expr]] fn-s-expression]
+                (if (and (= name-1 name-2)
+                         (= _def 'def)
+                         (= _fn 'fn))
+                  (extract-type-from-expression var-1 expr)
+                  nil))
+              (catch Exception _
+                nil))
          
          (= 6 (count fn-s-expression))
-         (let [[_defn name doc-string attr-map [var-1] expr]
-               fn-s-expression]
-           (if (and (= _defn 'defn)
-                    (symbol? name)
-                    (string? doc-string)
-                    (map? attr-map)
-                    (symbol? var-1))
-             (extract-type-from-expression var-1 expr)
+         (try
+           (let [[_defn name doc-string attr-map [var-1] expr]
+                 fn-s-expression]
+             (if (and (= _defn 'defn)
+                      (symbol? name)
+                      (string? doc-string)
+                      (map? attr-map)
+                      (symbol? var-1))
+               (extract-type-from-expression var-1 expr)
+               nil))
+           (catch Exception _
              nil))
 
          :else
