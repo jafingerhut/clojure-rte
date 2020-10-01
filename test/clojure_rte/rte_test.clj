@@ -492,40 +492,6 @@
                              (:+ (:cat String Long Double))))  "test 17")
       )))
 
-(deftest t-with-rte-1
-  (with-rte [::a (:permute Long Long String)]
-    (is (resolve-rte-tag ::a)))
-  )
-
-(deftest t-with-rte-2
-  (with-rte [::a (:permute Long Long String)]
-    (is (resolve-rte-tag ::a))
-    (rte-compile '(:cat ::a ::a))))
-
-(deftest t-with-rte-3
-  (with-rte [::a (:permute Long Long String)]
-      (is (resolve-rte-tag ::a))
-      (let [rte (rte-compile '(:cat ::a ::a))]
-        (is (rte-match rte [2 2 "hello"
-                            4 4 "world"]) "case 1")))
-    )
-
-(deftest t-with-rte
-  (with-rte [::a (:permute Long Long String)]
-    (is (resolve-rte-tag ::a))
-    (let [rte (rte-compile '(:cat ::a ::a))]
-      (is (rte-match rte [2 2 "hello"
-                            4 4 "world"]) "case 1")
-      (is (rte-match rte [2 "hello" 2
-                            4 4 "world"]) "case 2")
-      (is (rte-match rte [2 "hello" 2
-                            "world" 4 4]) "case 3")
-      (is (not (rte-match rte [2 "hello" 2 2 2
-                                 "world" 4 4])) "case 4")
-      (is (not (rte-match rte [2 "hello" "hello"
-                                 "world" 4 4])) "case 5")))
-  )
-
 (deftest t-with-rte-4
   (testing "with-rte 4"
     (with-rte [::x (:+ Long)

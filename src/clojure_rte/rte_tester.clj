@@ -62,29 +62,39 @@
                                               (range size)))
       (:? :+ :* :not) (list key (gen-rte (dec size) types)))))
 
+
 (def ^:dynamic *test-types*
-  '(integer? int? rational? ratio? string? keyword? symbol? decimal? float? seq?
-             java.io.Serializable
-             java.lang.CharSequence
-             java.lang.Comparable
-             java.lang.Number
-             java.lang.Object
-             clojure.lang.IMeta
-             (= 1)
-             (= 0)
-             (= a)
-             (= [1 2 3])
-             (= [])
-             (member [1 2 3] [1 2] [1] [])
-             (member [1 2 3] [2 1 3])
-             (member a b c "a" "b" "c")
-             (member a b)
-             (member 1 2 3)
-             (member 2 3 4)
-             (member "a" "b" "c")
-             (member "a" "b" "c" 1 2 3)
-             (member 1 "a")
-))
+  '((satisfies integer?)
+    (satisfies int?)
+    (satisfies rational?)
+    (satisfies ratio?)
+    (satisfies string?)
+    (satisfies keyword?)
+    (satisfies symbol?)
+    (satisfies decimal?)
+    (satisfies float?)
+    (satisfies seq?)
+    java.io.Serializable
+    java.lang.CharSequence
+    java.lang.Comparable
+    java.lang.Number
+    java.lang.Object
+    clojure.lang.IMeta
+    (= 1)
+    (= 0)
+    (= a)
+    (= [1 2 3])
+    (= [])
+    (member [1 2 3] [1 2] [1] [])
+    (member [1 2 3] [2 1 3])
+    (member a b c "a" "b" "c")
+    (member a b)
+    (member 1 2 3)
+    (member 2 3 4)
+    (member "a" "b" "c")
+    (member "a" "b" "c" 1 2 3)
+    (member 1 "a")
+    ))
 
 (defn test-rte-to-dfa [num-tries size verbose]
   (tester/random-test num-tries rte-to-dfa

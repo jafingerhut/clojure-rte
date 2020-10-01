@@ -53,6 +53,21 @@
           (let [[_ pat1] t1
                 [_ pat2] t2]
             (rte-vacuous? (rte-compile `(:and ~pat1 ~pat2))))
+
+          ;; (disjoint? (rte ...) clojure.lang.IPersistentVector )
+          (and (rte? t1)
+               (ty/class-designator? t2)
+               (or (isa? (resolve t2) clojure.lang.Seqable)
+                   (isa? (resolve t2) clojure.lang.Sequential)))
+          false
+
+          ;; (disjoint? (not (rte ...)) clojure.lang.IPersistentVector )
+          (and (not? t1)
+               (rte? (second t1))
+               (ty/class-designator? t2)
+               (or (isa? (resolve t2) clojure.lang.Seqable)
+                   (isa? (resolve t2) clojure.lang.Sequential)))
+          true
           
           (and (rte? t1)
                (not? t2)

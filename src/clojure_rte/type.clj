@@ -21,8 +21,9 @@
 
 (ns clojure-rte.type
   (:require [clojure.set :refer [intersection]]
+            [clojure.repl :refer [source-fn]]
             [clojure.pprint :refer [cl-format]]
-            [clojure-rte.util :refer [call-with-collector]]
+            [clojure-rte.util :refer [call-with-collector member]]
             [clojure-rte.cl-compat :refer [cl-cond]]
             [clojure.reflect :as refl]
   ))
@@ -35,10 +36,16 @@
   (not A)
   (and A B)
   (or A B)
-  (satisfies A B)
+  (satisfies A)
   (= obj)
   (member a b c)"
   (fn [_value type-designator]
+    (if (sequential? type-designator)
+      (first type-designator)
+      type-designator)))
+
+(defmulti canonicalize-type
+  (fn [type-designator]
     (if (sequential? type-designator)
       (first type-designator)
       type-designator)))
@@ -68,21 +75,21 @@
     (instance? a-type a-value)
     
     (not (symbol? a-type))
-    (throw (ex-info (format "typep: invalid type of %s, expecting a symbol or class , got %s" a-type (type a-type))
+    (throw (ex-info (format "typep: [178] invalid type of %s, expecting a symbol or class , got %s" a-type (type a-type))
                     {:error-type :invalid-type-designator
                      :a-type a-type
                      :a-value a-value
                      }))
 
     (not (resolve a-type))
-    (throw (ex-info (format "typep: invalid type %s, no resolvable value" a-type)
+    (throw (ex-info (format "typep: [179] invalid type %s, no resolvable value" a-type)
                     {:error-type :invalid-type-designator
                      :a-type a-type
                      :a-value a-value
                      }))
 
     (not (class? (resolve a-type)))
-    (throw (ex-info (format "typep: invalid type of %s, does not resolve to a class, got %s of type %s"
+    (throw (ex-info (format "typep: [180] invalid type of %s, does not resolve to a class, got %s of type %s"
                             a-type (resolve a-type) (type (resolve a-type)))
                     {:error-type :invalid-type-designator
                      :a-type a-type
@@ -129,6 +136,12 @@
       (and (symbol? f)
            (resolve f))))
 
+(declare expand-satisfies)
+
+(defmethod canonicalize-type 'satisfies
+  [type-designator]
+  (expand-satisfies type-designator))
+
 (defmethod typep '= [a-value [_type value]]
   (= value a-value))
 
@@ -142,8 +155,18 @@
   true)
 
 (defn disjoint?-false-warn [t1 t2]
-  (cl-format true "disjoint? cannot decide ~A vs ~A -- assuming not disjoint~%" t1 t2)
-  false)
+  ;; don't complain about rte nor satisfies
+  (letfn [(dont-complain [t]
+            (and (sequential? t)
+                 (not (empty? t))
+                 (member (first t) '(satisfies rte))))]
+    (cond (or (dont-complain t1)
+              (dont-complain 2))
+          false
+          :else
+          (do
+            (cl-format true "disjoint? cannot decide ~A vs ~A -- assuming not disjoint~%" t1 t2)
+            false))))
 
 (def ^:dynamic *disjoint?-default*
   "Default to return when disjoint-ness cannot be determined.  This value is a binary
@@ -293,7 +316,10 @@
                (= 'not (first t))))
         (member? [t]
           (and (sequential? t)
-               (= 'member (first t))))]
+               (= 'member (first t))))
+        (satisfies? [t]
+          (and (sequential? t)
+               (= 'satisfies (first t))))]
 
   (defmethod -disjoint? := [t1 t2]
     (cond (=? t1)
@@ -309,6 +335,27 @@
           :else
           :dont-know))
           
+  ;; (defmethod -disjoint? :satisfies [t1 t2]
+  ;;   (cond (and (satisfies? t1)
+  ;;              (not? t2)
+  ;;              (= t1 (second t2)))
+  ;;         true
+
+  ;;         (and (satisfies? t2)
+  ;;              (not? t1)
+  ;;              (= t2 (second t1)))
+  ;;         true
+          
+  ;;         (and (not? t1)
+  ;;              (satisfies? (second t1)))
+  ;;         false               
+
+  ;;         (satisfies? t1)
+  ;;         false
+
+  ;;         :else
+  ;;         :dont-know))
+
   (defmethod -disjoint? :member [t1 t2]
     (cond (member? t1)
           (every? (fn [e1]
@@ -823,3 +870,144 @@
                       (recurring (rest items) left (cons new-type right)))))))))]
     (recurring items () ())))
 
+
+(defn- get-fn-source
+  "Use the clojure.repl/source-fn function to extract a string representing the
+  code body of the definition of the named function, fn-name.
+  We then parse this string with read-string.
+  If unable to get the string representing the function, nil is returned."
+  [fn-name]
+  (let [src-str (source-fn fn-name)]
+    (cond
+      (= nil src-str)
+      nil
+
+      :else
+      (read-string src-str))))
+
+(declare type-predicate-to-type-designator)
+
+(defn- extract-type-from-expression
+  "After the expression representing the code body has been extracted from the code body
+  of a type predicate, use several heursitics to match the code, to extract the type
+  which is being implemented in the expression."
+  [var-1 expr]
+  (cond
+    (not (sequential? expr))
+    nil
+    
+    ;; (instance? clojure.lang.Symbol x)
+    (and (= 3 (count expr))
+         (= 'instance? (first expr)))
+    (let [[_i type-designator var-2] expr]
+      (if (and (= var-1 var-2)
+               (symbol? type-designator))
+        type-designator
+        nil))
+         
+    ;; (symbol? x)
+    (= 2 (count expr))
+    (let [[type-predicate var-2] expr]
+      (if (and (= var-1 var-2)
+               (symbol? type-predicate))
+        (type-predicate-to-type-designator type-predicate)
+        nil))
+
+    ;; (or ...)
+    (= 'or (first expr))
+    (let  [[_or & exprs] expr
+           expanded (map (fn [ex]
+                           (extract-type-from-expression var-1 ex))
+                         exprs)
+           ]
+      (if (not (member nil expanded))
+        (cons 'or expanded)
+        nil))
+
+    :else
+    nil))
+
+(defn- type-predicate-to-type-designator 
+  "Look at the function definition s-expression of the named function, type-predicate,
+  and apply heuristics to attempt to reverse-engineer the type being checked.  
+  This works for type predicates as they are defined in core.clj."
+  [type-predicate]
+  (let [fn-s-expression (get-fn-source type-predicate)]
+    (cond
+      (not (sequential? fn-s-expression))
+      nil
+
+      (empty? fn-s-expression)
+      nil
+
+      (= 3 (count fn-s-expression))
+      (let [[_def name-1 [_fn name-2 [var-1] expr]] fn-s-expression]
+        (if (and (= name-1 name-2)
+                 (= _def 'def)
+                 (= _fn 'fn))
+          (extract-type-from-expression var-1 expr)
+          nil))
+      
+      (= 6 (count fn-s-expression))
+      (let [[_defn name doc-string attr-map [var-1] expr]
+            fn-s-expression]
+        (if (and (= _defn 'defn)
+                 (symbol? name)
+                 (string? doc-string)
+                 (map? attr-map)
+                 (symbol? var-1))
+          (extract-type-from-expression var-1 expr)
+          nil))
+
+      :else
+      nil)))
+
+(defn expand-satisfies [type-designator]
+  "Expand (satisfies rational? to
+  (or
+    (or Integer Long clojure.lang.BigInt BigInteger Short Byte)
+    clojure.lang.Ratio BigDecimal)
+  if possible.  Otherwise expand the given type-designator simply to itself."
+
+  (cl-cond
+   ((not (sequential? type-designator))
+    type-designator)
+
+   ((empty? type-designator)
+    type-designator)
+
+   ((not= 'satisfies (first type-designator))
+    type-designator)
+
+   ((empty? (rest type-designator))
+    type-designator)
+
+   ((not (empty? (rest (rest type-designator))))
+    type-designator)
+
+   ((type-predicate-to-type-designator (second type-designator)))
+
+   (:else
+    type-designator)))
+
+
+(defmethod canonicalize-type :default
+  [type-designator]
+  (cond   
+    (and (symbol? type-designator)
+         ;;(resolve type-designator)
+         (ns-resolve (find-ns 'clojure-rte.core) type-designator)
+         (class? (ns-resolve (find-ns 'clojure-rte.core) type-designator)))
+    type-designator
+    
+    (not (sequential? type-designator))
+    (throw (ex-info (format "canonicalize-type: warning unknown type %s" type-designator)
+                    {:error-type :not-a-sequence
+                     :type type-designator }))
+
+    (valid-type? type-designator) type-designator
+
+    :else
+    (throw (ex-info (format "canonicalize-type: warning unknown type %s" type-designator)
+                    {:error-type :unknown-type
+                     :type type-designator }))))

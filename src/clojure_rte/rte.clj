@@ -36,41 +36,9 @@
   ;; TODO - is it interesting to allow parameterized types here?
   ;;    E.g., these types would work similar to CL deftype,
   ;;    we'd need a macro expander based on quasi-quote.
-  {'int? '(:or Long Integer Short Byte)
-   'integer? '(:or int? clojure.lang.BigInt BigInteger)
-   'ratio? 'clojure.lang.Ratio
-   'decimal? 'BigDecimal
-   'rational? '(:or integer? ratio? decimal?)
-   'number? 'Number
-   'float? '(:or Double Float)
-   'real? '(:or rational? number? decimal? float?)
-   'string? 'String
-   'keyword? 'clojure.lang.Keyword
-   'symbol? 'clojure.lang.Symbol
-   'seq? 'clojure.lang.ISeq
+  {
+   'real? 'Number
    })
-
-(defn resolve-rte-tag
-  "Look up a tag in *rte-known*, or return the given tag
-   if not found"
-  [tag]
-
-  (cl-cond   
-   ((*rte-known* tag))
-   ((and (symbol? tag)
-         (resolve tag)
-         (class? (resolve tag)))
-    tag)
-   ((not-empty (or (descendants tag)
-                   (ancestors tag))) tag)
-   ((ty/valid-type? tag) tag)
-   (:else
-    (println (format "resolve-rte-tag: warning unknown type %s" tag))
-    (throw (ex-info (format "resolve-rte-tag: warning unknown type %s" tag)
-                    {:error-type :unknown-type
-                     :type tag }))
-    tag))
-)
 
 (def ^:dynamic *traversal-functions*
   "Default callbacks for walking an rte tree.
@@ -88,7 +56,7 @@
   {:client (fn [pattern functions]
              (traverse-pattern pattern functions))
    :type (fn [tag functions]
-           ((:client functions) (resolve-rte-tag tag) functions))
+           ((:client functions) tag functions))
    :* (fn [pattern functions]
         (cons :* ((:client functions) pattern functions)))
    :and (fn [patterns functions]
@@ -112,11 +80,19 @@
 
 
 (defmulti registered-type? identity)
-(defmethod registered-type? :default [_] false)
+(defmethod registered-type? :default
+  [type-designator]
+  (cond
+    (not (sequential? type-designator))
+    false
+    (empty? type-designator)
+    false
+    :else
+    (registered-type? (first type-designator))))
 (defmethod registered-type? '= [_] true)
 (defmethod registered-type? 'rte [_] true)
 (defmethod registered-type? 'member [_] true)
-
+(defmethod registered-type? 'satisfies [_] true)
 
 (defn supported-nontrivial-types []
   "Which types are currently supported?  This list denotes the
@@ -128,29 +104,30 @@
 (defmulti rte-expand
   "macro-like facility for rte" (fn [pattern _functions] (first pattern)))
 
-(defn invalid-pattern [pattern functions]
-  (throw (ex-info (format "invalid pattern %s" pattern)
+(defn invalid-pattern [pattern functions culprit]
+  (throw (ex-info (format "[134] invalid pattern %s" pattern)
                   {:error-type :rte-expand-error
                    :keyword (first pattern)
+                   :culprit culprit
                    :pattern pattern
                    :functions functions
                    })))
 
 (defmethod rte-expand :default [pattern functions]
-  (invalid-pattern pattern functions))
+  (invalid-pattern pattern functions :default))
 
 (defmethod rte-expand :? [pattern functions]
   (apply (fn
-           ([] (invalid-pattern pattern functions))
+           ([] (invalid-pattern pattern functions '[:? []]))
            ([operand] `(:or :epsilon ~operand))
-           ([_ & _] (invalid-pattern pattern functions)))
+           ([_ & _] (invalid-pattern pattern functions '[:? [_ & _]]))) 
          (rest pattern)))
 
 (defmethod rte-expand :+ [pattern functions]
   (apply (fn
-           ([] (invalid-pattern pattern functions))
+           ([] (invalid-pattern pattern functions '[:+ []]))
            ([operand] `(:cat ~operand (:* ~operand)))
-           ([_ & _] (invalid-pattern pattern functions)))
+           ([_ & _] (invalid-pattern pattern functions '[:+ [_ & _]])))
          (rest pattern)))
 
 (defmethod rte-expand :permute [pattern functions]
@@ -204,16 +181,15 @@
                   ]
               (traverse-pattern `(:cat ~@repeated-operand ~@optional-operand) functions)))]
     (apply (fn
-             ([] (invalid-pattern pattern functions))
-             ([_] (invalid-pattern pattern functions))
+             ([] (invalid-pattern pattern functions '[:exp []]))
+             ([_] (invalid-pattern pattern functions '[:exp [_]]))
              ([n pattern]
               (expand n n pattern))
              ([n m pattern] 
               (expand n m pattern))
              ([_ _ _ & _] 
-              (invalid-pattern pattern functions)))
+              (invalid-pattern pattern functions '[:exp [_ _ _ & _]])))
            (rest pattern))))
-
 
 (defn traverse-pattern
   "Workhorse function for walking an rte pattern.
@@ -226,16 +202,21 @@
    function needs to understand how to walk an rte pattern."
   [given-pattern functions]
   (letfn [(if-atom [pattern]
-            (case pattern
-              (:epsilon :empty-set :sigma)
+            (cond
+              (member pattern '(:epsilon :empty-set :sigma))
               ((functions pattern) pattern functions)
+
+              (*rte-known* pattern)
+              (traverse-pattern (*rte-known* pattern) functions)
+
+              :else
               ((:type functions) pattern functions)))
           (if-nil [_]
             ((:type functions) () functions))
           (verify-type [obj]
             (if (ty/valid-type? obj)
               obj
-              (throw (ex-info (cl-format false "invalid type designator ~A" obj)
+              (throw (ex-info (cl-format false "[219] invalid type designator ~A" obj)
                               {:error-type :invalid-type-designator
                                :obj obj
                                :given-pattern given-pattern}))))
@@ -259,7 +240,7 @@
                 (:and) (traverse-pattern '(:* :sigma) functions)
                 (:cat) (traverse-pattern :epsilon functions)
                 (:not
-                 :*) (throw (ex-info (format "invalid pattern %s, expecting exactly one operand" pattern)
+                 :*) (throw (ex-info (format "[264] invalid pattern %s, expecting exactly one operand" pattern)
                                      {:error-type :rte-syntax-error
                                       :keyword keyword
                                       :pattern pattern
@@ -283,6 +264,11 @@
                 (:not :*)
                 ((functions token) operand functions)
 
+                (satisfies)
+                (if (not= pattern (ty/expand-satisfies pattern))
+                  (traverse-pattern (ty/expand-satisfies pattern) functions)
+                  ((:type functions) pattern functions))
+                
                 ;;case-else
                 (if (registered-type? (first pattern))
                   ((:type functions) pattern functions)
@@ -296,7 +282,7 @@
                 ((functions token) operands functions)
 
                 (:not :*)
-                (throw (ex-info (format "invalid pattern %s, expecting exactly one operand" pattern)
+                (throw (ex-info (format "[301] invalid pattern %s, expecting exactly one operand" pattern)
                                 {:error-type :rte-syntax-error
                                  :keyword keyword
                                  :pattern pattern
@@ -400,6 +386,10 @@
   "Predicate determining whether its object is of the form (:or ...)"
   (seq-matcher :or))
 
+(defmethod ty/canonicalize-type 'rte
+  [type-designator]
+  (cons 'rte (map canonicalize-pattern (rest type-designator))))
+
 (defn canonicalize-pattern-once 
   "Rewrite the given rte patter to a canonical form.
   This involves recursive re-writing steps for each sub form,
@@ -412,7 +402,7 @@
   (traverse-pattern re
                     (assoc *traversal-functions*
                            :type (fn [tag _functions]
-                                   (resolve-rte-tag tag))
+                                   (ty/canonicalize-type tag))
                            :empty-set rte-identity
                            :epsilon rte-identity
                            :sigma rte-identity

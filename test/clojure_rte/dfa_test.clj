@@ -99,68 +99,69 @@
           seq [4.0]]
       (is (= (rte-match dfa seq)
              (rte-match dfa-min seq))))))
-(def test-seqs '([]
-                       [1]
-                       [3]
-                       [1 2 3 4]
-                       [1 2 3]
-                       [2 3 4]
-                       [1 2 3.0 4.0]
-                       [2 3.0 4.0]
 
-                       
-                       ["hello" "world" 1 "hello" "there" "world" 2]
-                       ["hello" "world" 1 "hello" "world" 2]
-                       ["hello" "world" 2]
-                       ["hello" "world"]
-                       ["hello" 1 "world" 2]
-                       ["hello" 1 "world"]
-                       ["hello" 1.0 "world"]
-                       ["hello" 1.0 42]
-                       ["hello" 1.0]
-                       ["hello" 1]
-                       ["hello" 42 "world"]
-                       ["hello" 42 1.0]
-                       ["hello" 42]
-                       ["hello"]
-                       [1 "two" "3.0"]
-                       [42 "two" "3.0"]
-                       [1.0 "two" "3.0"]
+(def test-seqs '([]
+                 [1]
+                 [3]
+                 [1 2 3 4]
+                 [1 2 3]
+                 [2 3 4]
+                 [1 2 3.0 4.0]
+                 [2 3.0 4.0]
+
+                 
+                 ["hello" "world" 1 "hello" "there" "world" 2]
+                 ["hello" "world" 1 "hello" "world" 2]
+                 ["hello" "world" 2]
+                 ["hello" "world"]
+                 ["hello" 1 "world" 2]
+                 ["hello" 1 "world"]
+                 ["hello" 1.0 "world"]
+                 ["hello" 1.0 42]
+                 ["hello" 1.0]
+                 ["hello" 1]
+                 ["hello" 42 "world"]
+                 ["hello" 42 1.0]
+                 ["hello" 42]
+                 ["hello"]
+                 [1 "two" "3.0"]
+                 [42 "two" "3.0"]
+                 [1.0 "two" "3.0"]
                  ))
 
 (def test-rtes '((:* Long)
-                         (:* Short)
-                         (:* (:cat String Long))
-                         (:* (:cat String Short))
-                         (:or (:* (:cat String Long))
-                              (:* (:cat String Short)))
-                         (:or (:* (:cat String Long))
-                              (:not (:* (:cat String Short))))
+                 (:* Short)
+                 (:* (:cat String Long))
+                 (:* (:cat String Short))
+                 (:or (:* (:cat String Long))
+                      (:* (:cat String Short)))
+                 (:or (:* (:cat String Long))
+                      (:not (:* (:cat String Short))))
 
-                         (:and (:not (= 1))
-                               Long)
-                         (:and (:not (= 1))
-                               (:* Long))
-                         (:* (:and (:not (= 1))
-                                   Long))
-                         (:+ Long)
-                         (:+ Short)
-                         (:+ (:cat String Long))
-                         (:+ (:cat String Short))
-                         (:or (:+ (:cat String Long))
-                              (:* (:cat String Short)))
-                         (:or (:* (:cat String Long))
-                              (:+ (:cat String Short)))
-                         (:or (:* (:cat String Long))
-                              (:not (:* (:cat String Short))))
-                         (:or (:+ (:cat String Long))
-                              (:not (:* (:cat String Short))))
-                         (:or (:* (:cat String Long))
-                              (:not (:+ (:cat String Short))))
-                         (:+ (:cat String (:? Long)))
-                         (:cat (:* String) Long)
-                         (:and (:+ (:cat String (:? Long)))
-                               (:cat (:* String) Long))))
+                 (:and (:not (= 1))
+                       Long)
+                 (:and (:not (= 1))
+                       (:* Long))
+                 (:* (:and (:not (= 1))
+                           Long))
+                 (:+ Long)
+                 (:+ Short)
+                 (:+ (:cat String Long))
+                 (:+ (:cat String Short))
+                 (:or (:+ (:cat String Long))
+                      (:* (:cat String Short)))
+                 (:or (:* (:cat String Long))
+                      (:+ (:cat String Short)))
+                 (:or (:* (:cat String Long))
+                      (:not (:* (:cat String Short))))
+                 (:or (:+ (:cat String Long))
+                      (:not (:* (:cat String Short))))
+                 (:or (:* (:cat String Long))
+                      (:not (:+ (:cat String Short))))
+                 (:+ (:cat String (:? Long)))
+                 (:cat (:* String) Long)
+                 (:and (:+ (:cat String (:? Long)))
+                       (:cat (:* String) Long))))
 
 (deftest t-complete
   (testing "testing dfa/complete"

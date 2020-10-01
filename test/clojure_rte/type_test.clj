@@ -243,3 +243,30 @@
       (is (inhabited? '(rte (:+ Number))))
       (is (not (inhabited? '(rte (:and (:+ Number)
                                        (:+ String)))))))))
+
+(deftest t-expand-satisfies
+  (testing "expand-satisfies"
+    (is (= (expand-satisfies nil)
+           nil) "test 0")
+    (is (= (expand-satisfies 'x)
+           'x) "test 1")
+
+    (is (= (expand-satisfies '(satisfies))
+           '(satisfies)) "test 2")
+
+    (is (= (expand-satisfies '(satisfies no-such-function))
+           '(satisfies no-such-function)) "test 3")
+
+    (is (= (expand-satisfies '(satisfies list?))
+           'clojure.lang.IPersistentList) "test 4")
+
+    (is (= (expand-satisfies '(satisfies integer?))
+           '(or Integer Long clojure.lang.BigInt BigInteger Short Byte))
+        "test 5")
+    
+    (is (= (expand-satisfies '(satisfies rational?))
+           '(or
+             (or Integer Long clojure.lang.BigInt BigInteger Short Byte)
+             clojure.lang.Ratio
+             BigDecimal))
+        "test 6")))

@@ -20,6 +20,8 @@ and `B` are type designators and `f` is a symbol whose global value
 
   - `(member x y z ...)` is a type designator equivalent to `(or (= x) (= y) (= z) ...)`.
   
+  - `(satisfies f)` is a type designator if `f` names a function which implements a type predicate. The type predicate may be one built into clojure, such as `int?`, `decimal?`, `vector?`.  The system attempts to implement `satisfies` efficiently when possible.  For example, `(satisfies int?)` expands internally to `(or Long Integer Short Byte)`.
+
   - `(rte pattern)` is a type designator which specifies the set of sequences which match the given rte pattern.  For example, the type `(rte (:cat Long String))` is the set of two element sequences whose first element is a `Long` and whose second element is a string.
 
 

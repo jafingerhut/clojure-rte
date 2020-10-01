@@ -56,23 +56,23 @@
         (is (rte-match rte '()))
         (is (not (rte-match rte '(x 1 y 2 z 42)))))
 
-      (is (rte-match '(:cat (:* integer?) (:? String))
+      (is (rte-match '(:cat (:* (satisfies integer?)) (:? String))
                      '( 1 2 3 4 "hello")))
-      (is (not (rte-match '(:cat (:* integer?) (:? String))
+      (is (not (rte-match '(:cat (:* (satisfies integer?)) (:? String))
                           '( 1 2 3 4 "hello" "world"))))
       )))
 
 (deftest t-types
   (testing "types"
     (with-compile-env ()
-      (is (rte-match '(:* int?) [ 1 2 3]))
-      (is (rte-match '(:* number?) [ 1 2.0 1/3]))
-      (is (rte-match '(:* symbol?)  '(a b c)))
-      (is (rte-match '(:* keyword?)  '(:a :b :c)))
-      (is (not (rte-match '(:* symbol?)  '(a :b c))))
-      (is (rte-match '(:* string?)  '("hello" "world")))
-      (is (rte-match '(:* rational?) [ 1 2 1/3]))
-      (is (rte-match '(:* float?) [ 1.0 2.0 3.0]))
+      (is (rte-match '(:* (satisfies int?)) [ 1 2 3]))
+      (is (rte-match '(:* (satisfies number?)) [ 1 2.0 1/3]))
+      (is (rte-match '(:* (satisfies symbol?))  '(a b c)))
+      (is (rte-match '(:* (satisfies keyword?))  '(:a :b :c)))
+      (is (not (rte-match '(:* (satisfies symbol?))  '(a :b c))))
+      (is (rte-match '(:* (satisfies string?))  '("hello" "world")))
+      (is (rte-match '(:* (satisfies rational?)) [ 1 2 1/3]))
+      (is (rte-match '(:* (satisfies float?)) [ 1.0 2.0 3.0]))
       )))
 
 (deftest t-not

@@ -21,11 +21,13 @@
 
 (ns clojure-rte.rte-case
   "This is an empty namespace to fool lein to load this file as part of
-  the clojure-rte.core ns.")
+  the clojure-rte.core ns."
+  (:require [clojure-rte.type-extend])
+)
 
 (in-ns 'clojure-rte.core)
 
-(defn rte-case-clauses-to-dfa
+(defn- rte-case-clauses-to-dfa
   "Helper function for macro-expanding rte-case.
   Returns a Dfa which is the union of the input clauses."
   [pairs]
@@ -97,9 +99,7 @@
                   (recur more
                          (inc index)
                          (cons rte used-rtes)
-                         (conj acc-int-rte-pairs [index (if (empty? used-rtes)
-                                                          rte
-                                                          `(:and ~rte (:not (:or ~@used-rtes))))])
+                         (conj acc-int-rte-pairs [index (canonicalize-pattern `(:and ~rte (:not (:or ~@used-rtes))))])
                          (conj acc-fns `(fn [] ~consequent)))))))]
     
     (let [[fns int-rte-pairs] (compile-clauses clauses)
@@ -108,7 +108,7 @@
       `((~fns (ensure-fns-index (rte-match (memoized-rte-case-clauses-to-dfa '~int-rte-pairs) ~sequence)
                                 ~num-fns))))))
 
-(defn lambda-list-to-rte
+(defn- lambda-list-to-rte
   "Helper function for destructuring-case macro.
   Returns an rte either of one of the following forms:
     (:cat ... (:* ...)) -- if the given lambda-list contains &
@@ -234,6 +234,7 @@
              (rte-case ~var ~@cases (:* :sigma) nil)))))))
 
 (defmacro destructuring-fn-many
+  "Internal macro used in the exapansion of destructuring-fn"
   [& args]
   (cond (empty? args)
         nil
@@ -267,39 +268,35 @@
   {:forms '[(destructuring-fn name? [[params* ] constr-map] exprs*)
             (destructuring-fn name? ([[params*] constr-map ] exprs*)+)]}
   [& args]
-  (cond (empty? args)
-        (throw (IllegalArgumentException. 
-                    "destructuring-fn, empty argument list not supported"))
+  (destructuring-case
+   args
+   [[] {}]
+   (throw (IllegalArgumentException. 
+           "destructuring-fn, empty argument list not supported"))
 
-        (and (not (symbol? (first args)))
-             (not (= nil (first args))))
-        `(destructuring-fn nil ~@args)
+   [[name & others] {name (not (or (satisfies symbol?)
+                                   (= nil))) }]
+   `(destructuring-fn nil ~@args)
 
-        :else
-        (let [[name & clauses] args]
-          (cond
-            (empty? clauses)
-            nil
+   [[name] {}]
+   (throw (IllegalArgumentException. 
+           "destructuring-fn, invalid function body or clauses clauses"))
 
-            (vector? (first clauses))
-            ;; either first clause is a vector like [a b c]
-            `(destructuring-fn-many
-              ~@(if name (list name) nil) ;; either name or nothing
-              ~clauses ;; i.e., with a set of parens around it.
-              )
+   [[name lambda-list & others] {lambda-list (satisfies vector?)}]
+   `(destructuring-fn-many
+     ~@(if name (list name) nil) ;; either name or nothing
+     (~lambda-list
+      ~@others))
+   
+   [[name & clauses] {clauses (and (satisfies list?)
+                                   (not (= ()))
+                                   (rte (:* (:cat (satisfies vector?) (:* :sigma)))))}]
+   `(destructuring-fn-many
+     ~@(if name (list name) nil) ;; either name or nothing
+     ~@clauses)
 
-            (every? (fn [clause]
-                      (and (list? clause)
-                           (not (empty? clause))
-                           (vector? (first clause))))
-                    clauses)
-            ;; or all the clauses are lists whose first element is always a vector
-            `(destructuring-fn-many
-              ~@(if name (list name) nil) ;; either name or nothing
-              ~@clauses)
-
-            :else
-            (throw (IllegalArgumentException. 
-                    (cl-format false
-                               "destructuring-fn, invalid argument list: ~A"
-                               args)))))))
+   [[& others] {}]
+   (throw (IllegalArgumentException. 
+           (cl-format false
+                      "destructuring-fn, invalid argument list: ~A"
+                      args)))))

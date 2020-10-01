@@ -254,7 +254,7 @@
           (cl-format false "wrong type of negative=~A type=~A"
                      negative (type negative)))
   (assert (ty/valid-type? type-designator)
-          (cl-format false "invalid type-designator ~A" type-designator))
+          (cl-format false "[257] invalid type-designator ~A" type-designator))
   
   (cond
     (identical? positive negative)
