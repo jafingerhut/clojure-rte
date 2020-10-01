@@ -558,12 +558,18 @@
                true '(2 "three") 4))
         "test 3")
 
-    (is (= 14 ((destructuring-fn 
+    (is (= nil ((destructuring-fn 
                 ([[[^Boolean a b] c d] {}]  12)
                 ([[^Boolean a [b c] d] {}] 13)
                 ([[^Boolean a b [c d]] {}] 14))
-               1 2 '3 4))
-        "test 4")
+               1 2 [3 4]))
+        "test 4a")
+        (is (= 14 ((destructuring-fn 
+                ([[[^Boolean a b] c d] {}]  12)
+                ([[^Boolean a [b c] d] {}] 13)
+                ([[^Boolean a b [c d]] {}] 14))
+               true 2 [3 4]))
+        "test 4b")
 
     (is (= 15 ((destructuring-fn 
                 ([[[^Boolean a b] c d] {}]  12)
