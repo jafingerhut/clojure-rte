@@ -14,14 +14,14 @@ The following expression
 ```clojure
 ((fn [a [b c] d]
   12)
- '(1 2 3))
+ 1 2 3)
 ```
 results in an error such as
 ```
 Execution error (ArityException) at clojure-rte.core/eval41272 (form-init6569138664565782700.clj:12360).
 Wrong number of args (1) passed to: clojure-rte.core/eval41272/fn--41274
 ```
-But, `((destructuring-fn [[a [b c] d] 12) {}] '(1 2 3))`, simply returns `nil` as the data `(1 2 3)` 
+But, `((destructuring-fn [[a [b c] d] {}] 12) 1 2 3)`, simply returns `nil` as the data `(1 2 3)` 
 does not match the template `[a [b c] d]`.
 
 Similarly, `fn` provides a syntax for providing several argument templates, however the semantics
@@ -33,7 +33,7 @@ matches the format of the given argument `(1 2 [3 4])`
    ([[a b] c d]   12)
    ([a [b c] d]   13)
    ([a b [c d]]   14))
- '(1 2 (3 4)))
+ 1 2 [3 4])
 ```
 But, alas it does not.   Rather you get an error such as the following:
 ```
@@ -44,11 +44,11 @@ On the contrary the following expression evaluates to 14 as it matches the struc
 to the argument list `[a b [c d]]`.
 
 ```clojure
-((destructuring-fn 
+((destructuring-fn ;; TODO doesn't work
    ([[[a b] c d] {}]  12)
    ([[a [b c] d] {}]  13)
    ([[a b [c d]] {}]  14))
- '(1 2 (3 4)))
+ 1 2 [3 4])
 ```
 
 ### Runtime selection by type
@@ -66,14 +66,14 @@ supported by `clojure-rte.type`.  See [Extensible types](type.md) for more detai
 ;; match if a is of type Number
 ((destructuring-fn [[^Number a [b c] d] {}] 
   12)
- '(1 (2 3) 4))
+ 1 [2 3] 4)
 ```
 
 ```clojure
 ;; match if a is of type Number and c is String
 ((destructuring-fn [[^Boolean a [b ^String c] d] {}] 
   12)
- '(true (2 "three") 4))
+ true [2 "three"] 4)
 ```
 
 The followign expression returns `nil` because although `(1 2 (3 4))`
@@ -84,7 +84,7 @@ matches the structure `[a b [c d]]`, the type of `a` is not `Boolean`.
    ([[[^Boolean a b] c d] {}]  12)
    ([[^Boolean a [b c] d] {}] 13)
    ([[^Boolean a b [c d]] {}] 14))
- '(1 2 (3 4)))
+ 1 2 [3 4])
 ```
 
 The following expression evaluates to 15.  Why? Because `(1 2 (3 4))` matches
@@ -96,7 +96,7 @@ The following expression evaluates to 15.  Why? Because `(1 2 (3 4))` matches
    ([[^Boolean a [b c] d] {}] 13)
    ([[^Boolean a b [c d]] {}] 14)
    ([[^Number  a b [c d]] {}] 15))
- '(1 2 (3 4)))
+ 1 2 [3 4])
 ```
 
 The map, `{}` in the above examples, specifies a map from variable name to type constraint.

@@ -538,3 +538,39 @@
                            ([[& others] {}]
                             3))]
       (is (= 3 (f '(1 2 3))) "test 6"))))
+
+(deftest t-destructuring-fn-406
+  (testing "special case which was failing 406"
+    (let [f (destructuring-fn 
+             ([[[a b] c d] {}]  12)
+             ([[a [b c] d] {}]  13)
+             ([[a b [c d]] {}]  14))]
+      
+      (is (= 14 (f 1 2 '(3 4))) "test 1"))
+
+    (is (= 12 ((destructuring-fn [[^Number a [b c] d] {}] 
+                                 12)
+               1 '(2 3) 4))
+        "test 2")
+
+    (is (= 12 ((destructuring-fn [[^Boolean a [b ^String c] d] {}] 
+                                 12)
+               true '(2 "three") 4))
+        "test 3")
+
+    (is (= 14 ((destructuring-fn 
+                ([[[^Boolean a b] c d] {}]  12)
+                ([[^Boolean a [b c] d] {}] 13)
+                ([[^Boolean a b [c d]] {}] 14))
+               1 2 '3 4))
+        "test 4")
+
+    (is (= 15 ((destructuring-fn 
+                ([[[^Boolean a b] c d] {}]  12)
+                ([[^Boolean a [b c] d] {}] 13)
+                ([[^Boolean a b [c d]] {}] 14)
+                ([[^Number  a b [c d]] {}] 15))
+               1 2 '(3 4)))
+        "test 5")
+    ))
+
