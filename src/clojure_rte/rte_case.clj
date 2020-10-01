@@ -21,7 +21,9 @@
 
 (ns clojure-rte.rte-case
   "This is an empty namespace to fool lein to load this file as part of
-  the clojure-rte.core ns.")
+  the clojure-rte.core ns."
+  (:require [clojure-rte.type-extend])
+)
 
 (in-ns 'clojure-rte.core)
 
