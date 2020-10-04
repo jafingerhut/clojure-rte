@@ -57,16 +57,16 @@
           ;; (disjoint? (rte ...) clojure.lang.IPersistentVector )
           (and (rte? t1)
                (ty/class-designator? t2)
-               (or (isa? (resolve t2) clojure.lang.Seqable)
-                   (isa? (resolve t2) clojure.lang.Sequential)))
+               (or (isa? (ty/find-class t2) clojure.lang.Seqable)
+                   (isa? (ty/find-class t2) clojure.lang.Sequential)))
           false
 
           ;; (disjoint? (not (rte ...)) clojure.lang.IPersistentVector )
           (and (not? t1)
                (rte? (second t1))
                (ty/class-designator? t2)
-               (or (isa? (resolve t2) clojure.lang.Seqable)
-                   (isa? (resolve t2) clojure.lang.Sequential)))
+               (or (isa? (ty/find-class t2) clojure.lang.Seqable)
+                   (isa? (ty/find-class t2) clojure.lang.Sequential)))
           true
           
           (and (rte? t1)
@@ -78,25 +78,25 @@
           
           (and (rte? t1)
                (ty/class-designator? t2)
-               (isa? (resolve t2) java.lang.CharSequence))
+               (isa? (ty/find-class t2) java.lang.CharSequence))
           (let [[_ pat1] t1]
             (rte-vacuous? (rte-compile `(:and ~pat1 (:* java.lang.Character)))))
           
           (and (rte? t1)
                (ty/class-designator? t2)
-               (not (isa? (resolve t2) clojure.lang.Sequential)))
+               (not (isa? (ty/find-class t2) clojure.lang.Sequential)))
           true
           
           (and (not? t1)
                (rte? (second t1))
                (ty/class-designator? t2)
-               (not (isa? (resolve t2) clojure.lang.Sequential)))
+               (not (isa? (ty/find-class t2) clojure.lang.Sequential)))
           false
           
           (and (rte? t1)
                (not? t2)
                (ty/class-designator? (second t2))
-               (not (isa? (resolve (second t2)) clojure.lang.Sequential)))
+               (not (isa? (ty/find-class (second t2)) clojure.lang.Sequential)))
           false
           
           :else :dont-know))
@@ -110,22 +110,22 @@
           
           (and (rte? super-designator)
                (ty/class-designator? sub-designator)
-               (isa? (resolve sub-designator) java.lang.CharSequence))
+               (isa? (ty/find-class sub-designator) java.lang.CharSequence))
           (ty/subtype? '(rte (:* java.lang.Character)) super-designator)
           
           (and (rte? sub-designator)
                (ty/class-designator? super-designator)
-               (isa? (resolve super-designator) java.lang.CharSequence))
+               (isa? (ty/find-class super-designator) java.lang.CharSequence))
           (ty/subtype? sub-designator '(rte (:* java.lang.Character)))
           
           (and (rte? super-designator)
                (ty/class-designator? sub-designator)
-               (not (isa? (resolve sub-designator) clojure.lang.Sequential)))
+               (not (isa? (ty/find-class sub-designator) clojure.lang.Sequential)))
           false
           
           (and (rte? sub-designator)
                (ty/class-designator? super-designator)
-               (not (isa? (resolve super-designator) clojure.lang.Sequential)))
+               (not (isa? (ty/find-class super-designator) clojure.lang.Sequential)))
           false
           
           (and (rte? super-designator)

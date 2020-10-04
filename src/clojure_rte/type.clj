@@ -28,6 +28,16 @@
             [clojure.reflect :as refl]
   ))
 
+(defn class-designator? [t]
+  (and (symbol? t)
+       (resolve t)
+       (class? (resolve t))))
+
+(defn find-class [class-name]
+  (if (class-designator? class-name)
+    (resolve class-name)
+    nil))
+
 (defmulti typep 
   "Like clojure.core/instance? except that the arguments are reversed, and the
   given type designator need not be a class.  The given type 
@@ -99,9 +109,7 @@
     (isa? (type a-value) (resolve a-type))))
 
 (defmethod valid-type? :default [type-designator]
-  (and (symbol? type-designator)
-       (resolve type-designator)
-       (class? (resolve type-designator))))
+  (boolean (find-class type-designator)))
 
 (defmethod typep 'not [a-value [_a-type t]]
   (not (typep a-value t)))
@@ -131,10 +139,13 @@
     (f a-value)
     ((resolve f) a-value)))
 
+(defn callable-designator [f]
+  (and (symbol? f)
+       (resolve f)
+       (fn? (deref (resolve f)))))
+
 (defmethod valid-type? 'satisfies [[_ f]]
-  (or (fn? f)
-      (and (symbol? f)
-           (resolve f))))
+  (callable-designator f))
 
 (declare expand-satisfies)
 
@@ -279,11 +290,6 @@
     :else
     :dont-know))
 
-(defn class-designator? [t]
-  (and (symbol? t)
-       (resolve t)
-       (class? (resolve t))))
-
 (letfn [(and? [t]
           (and (sequential? t)
                (= 'and (first t))))]
@@ -300,7 +306,7 @@
           
           (and (and? t1)
                (class-designator? t2)
-               (= (resolve t2) java.lang.Object)
+               (= (find-class t2) java.lang.Object)
                (some class-designator? (rest t1)))
           false
           
@@ -465,12 +471,12 @@
 
 (defmethod -subtype? :primary [sub-designator super-designator]
   (cond (and (class-designator? super-designator)
-             (= Object (resolve super-designator)))
+             (= Object (find-class super-designator)))
         true
         
         (and (class-designator? sub-designator)
              (class-designator? super-designator))
-        (isa? (resolve sub-designator) (resolve super-designator))
+        (isa? (find-class sub-designator) (find-class super-designator))
         
         :else
         :dont-know))
@@ -479,7 +485,7 @@
   "Takes a class-name and returns either :abstract, :interface, or :final,
   or throws an ex-info exception."
   (memoize (fn [t]
-             (let [c (resolve t)
+             (let [c (find-class t)
                    r (refl/type-reflect c)
                    flags (:flags r)]
                (cond
@@ -598,7 +604,7 @@
                (class-designator? (second t2))
                (= :interface (class-type t1))
                (= :interface (class-type (second t2)))
-               (not (= (resolve t1) (resolve (second t2)))))
+               (not (= (find-class t1) (find-class (second t2)))))
           false
           
           ;; (disjoint?   '(not java.io.Serializable) '(not java.lang.Comparable))
@@ -608,7 +614,7 @@
                (class-designator? (second t2))
                (= :interface (class-type (second t1)))
                (= :interface (class-type (second t2)))
-               (not (= (resolve (second t1)) (resolve (second t2)))))
+               (not (= (find-class (second t1)) (find-class (second t2)))))
           false
           
           :else :dont-know))
@@ -616,8 +622,8 @@
   (defmethod -disjoint? :classes [t1 t2]
     (if (and (class-designator? t1)
              (class-designator? t2))
-      (if (= (resolve t1)
-             (resolve t2))
+      (if (= (find-class t1)
+             (find-class t2))
         false
         (case [(class-type t1) (class-type t2)]
           ((:interface :interface)
@@ -643,7 +649,7 @@
   (defmethod -inhabited? :not [t1]
     (if (and (not? t1)
              (class-designator? (second t1)))
-      (not (= (resolve (second t1))
+      (not (= (find-class (second t1))
               Object))
       :dont-know))
 
@@ -662,7 +668,7 @@
       ;; (disjoint? (not Object) X)
       (and (not? t1)
            (class-designator? (second t1))
-           (isa? Object (resolve (second t1))))
+           (isa? Object (find-class (second t1))))
       true
 
       ;; (disjoint? X (not X))
@@ -692,8 +698,8 @@
       (and (class-designator? t1)
            (not? t2)
            (class-designator? (second t2))
-           (not (= (resolve (second t2)) (resolve t1)))
-           (isa? (resolve (second t2)) (resolve t1)))
+           (not (= (find-class (second t2)) (find-class t1)))
+           (isa? (find-class (second t2)) (find-class t1)))
       false
 
 
@@ -756,10 +762,10 @@
   [atoms]
   (some (fn [sub]
           (when (class-designator? sub)
-            (let [csub (resolve sub)]
+            (let [csub (find-class sub)]
               (some (fn [super]
                       (when (class-designator? super)
-                        (let [csuper (resolve super)]
+                        (let [csuper (find-class super)]
                           (and (not (= csub csuper))
                                (isa? csub csuper)
                                sub)))) atoms)))) atoms))
@@ -770,10 +776,10 @@
   [atoms]
   (some (fn [sub]
           (when (class-designator? sub)
-            (let [csub (resolve sub)]
+            (let [csub (find-class sub)]
               (some (fn [super]
                       (when (class-designator? super)
-                        (let [csuper (resolve super)]
+                        (let [csuper (find-class super)]
                           (and (not (= csub csuper))
                                (isa? csub csuper)
                                super)))) atoms)))) atoms))
@@ -791,8 +797,8 @@
                                     t2 types]
                               (when (and (class-designator? t1)
                                          (class-designator? t2))
-                                (let [c1 (resolve t1)
-                                      c2 (resolve t2)]
+                                (let [c1 (find-class t1)
+                                      c2 (find-class t2)]
                                   (when (and (not (= c1 c2))
                                              (isa? c1 c2))
                                     (collect t2)))))))]
@@ -808,8 +814,8 @@
                                     t2 types]
                               (when (and (class-designator? t1)
                                          (class-designator? t2))
-                                (let [c1 (resolve t1)
-                                      c2 (resolve t2)]
+                                (let [c1 (find-class t1)
+                                      c2 (find-class t2)]
                                   (when (and (not (= c1 c2))
                                              (isa? c2 c1))
                                     (collect t2)))))))]
@@ -1000,10 +1006,7 @@
 (defmethod canonicalize-type :default
   [type-designator]
   (cond   
-    (and (symbol? type-designator)
-         ;;(resolve type-designator)
-         (ns-resolve (find-ns 'clojure-rte.core) type-designator)
-         (class? (ns-resolve (find-ns 'clojure-rte.core) type-designator)))
+    (class-designator? type-designator)
     type-designator
     
     (not (sequential? type-designator))
