@@ -40,16 +40,16 @@
       (is (not (bdd/typep 42 (bdd/bdd 'String))))
       (is (not (bdd/typep "42" (bdd/bdd 'Long))))
       (is (bdd/typep "42" (bdd/bdd 'String)))
-      (is (bdd/typep 42 (bdd/bdd-or (bdd/bdd 'Long)
+      (is (bdd/typep 42 (bdd/or (bdd/bdd 'Long)
                                 (bdd/bdd 'String))))
-      (is (bdd/typep "hello" (bdd/bdd-or (bdd/bdd 'Long)
+      (is (bdd/typep "hello" (bdd/or (bdd/bdd 'Long)
                                      (bdd/bdd 'String))))
-      (is (bdd/typep 42 (bdd/bdd-and-not (bdd/bdd 'Long)
+      (is (bdd/typep 42 (bdd/and-not (bdd/bdd 'Long)
                                      (bdd/bdd 'String))))
-      (is (bdd/typep "hello" (bdd/bdd-not (bdd/bdd 'Long))))
-      (is (not (bdd/typep 42 (bdd/bdd-and-not (bdd/bdd 'String)
+      (is (bdd/typep "hello" (bdd/not (bdd/bdd 'Long))))
+      (is (not (bdd/typep 42 (bdd/and-not (bdd/bdd 'String)
                                           (bdd/bdd 'Long)))))
-      (is (bdd/typep "hello" (bdd/bdd-and-not (bdd/bdd 'String)
+      (is (bdd/typep "hello" (bdd/and-not (bdd/bdd 'String)
                                           (bdd/bdd 'Long)))))))
 
 (deftest t-construct
@@ -72,10 +72,10 @@
       (doseq [n (range num-random-samples)
               :let [bdd1 (bdd/gen-random)
                     bdd2 (bdd/gen-random)]]
-        (is (= (bdd/bdd-or bdd1 bdd2)
-               (bdd/bdd-or bdd2 bdd1)))
-        (is (= (bdd/bdd-and bdd1 bdd2)
-               (bdd/bdd-and bdd2 bdd1)))))))
+        (is (= (bdd/or bdd1 bdd2)
+               (bdd/or bdd2 bdd1)))
+        (is (= (bdd/and bdd1 bdd2)
+               (bdd/and bdd2 bdd1)))))))
 
 (deftest t-associativity
   (testing "testing Boolean operations associativity"
@@ -84,37 +84,37 @@
               :let [bdd1 (bdd/gen-random)
                     bdd2 (bdd/gen-random)
                     bdd3 (bdd/gen-random)]]
-        (is (= (bdd/bdd-or (bdd/bdd-or bdd1 bdd2) bdd3)
-               (bdd/bdd-or bdd1 (bdd/bdd-or bdd2 bdd3))))
-        (is (= (bdd/bdd-and (bdd/bdd-and bdd1 bdd2) bdd3)
-               (bdd/bdd-and bdd1 (bdd/bdd-and bdd2 bdd3))))
+        (is (= (bdd/or (bdd/or bdd1 bdd2) bdd3)
+               (bdd/or bdd1 (bdd/or bdd2 bdd3))))
+        (is (= (bdd/and (bdd/and bdd1 bdd2) bdd3)
+               (bdd/and bdd1 (bdd/and bdd2 bdd3))))
 ))))
 
 
 (deftest t-identities
   (testing "testing Boolean identies"
     (bdd/with-hash []
-      (is (= (bdd/bdd-or true false)
+      (is (= (bdd/or true false)
              true))
-      (is (= (bdd/bdd-or false false)
+      (is (= (bdd/or false false)
              false))
-      (is (= (bdd/bdd-or false true)
+      (is (= (bdd/or false true)
              true))
-      (is (= (bdd/bdd-or true true)
+      (is (= (bdd/or true true)
              true))
 
-      (is (= (bdd/bdd-and true false) false))
-      (is (= (bdd/bdd-and false false) false))
-      (is (= (bdd/bdd-and false true) false))
-      (is (= (bdd/bdd-and true true) true))
+      (is (= (bdd/and true false) false))
+      (is (= (bdd/and false false) false))
+      (is (= (bdd/and false true) false))
+      (is (= (bdd/and true true) true))
 
-      (is (= (bdd/bdd-and-not true true) false))
-      (is (= (bdd/bdd-and-not true false) true))
-      (is (= (bdd/bdd-and-not false true) false))
-      (is (= (bdd/bdd-and-not false false) false))
+      (is (= (bdd/and-not true true) false))
+      (is (= (bdd/and-not true false) true))
+      (is (= (bdd/and-not false true) false))
+      (is (= (bdd/and-not false false) false))
 
-      (is (= (bdd/bdd-not true) false))
-      (is (= (bdd/bdd-not false) true)))))
+      (is (= (bdd/not true) false))
+      (is (= (bdd/not false) true)))))
 
 (deftest t-idempotence
   (testing "testing Boolean idempotence"
@@ -122,19 +122,19 @@
       (doseq [n (range num-random-samples)
               :let [bdd (bdd/gen-random)]]
 
-        (is (= bdd (bdd/bdd-and bdd bdd)))
-        (is (= bdd (bdd/bdd-or bdd bdd)))
-        (is (= false (bdd/bdd-and-not bdd bdd)))
+        (is (= bdd (bdd/and bdd bdd)))
+        (is (= bdd (bdd/or bdd bdd)))
+        (is (= false (bdd/and-not bdd bdd)))
 
-        (is (= bdd (bdd/bdd-and bdd true)))
-        (is (= true (bdd/bdd-or bdd true)))
-        (is (= false (bdd/bdd-and-not bdd true)))
-        (is (= (bdd/bdd-not bdd) (bdd/bdd-and-not true bdd)))
+        (is (= bdd (bdd/and bdd true)))
+        (is (= true (bdd/or bdd true)))
+        (is (= false (bdd/and-not bdd true)))
+        (is (= (bdd/not bdd) (bdd/and-not true bdd)))
 
-        (is (= (bdd/bdd-and bdd false) false))
-        (is (= (bdd/bdd-or bdd false) bdd))
-        (is (= (bdd/bdd-and-not bdd false) bdd))
-        (is (= (bdd/bdd-and-not false bdd) false))))))
+        (is (= (bdd/and bdd false) false))
+        (is (= (bdd/or bdd false) bdd))
+        (is (= (bdd/and-not bdd false) bdd))
+        (is (= (bdd/and-not false bdd) false))))))
 
 
 (deftest t-de-morgan
@@ -143,10 +143,10 @@
       (doseq [n (range num-random-samples)
               :let [bdd1 (bdd/gen-random)
                     bdd2 (bdd/gen-random)]]
-        (is (= (bdd/bdd-not (bdd/bdd-or bdd1 bdd2))
-               (bdd/bdd-and (bdd/bdd-not bdd1) (bdd/bdd-not bdd2))))
-        (is (= (bdd/bdd-not (bdd/bdd-and bdd1 bdd2))
-               (bdd/bdd-or (bdd/bdd-not bdd1) (bdd/bdd-not bdd2))))))))
+        (is (= (bdd/not (bdd/or bdd1 bdd2))
+               (bdd/and (bdd/not bdd1) (bdd/not bdd2))))
+        (is (= (bdd/not (bdd/and bdd1 bdd2))
+               (bdd/or (bdd/not bdd1) (bdd/not bdd2))))))))
 
 (deftest t-or
   (testing "bdd or"
@@ -154,7 +154,7 @@
       (for [a [true false]
             b [true false]]
         (is (= (or a b)
-               (bdd/bdd-or a b)))))))
+               (bdd/or a b)))))))
 
 (deftest t-and
   (testing "bdd and"
@@ -162,17 +162,17 @@
       (for [a [true false]
             b [true false]]
         (is (= (and a b)
-               (bdd/bdd-and a b)))))))
+               (bdd/and a b)))))))
 
 (deftest t-not
   (testing "bdd not"
     (bdd/with-hash []
       (for [a [true false]]
         (is (= (not a)
-               (bdd/bdd-not a))))
+               (bdd/not a))))
       (doseq [n (range num-random-samples)
               :let [bdd (bdd/gen-random)]]
-        (is (= bdd (bdd/bdd-not (bdd/bdd-not bdd)))
+        (is (= bdd (bdd/not (bdd/not bdd)))
     )))))
 
 (deftest t-and-not
@@ -181,12 +181,12 @@
       (for [a [true false]
             b [true false]]
         (is (= (not (and a b))
-               (bdd/bdd-and a b))))
+               (bdd/and a b))))
       (doseq [n (range num-random-samples)
               :let [bdd1 (bdd/gen-random)
                     bdd2 (bdd/gen-random)]]
-        (is (= (bdd/bdd-and-not bdd1 bdd2)
-               (bdd/bdd-and bdd1 (bdd/bdd-not bdd2))))))))
+        (is (= (bdd/and-not bdd1 bdd2)
+               (bdd/and bdd1 (bdd/not bdd2))))))))
 
 (deftest t-dnf-previously-failed
   (testing "dnf test which previously failed"
@@ -287,11 +287,11 @@
             type2 'java.io.Serializable
             bdd1 (bdd/bdd type1)
             bdd2 (bdd/bdd type2)]
-        (is (bdd/bdd-and bdd1 bdd2)) ;; not false
-        (is (= :empty-set (bdd/dnf (bdd/bdd-and bdd1 (bdd/bdd-not bdd2)))))
+        (is (bdd/and bdd1 bdd2)) ;; not false
+        (is (= :empty-set (bdd/dnf (bdd/and bdd1 (bdd/not bdd2)))))
 
         (is (not (bdd/disjoint? bdd1 bdd2)))
-        (is (bdd/disjoint? bdd1 (bdd/bdd-not bdd2)))
+        (is (bdd/disjoint? bdd1 (bdd/not bdd2)))
 
         (is (not (bdd/type-disjoint? type1 type2)))
         (is (bdd/type-disjoint? type1 (list 'not type2)))))))
