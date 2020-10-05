@@ -23,7 +23,7 @@
   "Definition of Bdd."
   (:require [clojure-rte.cl-compat :refer [cl-cond]]
             [clojure-rte.util :refer [fixed-point member group-by-mapped print-vals call-with-collector]]
-            [clojure-rte.type :as ty]
+            [clojure-rte.genus :as gns]
             [clojure.pprint :refer [cl-format]]
             [clojure.set :refer [union difference intersection]]
 ))
@@ -84,7 +84,7 @@
   "Serialize a Bdd to dnf disjunctive normal form.
   This dnf form is cleaned up so that an (and ...) or (or ...) clause contains
   no subtype/supertype pairs.  This subtype relation is determined by
-  (ty/subtype? a b (constantly false)).  
+  (gns/subtype? a b (constantly false)).  
   "
   [bdd]
   (letfn [(pretty-and [args]
@@ -100,7 +100,7 @@
           (supertypes [sub types]
             (filter (fn [super]
                       (and (not (= sub super))
-                           (ty/subtype? sub super (constantly false)))) types))
+                           (gns/subtype? sub super (constantly false)))) types))
           (check-supers [args]
             (let [args (distinct args)
                   complements (for [a args
@@ -127,8 +127,8 @@
                    (let [my-label (:label node)
                          ;; two lazy sequences created by filter.  the filter loops are
                          ;; never called unless (empty? ...) is called below.
-                         disjoints (filter (fn [x] (ty/disjoint? x my-label (constantly false))) parents)
-                         subtypes  (filter (fn [x] (ty/subtype?  x my-label (constantly false))) parents)]
+                         disjoints (filter (fn [x] (gns/disjoint? x my-label (constantly false))) parents)
+                         subtypes  (filter (fn [x] (gns/subtype?  x my-label (constantly false))) parents)]
 
                      (cond
                        (= true node)
@@ -146,7 +146,7 @@
                                                                         ;; Is (first tail) <: b ?
                                                                         ;;   if yes, then omit be in recur call
                                                                         ;;   if :dont-know then keep it.
-                                                                        (ty/subtype? (first tail) b (constantly false)))
+                                                                        (gns/subtype? (first tail) b (constantly false)))
                                                                        (rest tail))]
                                                   
                                                   (recur keeping
@@ -253,7 +253,7 @@
               (instance? Bdd negative))
           (cl-format false "wrong type of negative=~A type=~A"
                      negative (type negative)))
-  (assert (ty/valid-type? type-designator)
+  (assert (gns/valid-type? type-designator)
           (cl-format false "[257] invalid type-designator ~A" type-designator))
   
   (cond
@@ -392,7 +392,7 @@
     (= true bdd) true
     (= false bdd) false
     :else (bdd-typep value
-                     (if (ty/typep value (:label bdd))
+                     (if (gns/typep value (:label bdd))
                          (:positive bdd)
                          (:negative bdd)))))
 
