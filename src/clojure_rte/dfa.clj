@@ -21,7 +21,7 @@
 
 (ns clojure-rte.dfa
   "Definition of records State and Dfa."
-  (:require [clojure-rte.cl-compat :refer [cl-cond]]
+  (:require [clojure-rte.cl-compat :as cl]
             [clojure-rte.util :refer [fixed-point member group-by-mapped print-vals]]
             [clojure-rte.genus :as gns]
             [clojure.pprint :refer [cl-format]]
@@ -70,7 +70,7 @@
 (defn states-as-seq
   "Return a sequence of states which can be iterated over."
   [dfa]
-  (cl-cond
+  (cl/cl-cond
    ((map? (:states dfa))
     (vals (:states dfa)))
    ((sequential? (:states dfa))
@@ -288,7 +288,7 @@
         ids-map (zipmap pi-minimized ids)]
     (assert (sequential? pi-minimized))
     (letfn [(pretty-or [rest-args or-keyword]
-              (cl-cond
+              (cl/cl-cond
                ((empty? rest-args)
                 :sigma)
                ((empty? (rest rest-args))

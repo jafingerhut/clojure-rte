@@ -21,13 +21,13 @@
 
 (ns clojure-rte.cl-compat)
 
-(defn cl-prog1 [val & _]
+(defn prog1 [val & _]
   val)
 
-(defn cl-prog2 [_ val & _]
+(defn prog2 [_ val & _]
   val)
 
-(defn cl-progn [& others]
+(defn progn [& others]
   (last others))
 
 (defmacro cl-cond

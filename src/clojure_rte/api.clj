@@ -97,7 +97,7 @@
         sink-states (set (dfa/find-sink-states dfa))]
     (letfn [(consume [state-index item]
               (let [state-obj (state-vec state-index)]
-                (cl-cond
+                (cl/cl-cond
                  ((member state-obj sink-states)
                   (reduced false))
                  ((some (fn [[type next-state-index]]

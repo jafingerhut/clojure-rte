@@ -24,7 +24,7 @@
             [clojure.repl :refer [source-fn]]
             [clojure.pprint :refer [cl-format]]
             [clojure-rte.util :refer [call-with-collector member]]
-            [clojure-rte.cl-compat :refer [cl-cond]]
+            [clojure-rte.cl-compat :as cl]
             [clojure.reflect :as refl]
   ))
 
@@ -834,7 +834,7 @@
 
                 :else [left right])))
           (recurring [items left right]
-            (cl-cond
+            (cl/cl-cond
              ((some #{:sigma} right)
               )
              ((and (some #{:sigma} left)
@@ -983,7 +983,7 @@
     clojure.lang.Ratio BigDecimal)
   if possible.  Otherwise expand the given type-designator simply to itself."
 
-  (cl-cond
+  (cl/cl-cond
    ((not (sequential? type-designator))
     type-designator)
 

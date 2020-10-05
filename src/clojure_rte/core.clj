@@ -22,7 +22,7 @@
 (ns clojure-rte.core
   (:require [clojure.set :refer [union]]
             [clojure.pprint :refer [cl-format]]
-            [clojure-rte.cl-compat :refer [cl-cond]]
+            [clojure-rte.cl-compat :as cl]
             [clojure-rte.util :refer [with-first-match call-with-collector
                                       fixed-point
                                       visit-permutations rte-constantly rte-identity

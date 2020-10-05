@@ -22,7 +22,6 @@
 (ns clojure-rte.core-test
   (:require [clojure.test :refer :all]
             [clojure.pprint :refer [cl-format]]
-            [clojure-rte.cl-compat :refer [cl-cond]]
             [clojure-rte.util :refer [sort-operands remove-once call-with-collector visit-permutations]]
             [clojure-rte.genus :refer [disjoint? typep inhabited?]]
             [clojure-rte.core :refer :all :exclude [-main]]

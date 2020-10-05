@@ -23,7 +23,7 @@
   (:require [clojure.pprint :refer [cl-format]]
             [clojure.string]
             [clojure.set]
-            [clojure-rte.cl-compat :refer [cl-cond]]
+            [clojure-rte.cl-compat :as cl]
             [clojure-rte.core :refer :all :exclude [-main]]
             [clojure-rte.dfa :as dfa]
             [clojure-rte.bdd :as bdd]
@@ -107,7 +107,7 @@
         (cl-format *out* "  edge [fontname=Helvetica, fontsize=20];~%")
 
         (doseq [q (dfa/states-as-seq dfa)]
-          (cl-cond
+          (cl/cl-cond
            ((and (member q sink-states)
                  (not draw-sink)))
            (:else
@@ -120,7 +120,7 @@
               (cl-format *out* "   H~D [label=\"\", style=invis, width=0]~%" (:index q))
               (cl-format *out* "   H~D -> q~D;~%" (:index q) (:index q)))
             (doseq [[type-desig next-state] (:transitions q)]
-              (cl-cond
+              (cl/cl-cond
                ((and (member (dfa/state-by-index dfa next-state) sink-states)
                      (not draw-sink)))
                (abbrev

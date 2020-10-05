@@ -20,7 +20,7 @@
 ;; WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 (ns clojure-rte.cl-compat-test
-  (:require [clojure-rte.cl-compat :refer [cl-cond cl-prog1 cl-prog2 cl-progn call-with-escape with-escape]]
+  (:require [clojure-rte.cl-compat :as cl]
             [clojure-rte.util :refer [call-with-collector]]
             [clojure.test :refer :all]))
 
@@ -30,102 +30,102 @@
 
 (deftest t-cl-prog1
   (testing "cl-prog1"
-    (is (= 1 (cl-prog1 1 2)))
-    (is (= 1 (cl-prog1 1 2 3)))
-    (is (= 1 (cl-prog1 1 2 3 4)))
+    (is (= 1 (cl/prog1 1 2)))
+    (is (= 1 (cl/prog1 1 2 3)))
+    (is (= 1 (cl/prog1 1 2 3 4)))
     (is (= '(4 3 2 1)
            (call-with-collector (fn [collect]
-                                  (cl-prog1 (collect 1)
+                                  (cl/prog1 (collect 1)
                                             (collect 2)
                                             (collect 3)
                                             (collect 4))))))))
 
 (deftest t-cl-prog2
   (testing "cl-prog2"
-    (is (= 2 (cl-prog2 1 2)))
-    (is (= 2 (cl-prog2 1 2 3)))
-    (is (= 2 (cl-prog2 1 2 3 4)))
+    (is (= 2 (cl/prog2 1 2)))
+    (is (= 2 (cl/prog2 1 2 3)))
+    (is (= 2 (cl/prog2 1 2 3 4)))
     (is (= '(4 3 2 1)
            (call-with-collector (fn [collect]
-                                  (cl-prog2 (collect 1)
+                                  (cl/prog2 (collect 1)
                                             (collect 2)
                                             (collect 3)
                                             (collect 4))))))))
 
 (deftest t-cl-progn
   (testing "cl-progn"
-    (is (= 1 (cl-progn 1)))
-    (is (= 2 (cl-progn 1 2)))
-    (is (= 3 (cl-progn 1 2 3)))
-    (is (= 4 (cl-progn 1 2 3 4)))
+    (is (= 1 (cl/progn 1)))
+    (is (= 2 (cl/progn 1 2)))
+    (is (= 3 (cl/progn 1 2 3)))
+    (is (= 4 (cl/progn 1 2 3 4)))
     (is (= '(4 3 2 1)
            (call-with-collector (fn [collect]
-                                  (cl-progn (collect 1)
+                                  (cl/progn (collect 1)
                                             (collect 2)
                                             (collect 3)
                                             (collect 4))))))))
 (deftest t-cl-cond
   (testing "cl-cond"
     (let [a 100 b 200]
-      (is (= 42 (cl-cond
+      (is (= 42 (cl/cl-cond
                  (a 42))) "cond 1")
-      (is (= 42 (cl-cond
+      (is (= 42 (cl/cl-cond
                  ((= a 1) 41)
                  ((= a 100) 42))) "cond 2")
-      (is (not (cl-cond
+      (is (not (cl/cl-cond
                  ((= a 1) 41)
                  ((= a 200) 42))) "cond 2b")
-      (is (= 100 (cl-cond
+      (is (= 100 (cl/cl-cond
                   ((= a 1) 41)
                   (a)
                   (true -1))) "cond 3")
 
-      (is (= -2 (cl-cond
+      (is (= -2 (cl/cl-cond
                   ((= a 1) 41)
                   (true -1 -2))) "cond 4")
 
       (is (= '(3 2 1) (call-with-collector (fn [collect]
-                                             (cl-cond
+                                             (cl/cl-cond
                                               ((= a 1) 41)
                                               (true (collect 1) (collect 2) (collect 3)))))) "cond 5")
-      (is (= nil (cl-cond)) "cond nil")
-      (is (= 12 (cl-cond (true 12)
+      (is (= nil (cl/cl-cond)) "cond nil")
+      (is (= 12 (cl/cl-cond (true 12)
                          (nil))) "cond nil termination")
       )))
 
 (deftest t-call-with-escape
   (testing "call-with-escape"
-    (is (= 42 (call-with-escape (fn [ret]
+    (is (= 42 (cl/call-with-escape (fn [ret]
                                   (ret 42)))))
-    (is (= 43 (call-with-escape (fn [ret]
+    (is (= 43 (cl/call-with-escape (fn [ret]
                                   43))))
-    (is (= 44 (call-with-escape (fn [ret]
+    (is (= 44 (cl/call-with-escape (fn [ret]
                                   (ret 44)
                                   45))))
-    (is (= 47 (call-with-escape (fn [ret1]
-                                  (call-with-escape (fn [ret2]
+    (is (= 47 (cl/call-with-escape (fn [ret1]
+                                  (cl/call-with-escape (fn [ret2]
                                                       (ret2 46)))
                                   (ret1 47)))))
-    (is (= 48 (call-with-escape (fn [ret1]
-                                  (call-with-escape (fn [ret2]
+    (is (= 48 (cl/call-with-escape (fn [ret1]
+                                  (cl/call-with-escape (fn [ret2]
                                                       (ret1 48)))
                                   (ret1 49)))))))
 
 (deftest t-with-escape
   (testing "with-escape"
-    (is (= 42 (with-escape ret
+    (is (= 42 (cl/with-escape ret
                 (ret 42))))
-    (is (= 43 (with-escape ret
+    (is (= 43 (cl/with-escape ret
                 43)))
-    (is (= 44 (with-escape ret
+    (is (= 44 (cl/with-escape ret
                 (ret 44)
                 45)))
-    (is (= 47 (with-escape ret1
-                (with-escape ret2
+    (is (= 47 (cl/with-escape ret1
+                (cl/with-escape ret2
                   (ret2 46))
                 (ret1 47))))
-    (is (= 48 (with-escape ret1
-                (with-escape ret2
+    (is (= 48 (cl/with-escape ret1
+                (cl/with-escape ret2
                   (ret1 48))
                 (ret1 49))))))
     
