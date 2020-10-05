@@ -1,9 +1,9 @@
-# Extensible types
+# Genus - A Simple Extensible Type System
 
 When we use the word `type` we DO NOT mean Java type, rather we mean a set of clojure values or objects.
 Any set of values is a type, and some types are designatable.
 
-The namespace `clojure-rte.type` defines a type system which extends the
+The namespace `clojure-rte.genus` defines a type system which extends the
 Clojure built-in type system.   Types are sets of objects. Some types may be 
 designated via so-called *type designators*.
 
@@ -29,7 +29,7 @@ A *type designator* is defined by the following recursive definition.
   - `(rte pattern)` is a type designator which specifies the set of sequences which match the given rte pattern.  For example, the type `(rte (:cat Long String))` is the set of two element sequences whose first element is a `Long` and whose second element is a string.
 
 
-The user interface to `clojure-rte.type` includes the following functions:
+The user interface to `clojure-rte.genus` includes the following functions:
 
 * `typep [value type-designator]` --- predicate to determine whether a given object is an element of a designated type.
 

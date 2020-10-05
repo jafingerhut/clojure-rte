@@ -214,7 +214,7 @@
           (if-nil [_]
             ((:type functions) () functions))
           (verify-type [obj]
-            (if (ty/valid-type? obj)
+            (if (gns/valid-type? obj)
               obj
               (throw (ex-info (cl-format false "[219] invalid type designator ~A" obj)
                               {:error-type :invalid-type-designator
@@ -265,8 +265,8 @@
                 ((functions token) operand functions)
 
                 (satisfies)
-                (if (not= pattern (ty/expand-satisfies pattern))
-                  (traverse-pattern (ty/expand-satisfies pattern) functions)
+                (if (not= pattern (gns/expand-satisfies pattern))
+                  (traverse-pattern (gns/expand-satisfies pattern) functions)
                   ((:type functions) pattern functions))
                 
                 ;;case-else
@@ -386,7 +386,7 @@
   "Predicate determining whether its object is of the form (:or ...)"
   (seq-matcher :or))
 
-(defmethod ty/canonicalize-type 'rte
+(defmethod gns/canonicalize-type 'rte
   [type-designator]
   (cons 'rte (map canonicalize-pattern (rest type-designator))))
 
@@ -402,7 +402,7 @@
   (traverse-pattern re
                     (assoc *traversal-functions*
                            :type (fn [tag _functions]
-                                   (ty/canonicalize-type tag))
+                                   (gns/canonicalize-type tag))
                            :empty-set rte-identity
                            :epsilon rte-identity
                            :sigma rte-identity
@@ -522,12 +522,12 @@
                                         (when (some (fn [i1]
                                                       (some (fn [i2]
                                                               (and (not (= i1 i2))
-                                                                   (ty/disjoint? i1 i2))) atoms)) atoms)
+                                                                   (gns/disjoint? i1 i2))) atoms)) atoms)
                                           :empty-set)))
                                      
                                      ;; (:and subtype supertype x y z) --> (:and subtype x y z)
                                      ((let [atoms (filter (complement seq?) operands)
-                                            max (ty/type-max atoms)
+                                            max (gns/type-max atoms)
                                             ]
                                         (when max
                                           (cons :and (remove #{max} operands)))))
@@ -566,7 +566,7 @@
 
                                     ;; (:or subtype supertype x y z) --> (:and supertype x y z)
                                     ((let [atoms (filter (complement seq?) operands)
-                                           min (ty/type-min atoms)
+                                           min (gns/type-min atoms)
                                            ]
                                        (when min
                                          (cons :or (remove #{min} operands)))))
@@ -638,10 +638,10 @@
                                 :type (fn [type _functions]
                                         (cond 
                                               
-                                              (ty/disjoint? wrt type)
+                                              (gns/disjoint? wrt type)
                                               :empty-set
 
-                                              (ty/subtype? wrt type (constantly false))
+                                              (gns/subtype? wrt type (constantly false))
                                               :epsilon
                                               
                                               (and (sequential? wrt)
@@ -687,7 +687,7 @@
   (letfn [(independent? [t1]
             (every? (fn [t2]
                       (or (= t1 t2)
-                          (ty/disjoint? t1 t2))) type-set))
+                          (gns/disjoint? t1 t2))) type-set))
           (rte? [t]
             (and (sequential? t)
                  (= 'rte (first t))))
@@ -745,7 +745,7 @@
           dependent (remove (set independent) type-set)]
       (concat independent (call-with-collector
                            (fn [collect]
-                             (ty/map-type-partitions
+                             (gns/map-type-partitions
                               (seq dependent)
                               (fn [left right]
                                 (collect-left-right collect left right)))))))))

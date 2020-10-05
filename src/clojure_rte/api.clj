@@ -101,7 +101,7 @@
                  ((member state-obj sink-states)
                   (reduced false))
                  ((some (fn [[type next-state-index]]
-                          (if (ty/typep item type)
+                          (if (gns/typep item type)
                             next-state-index
                             false))
                         (:transitions state-obj)))

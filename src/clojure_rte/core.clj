@@ -28,11 +28,11 @@
                                       visit-permutations rte-constantly rte-identity
                                       partition-by-pred
                                       print-vals sort-operands member]]
-            [clojure-rte.type :as ty]
+            [clojure-rte.genus :as gns]
             [clojure-rte.dfa :as dfa ]
             [clojure-rte.rte]
             [clojure-rte.memoize]
             [clojure-rte.api]
             [clojure-rte.rte-case]
-            [clojure-rte.type-extend]
+            [clojure-rte.genus-extend]
             ))
