@@ -19,7 +19,7 @@
 ;; OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
 ;; WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-(ns clojure-rte.genus
+(ns clojure-rte.type
   (:require [clojure.set :refer [intersection]]
             [clojure.repl :refer [source-fn]]
             [clojure.pprint :refer [cl-format]]
@@ -29,13 +29,11 @@
   ))
 
 (defn class-designator? [t]
-  "Predicate to determine whether the given symbol designates a java class."
   (and (symbol? t)
        (resolve t)
        (class? (resolve t))))
 
 (defn find-class [class-name]
-  "Given a valid class-designator, return the (java) class or nil if not found."
   (if (class-designator? class-name)
     (resolve class-name)
     nil))
@@ -725,7 +723,7 @@
       false
 
       ;; I don't know the general form of this, so make it a special case for the moment.
-      ;; (gns/disjoint? '(and Long (not (member 2 3 4))) 'java.lang.Comparable)
+      ;; (ty/disjoint? '(and Long (not (member 2 3 4))) 'java.lang.Comparable)
       ;;                      A   (not B)                     C
       ;; should return false
       ;; TODO generalize this special case.
@@ -743,7 +741,7 @@
       false
 
       
-      ;; (gns/disjoint? '(and String (not (member a b c 1 2 3))) 'java.lang.Comparable)
+      ;; (ty/disjoint? '(and String (not (member a b c 1 2 3))) 'java.lang.Comparable)
       ;;                       A    (not B)                     C
       ;;  since A and B are disjoint
       ;;  we may ask (disjoint? A C)

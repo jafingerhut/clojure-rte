@@ -19,14 +19,14 @@
 ;; OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
 ;; WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-(ns clojure-rte.genus-test
+(ns clojure-rte.type-test
   (:require [clojure-rte.core :refer :all :exclude [-main]]
-            [clojure-rte.genus :refer :all]
+            [clojure-rte.type :refer :all]
             [clojure-rte.util :refer [call-with-collector]]
             [clojure.test :refer :all]))
 
 (defn -main []
-  (clojure.test/run-tests 'clojure-rte.genus-test))
+  (clojure.test/run-tests 'clojure-rte.type-test))
 
 (deftest t-disjoint?
   (when (and (resolve 'java.lang.CharSequence)
@@ -276,10 +276,10 @@
 
 (deftest t-satisfies-ns
   (testing "satifies in namespace"
-    (is (not (typep 3 '(satisfies clojure-rte.genus-test/test-predicate)))
+    (is (not (typep 3 '(satisfies clojure-rte.type-test/test-predicate)))
         "test 0")
 
-    (is (typep 13 '(satisfies clojure-rte.genus-test/test-predicate))
+    (is (typep 13 '(satisfies clojure-rte.type-test/test-predicate))
         "test 1")
 
     ;; cannot use satisfies with undecorated function name

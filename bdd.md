@@ -21,7 +21,7 @@ of the Boolean operators `(bdd-and ...)`, `(bdd-or ...)`, `(bdd-and-no ...)`, or
 ## API
 
 ### (`bdd` type-designator)
-Allocate a Bdd using a [type designator](genus.md).
+Allocate a Bdd using a [type designator](type.md).
 
 ```clojure
 (with-bdd-hash []

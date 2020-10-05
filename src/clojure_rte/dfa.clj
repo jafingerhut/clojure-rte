@@ -23,7 +23,7 @@
   "Definition of records State and Dfa."
   (:require [clojure-rte.cl-compat :refer [cl-cond]]
             [clojure-rte.util :refer [fixed-point member group-by-mapped print-vals]]
-            [clojure-rte.genus :as gns]
+            [clojure-rte.type :as ty]
             [clojure.pprint :refer [cl-format]]
             [clojure-rte.bdd :refer [dnf bdd bdd-type-subtype? bdd-canonicalize-type with-bdd-hash bdd-type-disjoint?]]
             [clojure.set :refer [union difference intersection]]

@@ -60,7 +60,7 @@ the argument list itself, or in the map specified after the
 argument list.  Within the argument list you may only specify
 very simply type constraints, i.e., symbols which designate types, such as `^Boolean` and `^Number`.
 However in the map, you may specify Boolean cominations of any type designator
-supported by `clojure-rte.type`.  See [Extensible types](genus.md) for more details.
+supported by `clojure-rte.type`.  See [Extensible types](type.md) for more details.
 
 ```clojure
 ;; match if a is of type Number

@@ -29,7 +29,7 @@
               clojure-rte.dot-test
               clojure-rte.rte-test
               clojure-rte.rte-tester-test
-              clojure-rte.genus-test
+              clojure-rte.type-test
               clojure-rte.util-test             
               )
   (:gen-class))
@@ -46,7 +46,7 @@
                           'clojure-rte.rte-test
                           'clojure-rte.rte-case-test
                           'clojure-rte.rte-tester-test
-                          'clojure-rte.genus-test
+                          'clojure-rte.type-test
                           'clojure-rte.util-test
                           ))
 
