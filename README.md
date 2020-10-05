@@ -55,7 +55,7 @@ git clone https://gitlab.lrde.epita.fr/jnewton/clojure-rte.git
 ## RTE in more depth
 
 * [Binary Decision Diagrams](bdd.md)
-* [Extensible Types](type.md)
+* [Genus: A Simple Extensible Type System](genus.md)
 * [Expert details w.r.t. RTE](expert.md)
 * [API](api.md)
 * [destructuring-fn](dsc.md)
@@ -83,11 +83,9 @@ Which kinds of type designators can be used?  You may use
 
 - Any type name which is a symbol, `T`, for which `(class? (resolve T))` evaluates to Boolean true.
 - Any name, `T`, for which `(registered-type? T)` returns `true`.
-- Any *quasi-type* name mentioned in `*rte-known*`.
 
 The dynamic variable `*rte-known*` is intended for applications to
 extend via the `with-rte` macro.
-
 
 ## Options
 
@@ -271,10 +269,7 @@ Example any number of integers or strings in any order.
   (rte-match rte [1]) ;; true
   (rte-match rte [1 "hello"]) ;; true
   (rte-match rte ["hello" "world" 1 2 "hello" 3 "world"]) ;; true
-
 ```
-
-
 
 * `:sigma` --- matches anything once, identity for `:and`.
 
