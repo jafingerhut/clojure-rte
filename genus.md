@@ -95,7 +95,10 @@ element of the designated type.
  Example:
 ```clojure
 (defmethod typep 'member [a-value [_type & others]]
-  (some #{a-value} others))
+  (boolean (cond
+             (nil? target) (some nil? items)
+             (false? target) (some false? items)
+             :else (some #{target} items))))
 
 (defmethod typep 'my-type [a-value [_type & others]]
   ... some logic ...)

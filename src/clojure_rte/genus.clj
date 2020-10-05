@@ -162,7 +162,7 @@
   true)
 
 (defmethod typep 'member [a-value [_type & others]]
-  (some #{a-value} others))
+  (member a-value others))
 
 (defmethod valid-type? 'member [[_ & _]]
   true)
