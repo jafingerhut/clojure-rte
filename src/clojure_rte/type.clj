@@ -139,13 +139,13 @@
     (f a-value)
     ((resolve f) a-value)))
 
-(defn callable-designator [f]
+(defn callable-designator? [f]
   (and (symbol? f)
        (resolve f)
        (fn? (deref (resolve f)))))
 
 (defmethod valid-type? 'satisfies [[_ f]]
-  (callable-designator f))
+  (callable-designator? f))
 
 (declare expand-satisfies)
 
