@@ -25,7 +25,7 @@
             [clojure-rte.util :refer [fixed-point member group-by-mapped print-vals]]
             [clojure-rte.genus :as gns]
             [clojure.pprint :refer [cl-format]]
-            [clojure-rte.bdd :refer [dnf bdd bdd-type-subtype? bdd-canonicalize-type with-bdd-hash bdd-type-disjoint?]]
+            [clojure-rte.bdd :as bdd]
             [clojure.set :refer [union difference intersection]]
 ))
 
@@ -101,7 +101,7 @@
               [label-2 dst-2] (:transitions q)
               :when (not (= [label-1 dst-1]
                             [label-2 dst-2]))]
-        (assert (bdd-type-disjoint? label-1 label-2)
+        (assert (bdd/type-disjoint? label-1 label-2)
                 (cl-format false "overlapping types ~A vs ~A in ~A transitions ~A"
                            label-1 label-2 q (:transitions q))))
       (doseq [:let [trans-labels (map first (:transitions q))]
@@ -224,7 +224,7 @@
   (let [labels (map first (:transitions state))]
     (and (not (empty? labels))
          (or (member :sigma labels)
-             (bdd-type-subtype? :sigma (cons 'or labels))))))
+             (bdd/type-subtype? :sigma (cons 'or labels))))))
 
 (defn find-incomplete-states
   "Return a sequence containing all the State's of the given Dfa which are not complete,
@@ -268,7 +268,7 @@
                              (let [existing-labels (map first (:transitions q))
                                    new-label (if (empty? existing-labels)
                                                :sigma
-                                               (bdd-canonicalize-type
+                                               (bdd/canonicalize-type
                                                 `(~'and :sigma (~'not (~'or ~@existing-labels)))))]
                                (if (= :empty-set new-label)
                                  q
@@ -436,7 +436,7 @@
 (defn intersect-labels
   ""
   [label-1 label-2]
-  (bdd-canonicalize-type (list 'and label-1 label-2)))
+  (bdd/canonicalize-type (list 'and label-1 label-2)))
 
 (defn cross-intersection
   "Compute a sequence of type designators corresponding to all the
@@ -446,7 +446,7 @@
   (for [
         label-1 type-designators-1
         label-2 type-designators-2
-        :when (not (bdd-type-disjoint? label-1 label-2))]
+        :when (not (bdd/type-disjoint? label-1 label-2))]
     (intersect-labels label-1 label-2)))
 
 (defn synchronized-product
@@ -468,7 +468,7 @@
   (letfn [(compute-state-transitions [state-1 state-2 state-ident-map]
             (for [[label-1 dst-1] (:transitions state-1)
                   [label-2 dst-2] (:transitions state-2)
-                  :when (not (bdd-type-disjoint? label-1 label-2))
+                  :when (not (bdd/type-disjoint? label-1 label-2))
                   :let [label-sxp (intersect-labels label-1 label-2)]
                   ]
               [label-sxp (state-ident-map [dst-1 dst-2])]))
@@ -485,7 +485,7 @@
             ;; Caveat some states may appear accessible but really aren't because
             ;; they might have null-transitions leading to them.   E.g.,
             ;; There might be a type-designator which is the intersection of two
-            ;; type-designators which bdd-type-disjoint? is not able to determine
+            ;; type-designators which bdd/type-disjoint? is not able to determine
             ;; are really disjoint.   We error on the side of redundancy, leaving
             ;; transitions which will never be taken at runtime.
             (loop [work-id-pairs (list initial-id-pair)
@@ -566,7 +566,7 @@
                          "expecting 0 maps to [0 0], in ~A"
                          ident-state-map))
 
-      (with-bdd-hash []
+      (bdd/with-hash []
         (make-dfa dfa-1
                   {:exit-map (into {} new-exit-map)
                    :states (into {} new-id-state-pairs)})))))

@@ -170,7 +170,7 @@
                                  (cons (list 'not (:label node)) parents))))))]
            (walk bdd '()))))))))
 
-(def ^:dynamic *bdd-hash*
+(def ^:dynamic *hash*
   "Hash table storing Bdd instances which have been allocated.   The idea
   is that if a new Bdd is allocated via a call to Bdd., the funciton, bdd,
   will recognize this redundant instance, and return the previously allocated
@@ -184,28 +184,28 @@
   according to the integers stored in this hash table."
   (atom false))
 
-(defn call-with-bdd-hash
+(defn call-with-hash
   "Allocations two dynamic variables for the dynamic extent of evaluating
-  the given 0-ary function.  The variables are *label-to-index* and *bdd-hash*.
-  This function is part of the implementation of the with-bdd-hash macro.
+  the given 0-ary function.  The variables are *label-to-index* and *hash*.
+  This function is part of the implementation of the with-hash macro.
   "
   [thunk]
-  (if (= false @*bdd-hash*)
+  (if (= false @*hash*)
     (binding [*label-to-index* (atom {})
-              *bdd-hash* (atom {})]
+              *hash* (atom {})]
       (thunk))
-    ;; if call-with-bdd-hash is called recursively, don't rebind anything.
+    ;; if call-with-hash is called recursively, don't rebind anything.
     (thunk)))
 
-(defmacro with-bdd-hash
+(defmacro with-hash
   "This macro wraps a piece of code which needs to allocate Bdds. The macro
-  wraps a call to the function call-with-bdd-hash, which provides an environment,
+  wraps a call to the function call-with-hash, which provides an environment,
   of sorts, which makes it possible to allocate and manipulate Bdd instances.
-  If with-bdd-hash is called recursively (intentially or accidentally), the
+  If with-hash is called recursively (intentially or accidentally), the
   inner-most call recognizes this and does not re-bind any dynamic variables,
   thus the innter-most call is innocuous and harmless."
   [[] & body]
-  `(call-with-bdd-hash (fn [] ~@body)))
+  `(call-with-hash (fn [] ~@body)))
 
 (defn type-index [type-designator]
   ;; TODO make sure two differnet symbols representing the same class
@@ -217,7 +217,7 @@
 (declare bdd-and)
 (declare bdd-or)
 (declare bdd-not)
-(declare bdd-node)
+(declare node)
 
 (defn bdd
   "Public interface to programmatic Bdd constructor."
@@ -228,7 +228,7 @@
       (and) (reduce bdd-and (map bdd (rest type-designator)))
       (or)  (reduce bdd-or (map bdd (rest type-designator)))
       (not) (apply bdd-not (map bdd (rest type-designator)))
-      (bdd-node type-designator true false))
+      (node type-designator true false))
 
     (= :sigma type-designator)
     true
@@ -237,14 +237,14 @@
     false
 
     :else
-    (bdd-node type-designator true false)))
+    (node type-designator true false)))
 
-(defn bdd-node
+(defn node
   "Internal function to function `bdd`.  This function is used during the
   recursive descent of the Bdd construction algorithm.  "
   [type-designator positive negative] 
-  (assert (map? @*bdd-hash*) "attempt to allocate a Bdd outside dynamically extend of call-with-bdd-hash")
-  (assert (map? @*label-to-index*) "attempt to allocate a Bdd outside dynamically extend of call-with-bdd-hash")
+  (assert (map? @*hash*) "attempt to allocate a Bdd outside dynamically extend of call-with-hash")
+  (assert (map? @*label-to-index*) "attempt to allocate a Bdd outside dynamically extend of call-with-hash")
   (assert (or (instance? Boolean positive)
               (instance? Bdd positive))
           (cl-format false "wrong type of positive=~A type=~A"
@@ -261,9 +261,9 @@
     positive
     :else
     (let [try-bdd (Bdd. type-designator positive negative)
-          cached-bdd (@*bdd-hash* try-bdd)]
+          cached-bdd (@*hash* try-bdd)]
       (or cached-bdd
-          (do (swap! *bdd-hash* assoc try-bdd try-bdd)
+          (do (swap! *hash* assoc try-bdd try-bdd)
               (assert (or (instance? Boolean positive)
                           (< (type-index type-designator)
                              (type-index (:label positive))))
@@ -279,7 +279,7 @@
   "Bdd abstract binary operation."
   [op bdd1 bdd2]
   (if (= (:label bdd1) (:label bdd2))
-    (bdd-node (:label bdd1)
+    (node (:label bdd1)
           (op (:positive bdd1) (:positive bdd2))
           (op (:negative bdd1) (:negative bdd2)))
     (let [label-index-1 (type-index (:label bdd1))
@@ -287,10 +287,10 @@
       (assert (integer? label-index-1) (format "expecting integer got %s" (type label-index-1)))
       (assert (integer? label-index-2) (format "expecting integer got %s" (type label-index-2)))
       (if (< label-index-1 label-index-2)
-        (bdd-node (:label bdd1)
+        (node (:label bdd1)
                   (op (:positive bdd1) bdd2)
                   (op (:negative bdd1) bdd2))
-        (bdd-node (:label bdd2)
+        (node (:label bdd2)
                   (op bdd1 (:positive bdd2))
                   (op bdd1 (:negative bdd2)))))))
   
@@ -333,7 +333,7 @@
      (= bdd1 false) false
      (= bdd2 true) false
      (= bdd2 false) bdd1
-     (= bdd1 true) (bdd-node (:label bdd2)
+     (= bdd1 true) (node (:label bdd2)
                              (bdd-and-not true (:positive bdd2))
                              (bdd-and-not true (:negative bdd2)))
      :else (binary-op bdd-and-not bdd1 bdd2)))
@@ -384,19 +384,19 @@
              :else   ;; 40% * 50% chance
              (bdd-or bdd-1 bdd-2))))))))
 
-(defn bdd-typep
+(defn typep
   "Given a value in question, and a Bdd representing a type designator,
   determine whether the value is an alement of the designated type."
   [value bdd]
   (cond
     (= true bdd) true
     (= false bdd) false
-    :else (bdd-typep value
+    :else (typep value
                      (if (gns/typep value (:label bdd))
                          (:positive bdd)
                          (:negative bdd)))))
 
-(defn bdd-disjoint?
+(defn disjoint?
   "Given two Bdds, determine whether it can be proven that the intersection of the
    types they represent is empty.
    If it cannot be proven that they are disjoint, false is returned."
@@ -404,28 +404,28 @@
   (= :empty-set
      (dnf (bdd-and bdd1 bdd2))))
 
-(defn bdd-canonicalize-type
+(defn canonicalize-type
   [type-designator]
   "Compute a canonicalized form of a given type designator.
    The intent is that given two type designators (as possibly different
    s-expressions), if they represent the same type, then they should
    be canonicalized to equal (=) s-expressions."
-  (with-bdd-hash []
+  (with-hash []
     (dnf (bdd type-designator))))
 
-(defn bdd-type-disjoint?
+(defn type-disjoint?
   "Given two type designators, use Bdds to determine whether they are disjoint.
   If it cannot be proven that they are disjoint, false is returned."
   [type-designator-1 type-designator-2]
-  (with-bdd-hash []
+  (with-hash []
     (= :empty-set
-       (bdd-canonicalize-type (list 'and type-designator-1 type-designator-2)))))
+       (canonicalize-type (list 'and type-designator-1 type-designator-2)))))
 
-(defn bdd-type-subtype?
-  "Given two type designators, use Bdds to determine whether one is a subtype of the other.
-  If it cannot be proven, false is returned."
+(defn type-subtype?
+  "given two type designators, use bdds to determine whether one is a subtype of the other.
+  if it cannot be proven, false is returned."
   [subtype-designator supertype-designator]
-  (with-bdd-hash []
+  (with-hash []
     (let [bdd-sub (bdd subtype-designator)
           bdd-sup (bdd supertype-designator)]
       (= :empty-set

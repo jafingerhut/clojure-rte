@@ -21,7 +21,7 @@
 
 
 (ns clojure-rte.bdd-test
-  (:require [clojure-rte.bdd :refer :all ]
+  (:require [clojure-rte.bdd :as bdd]
             [clojure.pprint :refer [cl-format]]
             [clojure-rte.util :refer [print-vals member]]
             [clojure.test :refer :all])
@@ -35,162 +35,162 @@
 
 (deftest t-typep
   (testing "bdd and-not"
-    (with-bdd-hash []
-      (is (bdd-typep 42 (bdd 'Long)))
-      (is (not (bdd-typep 42 (bdd 'String))))
-      (is (not (bdd-typep "42" (bdd 'Long))))
-      (is (bdd-typep "42" (bdd 'String)))
-      (is (bdd-typep 42 (bdd-or (bdd 'Long)
-                                (bdd 'String))))
-      (is (bdd-typep "hello" (bdd-or (bdd 'Long)
-                                     (bdd 'String))))
-      (is (bdd-typep 42 (bdd-and-not (bdd 'Long)
-                                     (bdd 'String))))
-      (is (bdd-typep "hello" (bdd-not (bdd 'Long))))
-      (is (not (bdd-typep 42 (bdd-and-not (bdd 'String)
-                                          (bdd 'Long)))))
-      (is (bdd-typep "hello" (bdd-and-not (bdd 'String)
-                                          (bdd 'Long)))))))
+    (bdd/with-hash []
+      (is (bdd/typep 42 (bdd/bdd 'Long)))
+      (is (not (bdd/typep 42 (bdd/bdd 'String))))
+      (is (not (bdd/typep "42" (bdd/bdd 'Long))))
+      (is (bdd/typep "42" (bdd/bdd 'String)))
+      (is (bdd/typep 42 (bdd/bdd-or (bdd/bdd 'Long)
+                                (bdd/bdd 'String))))
+      (is (bdd/typep "hello" (bdd/bdd-or (bdd/bdd 'Long)
+                                     (bdd/bdd 'String))))
+      (is (bdd/typep 42 (bdd/bdd-and-not (bdd/bdd 'Long)
+                                     (bdd/bdd 'String))))
+      (is (bdd/typep "hello" (bdd/bdd-not (bdd/bdd 'Long))))
+      (is (not (bdd/typep 42 (bdd/bdd-and-not (bdd/bdd 'String)
+                                          (bdd/bdd 'Long)))))
+      (is (bdd/typep "hello" (bdd/bdd-and-not (bdd/bdd 'String)
+                                          (bdd/bdd 'Long)))))))
 
 (deftest t-construct
   (testing "bdd construction"
-    (with-bdd-hash []
-      (is (= false (bdd-node 'Long false false)))
-      (is (= true (bdd-node 'Long true true)))
-      (is (bdd-node 'Long true false))
-      (is (bdd-node 'Long false true))
-      (let [long (bdd-node 'Long true false)
-            string (bdd-node 'String true false)
-            double (bdd-node 'Double true false)]
-        (is (= string (bdd-node 'Long string string)))
-        (is (bdd-node 'Long string double))
-        (is (bdd-node 'Long double string))))))
+    (bdd/with-hash []
+      (is (= false (bdd/node 'Long false false)))
+      (is (= true (bdd/node 'Long true true)))
+      (is (bdd/node 'Long true false))
+      (is (bdd/node 'Long false true))
+      (let [long (bdd/node 'Long true false)
+            string (bdd/node 'String true false)
+            double (bdd/node 'Double true false)]
+        (is (= string (bdd/node 'Long string string)))
+        (is (bdd/node 'Long string double))
+        (is (bdd/node 'Long double string))))))
 
 (deftest t-commutativity
   (testing "testing Boolean operations commutativity"
-    (with-bdd-hash []
+    (bdd/with-hash []
       (doseq [n (range num-random-samples)
-              :let [bdd1 (gen-random)
-                    bdd2 (gen-random)]]
-        (is (= (bdd-or bdd1 bdd2)
-               (bdd-or bdd2 bdd1)))
-        (is (= (bdd-and bdd1 bdd2)
-               (bdd-and bdd2 bdd1)))))))
+              :let [bdd1 (bdd/gen-random)
+                    bdd2 (bdd/gen-random)]]
+        (is (= (bdd/bdd-or bdd1 bdd2)
+               (bdd/bdd-or bdd2 bdd1)))
+        (is (= (bdd/bdd-and bdd1 bdd2)
+               (bdd/bdd-and bdd2 bdd1)))))))
 
 (deftest t-associativity
   (testing "testing Boolean operations associativity"
-    (with-bdd-hash []
+    (bdd/with-hash []
       (doseq [n (range num-random-samples)
-              :let [bdd1 (gen-random)
-                    bdd2 (gen-random)
-                    bdd3 (gen-random)]]
-        (is (= (bdd-or (bdd-or bdd1 bdd2) bdd3)
-               (bdd-or bdd1 (bdd-or bdd2 bdd3))))
-        (is (= (bdd-and (bdd-and bdd1 bdd2) bdd3)
-               (bdd-and bdd1 (bdd-and bdd2 bdd3))))
+              :let [bdd1 (bdd/gen-random)
+                    bdd2 (bdd/gen-random)
+                    bdd3 (bdd/gen-random)]]
+        (is (= (bdd/bdd-or (bdd/bdd-or bdd1 bdd2) bdd3)
+               (bdd/bdd-or bdd1 (bdd/bdd-or bdd2 bdd3))))
+        (is (= (bdd/bdd-and (bdd/bdd-and bdd1 bdd2) bdd3)
+               (bdd/bdd-and bdd1 (bdd/bdd-and bdd2 bdd3))))
 ))))
 
 
 (deftest t-identities
   (testing "testing Boolean identies"
-    (with-bdd-hash []
-      (is (= (bdd-or true false)
+    (bdd/with-hash []
+      (is (= (bdd/bdd-or true false)
              true))
-      (is (= (bdd-or false false)
+      (is (= (bdd/bdd-or false false)
              false))
-      (is (= (bdd-or false true)
+      (is (= (bdd/bdd-or false true)
              true))
-      (is (= (bdd-or true true)
+      (is (= (bdd/bdd-or true true)
              true))
 
-      (is (= (bdd-and true false) false))
-      (is (= (bdd-and false false) false))
-      (is (= (bdd-and false true) false))
-      (is (= (bdd-and true true) true))
+      (is (= (bdd/bdd-and true false) false))
+      (is (= (bdd/bdd-and false false) false))
+      (is (= (bdd/bdd-and false true) false))
+      (is (= (bdd/bdd-and true true) true))
 
-      (is (= (bdd-and-not true true) false))
-      (is (= (bdd-and-not true false) true))
-      (is (= (bdd-and-not false true) false))
-      (is (= (bdd-and-not false false) false))
+      (is (= (bdd/bdd-and-not true true) false))
+      (is (= (bdd/bdd-and-not true false) true))
+      (is (= (bdd/bdd-and-not false true) false))
+      (is (= (bdd/bdd-and-not false false) false))
 
-      (is (= (bdd-not true) false))
-      (is (= (bdd-not false) true)))))
+      (is (= (bdd/bdd-not true) false))
+      (is (= (bdd/bdd-not false) true)))))
 
 (deftest t-idempotence
   (testing "testing Boolean idempotence"
-    (with-bdd-hash []
+    (bdd/with-hash []
       (doseq [n (range num-random-samples)
-              :let [bdd (gen-random)]]
+              :let [bdd (bdd/gen-random)]]
 
-        (is (= bdd (bdd-and bdd bdd)))
-        (is (= bdd (bdd-or bdd bdd)))
-        (is (= false (bdd-and-not bdd bdd)))
+        (is (= bdd (bdd/bdd-and bdd bdd)))
+        (is (= bdd (bdd/bdd-or bdd bdd)))
+        (is (= false (bdd/bdd-and-not bdd bdd)))
 
-        (is (= bdd (bdd-and bdd true)))
-        (is (= true (bdd-or bdd true)))
-        (is (= false (bdd-and-not bdd true)))
-        (is (= (bdd-not bdd) (bdd-and-not true bdd)))
+        (is (= bdd (bdd/bdd-and bdd true)))
+        (is (= true (bdd/bdd-or bdd true)))
+        (is (= false (bdd/bdd-and-not bdd true)))
+        (is (= (bdd/bdd-not bdd) (bdd/bdd-and-not true bdd)))
 
-        (is (= (bdd-and bdd false) false))
-        (is (= (bdd-or bdd false) bdd))
-        (is (= (bdd-and-not bdd false) bdd))
-        (is (= (bdd-and-not false bdd) false))))))
+        (is (= (bdd/bdd-and bdd false) false))
+        (is (= (bdd/bdd-or bdd false) bdd))
+        (is (= (bdd/bdd-and-not bdd false) bdd))
+        (is (= (bdd/bdd-and-not false bdd) false))))))
 
 
 (deftest t-de-morgan
   (testing "bdd de morgan's theorem"
-    (with-bdd-hash []
+    (bdd/with-hash []
       (doseq [n (range num-random-samples)
-              :let [bdd1 (gen-random)
-                    bdd2 (gen-random)]]
-        (is (= (bdd-not (bdd-or bdd1 bdd2))
-               (bdd-and (bdd-not bdd1) (bdd-not bdd2))))
-        (is (= (bdd-not (bdd-and bdd1 bdd2))
-               (bdd-or (bdd-not bdd1) (bdd-not bdd2))))))))
+              :let [bdd1 (bdd/gen-random)
+                    bdd2 (bdd/gen-random)]]
+        (is (= (bdd/bdd-not (bdd/bdd-or bdd1 bdd2))
+               (bdd/bdd-and (bdd/bdd-not bdd1) (bdd/bdd-not bdd2))))
+        (is (= (bdd/bdd-not (bdd/bdd-and bdd1 bdd2))
+               (bdd/bdd-or (bdd/bdd-not bdd1) (bdd/bdd-not bdd2))))))))
 
 (deftest t-or
   (testing "bdd or"
-    (with-bdd-hash []
+    (bdd/with-hash []
       (for [a [true false]
             b [true false]]
         (is (= (or a b)
-               (bdd-or a b)))))))
+               (bdd/bdd-or a b)))))))
 
 (deftest t-and
   (testing "bdd and"
-    (with-bdd-hash []
+    (bdd/with-hash []
       (for [a [true false]
             b [true false]]
         (is (= (and a b)
-               (bdd-and a b)))))))
+               (bdd/bdd-and a b)))))))
 
 (deftest t-not
   (testing "bdd not"
-    (with-bdd-hash []
+    (bdd/with-hash []
       (for [a [true false]]
         (is (= (not a)
-               (bdd-not a))))
+               (bdd/bdd-not a))))
       (doseq [n (range num-random-samples)
-              :let [bdd (gen-random)]]
-        (is (= bdd (bdd-not (bdd-not bdd)))
+              :let [bdd (bdd/gen-random)]]
+        (is (= bdd (bdd/bdd-not (bdd/bdd-not bdd)))
     )))))
 
 (deftest t-and-not
   (testing "bdd and-not"
-    (with-bdd-hash []
+    (bdd/with-hash []
       (for [a [true false]
             b [true false]]
         (is (= (not (and a b))
-               (bdd-and a b))))
+               (bdd/bdd-and a b))))
       (doseq [n (range num-random-samples)
-              :let [bdd1 (gen-random)
-                    bdd2 (gen-random)]]
-        (is (= (bdd-and-not bdd1 bdd2)
-               (bdd-and bdd1 (bdd-not bdd2))))))))
+              :let [bdd1 (bdd/gen-random)
+                    bdd2 (bdd/gen-random)]]
+        (is (= (bdd/bdd-and-not bdd1 bdd2)
+               (bdd/bdd-and bdd1 (bdd/bdd-not bdd2))))))))
 
 (deftest t-dnf-previously-failed
   (testing "dnf test which previously failed"
-    (with-bdd-hash []
+    (bdd/with-hash []
       (doseq [td '[(or (and (not java.io.Serializable) java.lang.Comparable) 
                        (and (not String)               java.lang.Comparable)
                        (and (not Character) String)
@@ -205,16 +205,16 @@
                    (or (not java.io.Serializable) (and java.io.Serializable (not Long)) (and (not Short) Long) Short)
                    (or (and (not Boolean) (not Double)) (and (not Boolean) Double) Boolean) 
                    ]
-              :let [bdd-1 (bdd td)
-                    serialized-1 (dnf bdd-1)
-                    bdd-2 (bdd serialized-1)
-                    serialized-2 (dnf bdd-2)]]
-        (is (bdd-type-subtype? serialized-1 serialized-2)
+              :let [bdd-1 (bdd/bdd td)
+                    serialized-1 (bdd/dnf bdd-1)
+                    bdd-2 (bdd/bdd serialized-1)
+                    serialized-2 (bdd/dnf bdd-2)]]
+        (is (bdd/type-subtype? serialized-1 serialized-2)
             (cl-format false "failed 1 <: 2, dnf serialization failed on ~A: ~A != ~A"
                        td
                        serialized-1
                        serialized-2))
-        (is (bdd-type-subtype? serialized-2 serialized-1)
+        (is (bdd/type-subtype? serialized-2 serialized-1)
             (cl-format false "failed 2 <: 1, dnf serialization failed on ~A: ~A != ~A"
                        td
                        serialized-1
@@ -225,27 +225,27 @@
   ;; convert dnf back to bdd
   ;; compare them
   (testing "dnf by serialization out and in"
-    (with-bdd-hash []
-      (let [bdd (bdd '(and
+    (bdd/with-hash []
+      (let [bdd (bdd/bdd '(and
                        (not Long)
                        (and (not Long)
                             (not Boolean))))]
-        (is (member '(not Long) (dnf bdd)))
-        (is (member '(not Boolean) (dnf bdd))))
+        (is (member '(not Long) (bdd/dnf bdd)))
+        (is (member '(not Boolean) (bdd/dnf bdd))))
                
       (doseq [n (range num-random-samples)
-              :let [bdd1 (gen-random)
-                    serialized-1 (dnf bdd1)
-                    bdd2 (bdd serialized-1)
-                    serialized-2 (dnf bdd2)
+              :let [bdd1 (bdd/gen-random)
+                    serialized-1 (bdd/dnf bdd1)
+                    bdd2 (bdd/bdd serialized-1)
+                    serialized-2 (bdd/dnf bdd2)
                     ]]
-        (is (bdd-type-subtype? serialized-1 serialized-2)
+        (is (bdd/type-subtype? serialized-1 serialized-2)
             (cl-format false "failed: serialized-1 <: serialized-2, dnf serialization failed on ~a, ~A != ~A"
                        bdd1
                        serialized-1
                        serialized-2
                        ))
-        (is (bdd-type-subtype? serialized-2 serialized-1)
+        (is (bdd/type-subtype? serialized-2 serialized-1)
             (cl-format false "failed: serialized-2 <: serialized-1, dnf serialization failed on ~a, ~A != ~A"
                        bdd1
                        serialized-1
@@ -257,71 +257,71 @@
   ;; convert itenf back to bdd
   ;; compare them
   (testing "itenf by serialization out and in"
-    (with-bdd-hash []
+    (bdd/with-hash []
       (doseq [_ (range num-random-samples)
-              :let [bdd1 (gen-random)
-                    dnf-1 (dnf bdd1)
-                    serialized (itenf bdd1)
-                    bdd2 (bdd serialized)
-                    dnf-2 (dnf bdd2)
+              :let [bdd1 (bdd/gen-random)
+                    dnf-1 (bdd/dnf bdd1)
+                    serialized (bdd/itenf bdd1)
+                    bdd2 (bdd/bdd serialized)
+                    dnf-2 (bdd/dnf bdd2)
                     ]]
-        (is (= dnf-1 dnf-2) (cl-format false "itenf serialization failed on ~a : ~a, ~A != ~A"
+        (is (= dnf-1 dnf-2) (cl-format false "bdd/itenf serialization failed on ~a : ~a, ~A != ~A"
                                        bdd1 serialized
                                        dnf-1 dnf-2
                                        ))))))
 
 ;; (deftest t-eq
 ;;   (testing "that bdds which are equal are also eq"
-;;     (with-bdd-hash []
+;;     (bdd/with-hash []
 ;;       (doseq [_ (range num-random-samples)
-;;               :let [bdd-1 (gen-random)
-;;                     bdd-2 (bdd (itenf bdd-1))
-;;                     bdd-3 (bdd (dnf bdd-1))]]
+;;               :let [bdd-1 (bdd/gen-random)
+;;                     bdd-2 (bdd (bdd/itenf bdd-1))
+;;                     bdd-3 (bdd (bdd/dnf bdd-1))]]
 ;;         (is (identical? bdd-1 bdd-2))
 ;;         (is (identical? bdd-1 bdd-3))))))
             
 (deftest t-bdd-type-disjoint-1
   (testing "disjoint checks for types"
-    (with-bdd-hash []
+    (bdd/with-hash []
       (let [type1 '(and Number (not (= 0)) (not (member a b c 1 2 3)))
             type2 'java.io.Serializable
-            bdd1 (bdd  type1)
-            bdd2 (bdd type2)]
-        (is (bdd-and bdd1 bdd2)) ;; not false
-        (is (= :empty-set (dnf (bdd-and bdd1 (bdd-not bdd2)))))
+            bdd1 (bdd/bdd type1)
+            bdd2 (bdd/bdd type2)]
+        (is (bdd/bdd-and bdd1 bdd2)) ;; not false
+        (is (= :empty-set (bdd/dnf (bdd/bdd-and bdd1 (bdd/bdd-not bdd2)))))
 
-        (is (not (bdd-disjoint? bdd1 bdd2)))
-        (is (bdd-disjoint? bdd1 (bdd-not bdd2)))
+        (is (not (bdd/disjoint? bdd1 bdd2)))
+        (is (bdd/disjoint? bdd1 (bdd/bdd-not bdd2)))
 
-        (is (not (bdd-type-disjoint? type1 type2)))
-        (is (bdd-type-disjoint? type1 (list 'not type2)))))))
+        (is (not (bdd/type-disjoint? type1 type2)))
+        (is (bdd/type-disjoint? type1 (list 'not type2)))))))
 
 (deftest t-bdd-type-disjoint-2
   (when (and (resolve 'java.lang.CharSequence)
              (resolve 'java.io.Serializable)
              (resolve 'java.lang.Comparable))
     (testing "bdd-type-disjoint?"
-    (with-bdd-hash []
-      (is (not (bdd-type-disjoint? 'java.io.Serializable '(and clojure.lang.Symbol (not (member a b))))))
-      (is (not (bdd-type-disjoint? 'java.lang.CharSequence 'String)))
-      (is (not (bdd-type-disjoint? 'java.io.Serializable 'java.lang.Comparable)))
-      (is (bdd-type-disjoint? 'Integer 'String))
-      (is (not (bdd-type-disjoint? 'java.lang.Comparable '(not java.io.Serializable))))
-      (is (not (bdd-type-disjoint? '(and java.lang.Comparable (not clojure.lang.Symbol)) 'java.lang.Object)))
+    (bdd/with-hash []
+      (is (not (bdd/type-disjoint? 'java.io.Serializable '(and clojure.lang.Symbol (not (member a b))))))
+      (is (not (bdd/type-disjoint? 'java.lang.CharSequence 'String)))
+      (is (not (bdd/type-disjoint? 'java.io.Serializable 'java.lang.Comparable)))
+      (is (bdd/type-disjoint? 'Integer 'String))
+      (is (not (bdd/type-disjoint? 'java.lang.Comparable '(not java.io.Serializable))))
+      (is (not (bdd/type-disjoint? '(and java.lang.Comparable (not clojure.lang.Symbol)) 'java.lang.Object)))
 
       ;; (bdd-type-disjoint? (and A1 A2 .. An) S)
       ;; if Ai is non empty subset of S
-      (is (not (bdd-type-disjoint? '(and Long (not (member 2 3 4))) 'java.lang.Comparable)))
+      (is (not (bdd/type-disjoint? '(and Long (not (member 2 3 4))) 'java.lang.Comparable)))
 
-      (is (not (bdd-type-disjoint? '(and java.lang.Number (not (= 0)) (not (member a b c 1 2 3)))
+      (is (not (bdd/type-disjoint? '(and java.lang.Number (not (= 0)) (not (member a b c 1 2 3)))
                           'java.io.Serializable)))
-      (is (not (bdd-type-disjoint? 'java.io.Serializable
+      (is (not (bdd/type-disjoint? 'java.io.Serializable
                           '(and java.lang.Number (not (= 0)) (not (member a b c 1 2 3))))))
       ))))
 
 (deftest t-bdd-canonicalize-type
   (testing "bdd-canonicalize-type"
-    (is (member (bdd-canonicalize-type (list 'and
+    (is (member (bdd/canonicalize-type (list 'and
                                             '(not Long)
                                             '(and (not Long)
                                                   (not Boolean))))

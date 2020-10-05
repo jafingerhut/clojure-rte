@@ -23,7 +23,7 @@
   (:require ;; [clojure-rte.core :refer :all]
             [clojure-rte.core :refer :all :exclude [-main]]
             [clojure-rte.dfa :refer :all]
-            [clojure-rte.bdd :refer [with-bdd-hash]]
+            [clojure-rte.bdd :as bdd]
             [clojure.pprint :refer [cl-format]]
             [clojure-rte.util :refer [member]]
             [clojure.test :refer :all]))
@@ -165,7 +165,7 @@
 
 (deftest t-complete
   (testing "testing dfa/complete"
-    (with-bdd-hash []
+    (bdd/with-hash []
       (doseq [rte test-rtes
               :let [dfa (rte-to-dfa rte)
                     dfa-complete (complete dfa)
