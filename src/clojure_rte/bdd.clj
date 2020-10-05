@@ -21,23 +21,25 @@
 
 (ns clojure-rte.bdd
   "Definition of Bdd."
-  (:require [clojure-rte.cl-compat :refer [cl-cond]]
-            [clojure-rte.util :refer [fixed-point member group-by-mapped print-vals call-with-collector]]
+  (:refer-clojure :exclude [and or not])
+  (:require [clojure-rte.util :refer [member call-with-collector]]
             [clojure-rte.genus :as gns]
             [clojure.pprint :refer [cl-format]]
             [clojure.set :refer [union difference intersection]]
 ))
+
+(alias 'c 'clojure.core)
 
 (defrecord Bdd
   [label positive negative])
 
 (defmethod print-method Bdd [bdd w]
   (.write w (cond
-              (and (= true (:positive bdd))
+              (c/and (= true (:positive bdd))
                    (= false (:negative bdd)))
               (cl-format false "#<Bdd ~A>" (:label bdd))
 
-              (and (= false (:positive bdd))
+              (c/and (= false (:positive bdd))
                    (= true (:negative bdd)))
               (cl-format false "#<Bdd not ~A>" (:label bdd))
 
@@ -75,8 +77,8 @@
       (let [l (:label bdd)
             p (itenf (:positive bdd))
             n (itenf (:negative bdd))]
-        (assert (not (= nil p)))
-        (assert (not (= nil n)))
+        (assert (c/not (= nil p)))
+        (assert (c/not (= nil n)))
         (pretty-or (pretty-and l p)
                    (pretty-and (pretty-not l) n))))))
 
@@ -99,24 +101,24 @@
               :else (cons 'or args)))
           (supertypes [sub types]
             (filter (fn [super]
-                      (and (not (= sub super))
+                      (c/and (c/not (= sub super))
                            (gns/subtype? sub super (constantly false)))) types))
           (check-supers [args]
             (let [args (distinct args)
                   complements (for [a args
                                     b args
-                                    :when (or (= a (list 'not b))
+                                    :when (c/or (= a (list 'not b))
                                               (= b (list 'not a)))]
                                 [a b])]
               (cond
                 ;; does the list contain A and (not A) ?
-                (not (empty? complements))
+                (c/not (empty? complements))
                 '(:sigma)
 
                 ;; does the list contain A and B where A is subtype B
                 :else
                 (remove (fn [sub]
-                          (not (empty? (supertypes sub args))))
+                          (c/not (empty? (supertypes sub args))))
                         args))))]
 
     (pretty-or
@@ -155,11 +157,11 @@
                        (= false node)
                        nil ;; do not collect, and prune recursion
                        
-                       (not (empty? disjoints))
+                       (c/not (empty? disjoints))
                        (walk (:negative node)
                              parents)
                        
-                       (not (empty? subtypes))
+                       (c/not (empty? subtypes))
                        (walk (:positive node)
                              parents)
                        
@@ -210,7 +212,7 @@
 (defn type-index [type-designator]
   ;; TODO make sure two differnet symbols representing the same class
   ;; result in the same index.  eg. Double vs java.lang.Double
-  (or (@*label-to-index* type-designator)
+  (c/or (@*label-to-index* type-designator)
       (do (swap! *label-to-index* assoc type-designator (count @*label-to-index*))
           (@*label-to-index* type-designator))))
 
@@ -245,11 +247,11 @@
   [type-designator positive negative] 
   (assert (map? @*hash*) "attempt to allocate a Bdd outside dynamically extend of call-with-hash")
   (assert (map? @*label-to-index*) "attempt to allocate a Bdd outside dynamically extend of call-with-hash")
-  (assert (or (instance? Boolean positive)
+  (assert (c/or (instance? Boolean positive)
               (instance? Bdd positive))
           (cl-format false "wrong type of positive=~A type=~A"
                      positive (type positive)))
-  (assert (or (instance? Boolean negative)
+  (assert (c/or (instance? Boolean negative)
               (instance? Bdd negative))
           (cl-format false "wrong type of negative=~A type=~A"
                      negative (type negative)))
@@ -262,13 +264,13 @@
     :else
     (let [try-bdd (Bdd. type-designator positive negative)
           cached-bdd (@*hash* try-bdd)]
-      (or cached-bdd
+      (c/or cached-bdd
           (do (swap! *hash* assoc try-bdd try-bdd)
-              (assert (or (instance? Boolean positive)
+              (assert (c/or (instance? Boolean positive)
                           (< (type-index type-designator)
                              (type-index (:label positive))))
                       (format "parent %s must be < positive %s" type-designator (:label positive)))
-              (assert (or (instance? Boolean negative)
+              (assert (c/or (instance? Boolean negative)
                           (< (type-index type-designator)
                              (type-index (:label negative))))
                       (format "parent %s must be < negative %s" type-designator (:label negative)))
