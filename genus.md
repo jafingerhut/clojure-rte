@@ -71,7 +71,7 @@ designator syntax.  To do so, several steps must be followed.
 ### Registering the existance of the new type
 
 To declare a new type as existing and supported by rte, you must register
-by added a method via `defmethod registered-type?` returning `true.
+by added a method via `defmethod registered-type?` returning `true`.
 
 ```clojure
 (defmethod registered-type? 'my-type [_] true)
