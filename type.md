@@ -1,13 +1,15 @@
 # Extensible types
 
+When we use the word `type` we DO NOT mean Java type, rather we mean a set of clojure values or objects.
+Any set of values is a type, and some types are designatable.
+
 The namespace `clojure-rte.type` defines a type system which extends the
 Clojure built-in type system.   Types are sets of objects. Some types may be 
 designated via so-called *type designators*.
 
-A *type designator* is defined by the following recursive definition.  If `A` 
-and `B` are type designators and `f` is a symbol whose global value 
-`(resolve 'f)` is a unary predicate function, then
-
+A *type designator* is defined by the following recursive definition.
+  If `A` and `B` are type designators, then
+  
   - Any symbol designates a type, provided it can be resolved with the function `resolve`, and the resulting value is `true` according to the `class?` predicate.  I.e., if the predicate `(fn [x] (and (symbol? x) (resolve x) (class? (resolve x))))` is returns `true`.
 
   - `(and A B)` is a type designator, designating the set of values which are simultaneously of type `A` and `B`. `(and ...)` may have arbitrarily many operands. `(and A)` means `A`, and `(and)` means the empty set of all possible.
@@ -20,7 +22,9 @@ and `B` are type designators and `f` is a symbol whose global value
 
   - `(member x y z ...)` is a type designator equivalent to `(or (= x) (= y) (= z) ...)`.
   
-  - `(satisfies f)` is a type designator if `f` names a function which implements a type predicate. The type predicate may be one built into clojure, such as `int?`, `decimal?`, `vector?`.  The system attempts to implement `satisfies` efficiently when possible.  For example, `(satisfies int?)` expands internally to `(or Long Integer Short Byte)`.
+  - `(satisfies f)` is a type designator if `f` names a function which implements a type predicate. The type predicate designator may be a simple symbol indicating a type predicate built in clojure (i.e., defined in clojure.core), such as `int?`, `decimal?`, `vector?`.
+ A user defined function may also be used, but its fully qualified name must be specified such as `(satisfies my-namespace/my-f)`. The behavior is expressly undefined if the definition of such a function (such as `my-f`) is redefined.  The system may well have cached information about the function which becomes incorrect but never invalided.
+ The system attempts to implement `satisfies` efficiently when possible.  For example, `(satisfies int?)` expands internally to `(or Long Integer Short Byte)`.  Such optimization applies equally well to user defined functions.
 
   - `(rte pattern)` is a type designator which specifies the set of sequences which match the given rte pattern.  For example, the type `(rte (:cat Long String))` is the set of two element sequences whose first element is a `Long` and whose second element is a string.
 

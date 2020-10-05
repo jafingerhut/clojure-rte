@@ -270,3 +270,20 @@
              clojure.lang.Ratio
              BigDecimal))
         "test 6")))
+
+(defn test-predicate [x]
+  (> x 10))
+
+(deftest t-satisfies-ns
+  (testing "satifies in namespace"
+    (is (not (typep 3 '(satisfies clojure-rte.type-test/test-predicate)))
+        "test 0")
+
+    (is (typep 13 '(satisfies clojure-rte.type-test/test-predicate))
+        "test 1")
+
+    ;; cannot use satisfies with undecorated function name
+    ;;   from local name space.
+    (is (thrown? Exception (typep 13 '(satisfies test-predicate))))))
+  
+    
