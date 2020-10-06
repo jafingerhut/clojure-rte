@@ -157,7 +157,7 @@
   (testing "map-type-partitions"
     (is (not (contains? (set
                          (call-with-collector (fn [collect]
-                                                (gns/map-type-partitions ['long 'integer 'object]
+                                                (gns/map-type-partitions ['Long 'Integer 'Object]
                                                                      (fn [left right]
                                                                        (collect [left right]))))))
                         ['(Object) ()])) "should not contain 1")
