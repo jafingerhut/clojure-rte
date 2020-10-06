@@ -1,5 +1,9 @@
 # Genus - A Simple Extensible Type System
 
+<img src="img/Double_torus_illustration.png" 
+alt="Genus" width="300"/>
+
+
 When we use the word `type` we DO NOT mean Java type, rather we mean a set of clojure values or objects.
 Any set of values is a type, and some types are designatable.
 
