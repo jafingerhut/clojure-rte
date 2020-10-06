@@ -978,6 +978,32 @@
    (:else
     type-designator)))
 
+(defmulti logical-inversion
+  (fn [type-designator]
+    (cond (and (sequential? type-designator)
+               (not (empty? type-designator)))
+          (first type-designator)
+
+          :else
+          type-designator)))
+
+(defmethod logical-inversion 'not
+  [type-designator] ;; (not something) -> something
+  (second type-designator))
+
+(defmethod logical-inversion 'and
+  [type-designator] ;; (and A B C) --> (or (not A) (not B) (not C))
+  (cons 'or (for [t (rest type-designator)]
+              (list 'not t))))
+
+(defmethod logical-inversion 'or
+  [type-designator] ;; (or A B C) --> (and (not A) (not B) (not C))
+  (cons 'and (for [t (rest type-designator)]
+              (list 'not t))))
+
+(defmethod logical-inversion :default
+  [type-designator]
+  (list 'not type-designator))
 
 (defmethod canonicalize-type :default
   [type-designator]

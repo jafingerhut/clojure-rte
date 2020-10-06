@@ -32,6 +32,14 @@
 
 (in-ns 'clojure-rte.core)
 
+(defmethod gns/logical-inversion 'rte
+  [[_rte pattern]]
+  ;; (rte A) --> (or (not (satisfies sequential?))
+  ;;                 (rte (:not A)))
+  (list 'or
+        '(not (satisfies sequential?))
+        `(~'rte (:not ~pattern))))
+
 (defmethod gns/typep 'rte [a-value [_a-type pattern]]
   (and (sequential? a-value)
        (rte-match pattern a-value)))
