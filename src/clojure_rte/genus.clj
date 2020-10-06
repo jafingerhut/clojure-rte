@@ -1029,10 +1029,10 @@
           candidates (rest (first member-candidates))]
       (cons 'member (filter (fn [x] (typep x type-designator)) candidates)))
 
-    (some #{:empty-set} (rest type-designator))
+    (member :empty-set (rest type-designator))
     :empty-set
 
-    (some #{:sigma} (rest type-designator))
+    (member :sigma (rest type-designator))
     (cons 'and (map canonicalize-type (remove #{:sigma} (rest type-designator))))
     
     ;; TODO (and Double (not (member 1.0 2.0 "a" "b"))) --> (and Double (not (member 1.0 2.0)))
@@ -1069,8 +1069,7 @@
                            t))
                        (rest type-designator))))]
     (cond
-      (some (fn [t]
-              (= :empty-set)) (rest type-designator))
+      (member :emtpy-set (rest type-designator))
       (cons 'or (map canonicalize-type
                      (remove #{:empty-set} (rest type-designator))))
 
