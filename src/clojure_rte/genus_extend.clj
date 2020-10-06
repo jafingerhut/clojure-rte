@@ -21,8 +21,7 @@
 
 (ns clojure-rte.genus-extend
   "This is an empty namespace to fool lein to load this file as part of
-  the clojure-rte.core ns."
-  (:require [clojure-rte.genus :as gns]))
+  the clojure-rte.core ns.")
 
 (in-ns 'clojure-rte.genus)
 
