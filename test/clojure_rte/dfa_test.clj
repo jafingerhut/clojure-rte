@@ -26,10 +26,20 @@
             [clojure-rte.bdd :as bdd]
             [clojure.pprint :refer [cl-format]]
             [clojure-rte.util :refer [member]]
-            [clojure.test :refer :all]))
+            [clojure.test :refer :all :exclude [testing]]))
 
 (defn -main []
   (clojure.test/run-tests 'clojure-rte.dfa-test))
+
+
+
+(defmacro testing
+  [string & body]
+  `(do (println [:testing ~string :starting (java.util.Date.)])
+       (clojure.test/testing ~string ~@body)
+       (println [:finished  (java.util.Date.)])
+       ))
+
 
 (deftest t-split-eqv-class
   (testing "split-eqv-class"
@@ -175,18 +185,19 @@
 
 (defn t-acceptance-test-rte
   [rte]
-  (doseq [exit-value [42 true -1]
+  (doseq [seq-root test-seqs
+          _ (println [:seq-root seq-root])
+          exit-value [42 true -1]
           :let [dfa (rte-to-dfa rte exit-value)
                 dfa-trim (trim dfa)
                 dfa-min (minimize dfa)
                 dfa-min-trim (trim dfa-min)
                 dfa-trim-min (minimize dfa-trim)]
-          seq-root test-seqs
           reps (range 5)
           :let [seq-long (reduce concat (repeat reps seq-root))
                 match? (rte-match dfa seq-long)]
           ]
-    (do 
+    (do
       (is (= match?
              (rte-match dfa-trim seq-long))
           (format "case 1: rte=%s seq=%s got %s from dfa, got %s from dfa-trim"

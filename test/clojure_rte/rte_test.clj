@@ -20,7 +20,7 @@
 ;; WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 (ns clojure-rte.rte-test
-  (:require [clojure.test :refer :all]
+  (:require [clojure.test :refer :all :exclude [testing]]
             [clojure.pprint :refer [cl-format]]
             [clojure-rte.util :refer [sort-operands remove-once call-with-collector visit-permutations]]
             [clojure-rte.genus :refer [disjoint? typep inhabited?]]
@@ -29,6 +29,13 @@
 
 (defn -main []
   (clojure.test/run-tests 'clojure-rte.rte-test))
+
+(defmacro testing
+  [string & body]
+  `(do (println [:testing ~string :starting (java.util.Date.)])
+       (clojure.test/testing ~string ~@body)
+       (println [:finished  (java.util.Date.)])
+       ))
 
 (deftest t-nullable
   (testing "nullable"

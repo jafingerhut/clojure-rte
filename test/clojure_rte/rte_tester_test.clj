@@ -21,10 +21,19 @@
 
 (ns clojure-rte.rte-tester-test
   (:require [clojure-rte.rte-tester :refer :all]
-            [clojure.test :refer :all]))
+            [clojure.test :refer :all :exclude [testing]]))
 
 (defn -main []
   (clojure.test/run-tests 'clojure-rte.rte-tester-test))
+
+
+(defmacro testing
+  [string & body]
+  `(do (println [:testing ~string :starting (java.util.Date.)])
+       (clojure.test/testing ~string ~@body)
+       (println [:finished  (java.util.Date.)])
+       ))
+
 
 (deftest t-test-canonicalize-pattern
   (testing "test-canonicalize-pattern"
@@ -52,7 +61,7 @@
 
 (deftest t-rte-nullable-canonicalize-random
   (testing "canonicalize of :not"
-    (test-rte-canonicalize-nullable 1000 6 false)))
+    (test-rte-canonicalize-nullable 1000 5 false)))
 
 ;; this test is not yet correctly implemented,
 ;;    need a good way to compare two rtes for equivalence
