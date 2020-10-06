@@ -785,17 +785,14 @@
 
 (defn rte-combine-labels ""
   [label1 label2]
-  (letfn [(or? [lab]
-            (and (sequential? lab)
-                 (= (first lab) 'or)))]      
-    (cond
-      (and (or? label1)
-           (or? label2)) `(~@label1 ~@(rest label2))
-      (and (or? label1)
-           (not (or? label2))) `(~@label1 ~label2)
-      (and (not (or? label1))
-           (or? label2)) `(~(first label2) ~label1 ~@(rest label2))
-      :else `(~'or ~label1 ~label2))))
+  (cond
+    (and (gns/or? label1)
+         (gns/or? label2)) `(~@label1 ~@(rest label2))
+    (and (gns/or? label1)
+         (not (gns/or? label2))) `(~@label1 ~label2)
+    (and (not (gns/or? label1))
+         (gns/or? label2)) `(~(first label2) ~label1 ~@(rest label2))
+    :else `(~'or ~label1 ~label2)))
 
 (defn rte-to-dfa
   "Use the Brzozowski derivative aproach to compute a finite automaton
