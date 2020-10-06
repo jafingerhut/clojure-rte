@@ -1020,9 +1020,11 @@
                     {:error-type :not-a-sequence
                      :type type-designator }))
 
-    (valid-type? type-designator) type-designator
-
-    :else
+    (not (valid-type? type-designator))
     (throw (ex-info (format "canonicalize-type: warning unknown type %s" type-designator)
                     {:error-type :unknown-type
-                     :type type-designator }))))
+                     :type type-designator }))
+
+    :else
+    type-designator
+    ))
