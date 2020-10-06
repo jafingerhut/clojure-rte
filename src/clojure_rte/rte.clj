@@ -582,11 +582,7 @@
 (defn canonicalize-pattern 
   "find the fixed point of canonicalize-pattern-once"
   [pattern]
-  (loop [old-pattern []
-         new-pattern pattern]
-    (if (= old-pattern new-pattern)
-      old-pattern
-      (recur new-pattern (canonicalize-pattern-once new-pattern)))))
+  (fixed-point pattern canonicalize-pattern-once =))
 
 (defn compute-compound-derivative
   "wrt may be a compound type designator such as (and A (not B)).
