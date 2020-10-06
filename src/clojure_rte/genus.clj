@@ -20,6 +20,7 @@
 ;; WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 (ns clojure-rte.genus
+  (:refer-clojure :exclude [satisfies?])
   (:require [clojure.set :refer [intersection]]
             [clojure.repl :refer [source-fn]]
             [clojure.pprint :refer [cl-format]]
@@ -27,6 +28,31 @@
             [clojure-rte.cl-compat :as cl]
             [clojure.reflect :as refl]
   ))
+
+(defn and? [t]
+  (and (sequential? t)
+       (= 'and (first t))))
+
+(defn or? [t]
+  (and (sequential? t)
+       (= 'or (first t))))
+
+(defn =? [t]
+  (and (sequential? t)
+       (= '= (first t))
+       (= (count t) 2)))
+
+(defn not? [t]
+  (and (sequential? t)
+       (= 'not (first t))))
+
+(defn member? [t]
+  (and (sequential? t)
+       (= 'member (first t))))
+
+(defn satisfies? [t]
+  (and (sequential? t)
+       (= 'satisfies (first t))))
 
 (defn class-designator? [t]
   "Predicate to determine whether the given symbol designates a java class."
@@ -292,9 +318,7 @@
     :else
     :dont-know))
 
-(letfn [(and? [t]
-          (and (sequential? t)
-               (= 'and (first t))))]
+(letfn []
 
   (defmethod -disjoint? :and [t1 t2]
     (cond (and (and? t2)
@@ -315,19 +339,8 @@
           :else
           :dont-know)))
 
-(letfn [(=? [t]
-          (and (sequential? t)
-               (= '= (first t))
-               (= (count t) 2)))
-        (not? [t]
-          (and (sequential? t)
-               (= 'not (first t))))
-        (member? [t]
-          (and (sequential? t)
-               (= 'member (first t))))
-        (satisfies? [t]
-          (and (sequential? t)
-               (= 'satisfies (first t))))]
+(letfn [
+        ]
 
   (defmethod -disjoint? := [t1 t2]
     (cond (=? t1)
@@ -508,18 +521,9 @@
                                   :a-type t
                                   :flags flags})))))))
 
-(letfn [(not? [t]
-          (and (sequential? t)
-               (= 'not (first t))))
-        (and? [t]
-          (and (sequential? t)
-               (= 'and (first t))))
-        (member? [t]
-          (and (sequential? t)
-               (= 'member (first t))))
-        (=? [t]
-          (and (sequential? t)
-               (= '= (first t))))
+(letfn [
+        
+        
         ]
 
   (defmethod -subtype? := [sub super]
