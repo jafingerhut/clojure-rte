@@ -3,9 +3,16 @@
 <img src="img/Double_torus_illustration.png" 
 alt="Genus" width="300"/>
 
+The Genus Simple Extensible Type System, provides a way to reason about set of objects
+at run-time.  
+
 
 When we use the word `type` we DO NOT mean Java type, rather we mean a set of clojure values or objects.
-Any set of values is a type, and some types are designatable.
+Any set of values is a type, and some types are designatable.   Types correspond to sets, and subtypes
+correspond to subsets.
+
+
+
 
 The namespace `clojure-rte.genus` defines a type system which extends the
 Clojure built-in type system.   Types are sets of objects. Some types may be 
