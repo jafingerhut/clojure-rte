@@ -66,7 +66,7 @@
         false
 
         ;; (disjoint? (not (rte ...)) clojure.lang.IPersistentVector )
-        (and (not? t1)
+        (and (gns/not? t1)
              (gns/rte? (second t1))
              (gns/class-designator? t2)
              (or (isa? (gns/find-class t2) clojure.lang.Seqable)
@@ -74,7 +74,7 @@
         true
         
         (and (gns/rte? t1)
-             (not? t2)
+             (gns/not? t2)
              (gns/rte? (second t2)))
         (let [[_ pat1] t1
               [_ [_ pat2]] t2]
@@ -91,14 +91,14 @@
              (not (isa? (gns/find-class t2) clojure.lang.Sequential)))
         true
         
-        (and (not? t1)
+        (and (gns/not? t1)
              (gns/rte? (second t1))
              (gns/class-designator? t2)
              (not (isa? (gns/find-class t2) clojure.lang.Sequential)))
         false
         
         (and (gns/rte? t1)
-             (not? t2)
+             (gns/not? t2)
              (gns/class-designator? (second t2))
              (not (isa? (gns/find-class (second t2)) clojure.lang.Sequential)))
         false
