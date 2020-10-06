@@ -302,27 +302,10 @@
   (and (sequential? t)
        (= 'not (first t))))
 
-          
-  ;; (defmethod -disjoint? :satisfies [t1 t2]
-  ;;   (cond (and (satisfies? t1)
-  ;;              (not? t2)
-  ;;              (= t1 (second t2)))
-  ;;         true
-
-  ;;         (and (satisfies? t2)
-  ;;              (not? t1)
-  ;;              (= t2 (second t1)))
-  ;;         true
-          
-  ;;         (and (not? t1)
-  ;;              (satisfies? (second t1)))
-  ;;         false               
 (defn and? [t]
   (and (sequential? t)
        (= 'and (first t))))
 
-  ;;         (satisfies? t1)
-  ;;         false
 (defn or? [t]
   (and (sequential? t)
        (= 'or (first t))))
@@ -331,8 +314,6 @@
   (and (sequential? t)
        (= 'member (first t))))
 
-  ;;         :else
-  ;;         :dont-know))
 (defn satisfies? [t]
   (and (sequential? t)
        (= 'satisfies (first t))))
