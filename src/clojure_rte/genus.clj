@@ -29,6 +29,31 @@
             [clojure.reflect :as refl]
   ))
 
+(defn and? [t]
+  (and (sequential? t)
+       (= 'and (first t))))
+
+(defn or? [t]
+  (and (sequential? t)
+       (= 'or (first t))))
+
+(defn =? [t]
+  (and (sequential? t)
+       (= '= (first t))
+       (= (count t) 2)))
+
+(defn not? [t]
+  (and (sequential? t)
+       (= 'not (first t))))
+
+(defn member? [t]
+  (and (sequential? t)
+       (= 'member (first t))))
+
+(defn satisfies? [t]
+  (and (sequential? t)
+       (= 'satisfies (first t))))
+
 (defn class-designator? [t]
   "Predicate to determine whether the given symbol designates a java class."
   (and (symbol? t)
@@ -292,32 +317,6 @@
     
     :else
     :dont-know))
-
-
-(defn =? [t]
-  (and (sequential? t)
-       (= '= (first t))
-       (= (count t) 2)))
-
-(defn not? [t]
-  (and (sequential? t)
-       (= 'not (first t))))
-
-(defn and? [t]
-  (and (sequential? t)
-       (= 'and (first t))))
-
-(defn or? [t]
-  (and (sequential? t)
-       (= 'or (first t))))
-
-(defn member? [t]
-  (and (sequential? t)
-       (= 'member (first t))))
-
-(defn satisfies? [t]
-  (and (sequential? t)
-       (= 'satisfies (first t))))
 
 (defmethod -disjoint? :and [t1 t2]
   (cond (and (and? t2)
