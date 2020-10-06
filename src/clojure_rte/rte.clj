@@ -373,15 +373,19 @@
 (def cat? 
   "Predicate determining whether its object is of the form (:cat ...)"
   (seq-matcher :cat))
+
 (def *?
   "Predicate determining whether its object is of the form (:* ...)"
   (seq-matcher :*))
+
 (def not? 
   "Predicate determining whether its object is of the form (:not ...)"
   (seq-matcher :not))
+
 (def and?
   "Predicate determining whether its object is of the form (:and ...)"
   (seq-matcher :and))
+
 (def or? 
   "Predicate determining whether its object is of the form (:or ...)"
   (seq-matcher :or))
