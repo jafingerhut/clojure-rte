@@ -293,24 +293,6 @@
     :dont-know))
 
 
-  (defmethod -disjoint? :and [t1 t2]
-    (cond (and (and? t2)
-               (some (fn [t]
-                       (disjoint? t1 t)) (rest t2)))
-          true
-          
-          (and (and? t1)
-               (some #{t2} (rest t1)))
-          false
-          
-          (and (and? t1)
-               (class-designator? t2)
-               (= (find-class t2) java.lang.Object)
-               (some class-designator? (rest t1)))
-          false
-          
-          :else
-          :dont-know)))
 (defn =? [t]
   (and (sequential? t)
        (= '= (first t))
@@ -372,6 +354,24 @@
     (cond (member? t1)
           (every? (fn [e1]
                     (not (typep e1 t2))) (rest t1))
+(defmethod -disjoint? :and [t1 t2]
+  (cond (and (and? t2)
+             (some (fn [t]
+                     (disjoint? t1 t)) (rest t2)))
+        true
+        
+        (and (and? t1)
+             (some #{t2} (rest t1)))
+        false
+        
+        (and (and? t1)
+             (class-designator? t2)
+             (= (find-class t2) java.lang.Object)
+             (some class-designator? (rest t1)))
+        false
+        
+        :else
+        :dont-know))
 
           ;; (member ...) is finite, types are infinite
           ;; (disjoint? '(not (member 1 2 3)) 'Long)
