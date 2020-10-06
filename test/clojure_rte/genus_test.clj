@@ -300,3 +300,20 @@
     (is (thrown? Exception (gns/typep 13 '(satisfies test-predicate))))))
   
     
+(deftest t-canonicalize-and
+  (testing "canonicalize-type and"
+    (is (member
+         (gns/canonicalize-type '(and Double (= "a")))  '(:empty-set (member)))
+        "test 0")
+    (is (member (gns/canonicalize-type '(and Double (= 1.0)))
+                '((= "a") (member "a"))) "test 1")
+    (is (= '(member 1.0 2.0)
+           (gns/canonicalize-type '(and Double (member 1.0 2.0 "a" "b")))) "test 2")))
+
+(deftest t-canonicalize-or
+  (testing "canonicalize-type or"
+    (is (=
+         (gns/canonicalize-type '(or Double (member 1.0 2.0 "a" "b")))
+         '(or Double (member "a" "b")))
+        "test 0")))
+
