@@ -20,6 +20,7 @@
 ;; WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 (ns clojure-rte.genus
+  (:refer-clojure :exclude [satisfies?])
   (:require [clojure.set :refer [intersection]]
             [clojure.repl :refer [source-fn]]
             [clojure.pprint :refer [cl-format]]
