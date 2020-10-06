@@ -292,9 +292,6 @@
     :else
     :dont-know))
 
-(letfn [(and? [t]
-          (and (sequential? t)
-               (= 'and (first t))))]
 
   (defmethod -disjoint? :and [t1 t2]
     (cond (and (and? t2)
@@ -314,20 +311,14 @@
           
           :else
           :dont-know)))
+(defn =? [t]
+  (and (sequential? t)
+       (= '= (first t))
+       (= (count t) 2)))
 
-(letfn [(=? [t]
-          (and (sequential? t)
-               (= '= (first t))
-               (= (count t) 2)))
-        (not? [t]
-          (and (sequential? t)
-               (= 'not (first t))))
-        (member? [t]
-          (and (sequential? t)
-               (= 'member (first t))))
-        (satisfies? [t]
-          (and (sequential? t)
-               (= 'satisfies (first t))))]
+(defn not? [t]
+  (and (sequential? t)
+       (= 'not (first t))))
 
   (defmethod -disjoint? := [t1 t2]
     (cond (=? t1)
@@ -357,12 +348,25 @@
   ;;         (and (not? t1)
   ;;              (satisfies? (second t1)))
   ;;         false               
+(defn and? [t]
+  (and (sequential? t)
+       (= 'and (first t))))
 
   ;;         (satisfies? t1)
   ;;         false
+(defn or? [t]
+  (and (sequential? t)
+       (= 'or (first t))))
+
+(defn member? [t]
+  (and (sequential? t)
+       (= 'member (first t))))
 
   ;;         :else
   ;;         :dont-know))
+(defn satisfies? [t]
+  (and (sequential? t)
+       (= 'satisfies (first t))))
 
   (defmethod -disjoint? :member [t1 t2]
     (cond (member? t1)
