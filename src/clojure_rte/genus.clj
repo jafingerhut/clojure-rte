@@ -318,79 +318,54 @@
     :else
     :dont-know))
 
-(letfn []
+(defmethod -disjoint? :and [t1 t2]
+  (cond (and (and? t2)
+             (some (fn [t]
+                     (disjoint? t1 t)) (rest t2)))
+        true
+        
+        (and (and? t1)
+             (some #{t2} (rest t1)))
+        false
+        
+        (and (and? t1)
+             (class-designator? t2)
+             (= (find-class t2) java.lang.Object)
+             (some class-designator? (rest t1)))
+        false
+        
+        :else
+        :dont-know))
 
-  (defmethod -disjoint? :and [t1 t2]
-    (cond (and (and? t2)
-               (some (fn [t]
-                       (disjoint? t1 t)) (rest t2)))
-          true
-          
-          (and (and? t1)
-               (some #{t2} (rest t1)))
-          false
-          
-          (and (and? t1)
-               (class-designator? t2)
-               (= (find-class t2) java.lang.Object)
-               (some class-designator? (rest t1)))
-          false
-          
-          :else
-          :dont-know)))
 
-(letfn [
-        ]
-
-  (defmethod -disjoint? := [t1 t2]
-    (cond (=? t1)
-          (not (typep (second t1) t2))
+(defmethod -disjoint? := [t1 t2]
+  (cond (=? t1)
+        (not (typep (second t1) t2))
+        
+        ;; (= ...) is finite, types are infinite
+        ;; (disjoint? '(not (= 1 2 3)) 'Long)
+        (and (not? t1)
+             (=? (second t1))
+             (class-designator? t2))
+        false
+        
+        :else
+        :dont-know))
           
-          ;; (= ...) is finite, types are infinite
-          ;; (disjoint? '(not (= 1 2 3)) 'Long)
-          (and (not? t1)
-               (=? (second t1))
-               (class-designator? t2))
-          false
-          
-          :else
-          :dont-know))
-          
-  ;; (defmethod -disjoint? :satisfies [t1 t2]
-  ;;   (cond (and (satisfies? t1)
-  ;;              (not? t2)
-  ;;              (= t1 (second t2)))
-  ;;         true
+(defmethod -disjoint? :member [t1 t2]
+  (cond (member? t1)
+        (every? (fn [e1]
+                  (not (typep e1 t2))) (rest t1))
 
-  ;;         (and (satisfies? t2)
-  ;;              (not? t1)
-  ;;              (= t2 (second t1)))
-  ;;         true
-          
-  ;;         (and (not? t1)
-  ;;              (satisfies? (second t1)))
-  ;;         false               
-
-  ;;         (satisfies? t1)
-  ;;         false
-
-  ;;         :else
-  ;;         :dont-know))
-
-  (defmethod -disjoint? :member [t1 t2]
-    (cond (member? t1)
-          (every? (fn [e1]
-                    (not (typep e1 t2))) (rest t1))
-
-          ;; (member ...) is finite, types are infinite
-          ;; (disjoint? '(not (member 1 2 3)) 'Long)
-          (and (not? t1)
-               (member? (second t1))
-               (class-designator? t2))
-          false
-          
-          :else
-          :dont-know)))
+        ;; (member ...) is finite, types are infinite
+        ;; (disjoint? '(not (member 1 2 3)) 'Long)
+        (and (not? t1)
+             (member? (second t1))
+             (class-designator? t2))
+        false
+        
+        :else
+        :dont-know))
 
 (defmulti -subtype?
   "This function should never be called.
@@ -521,246 +496,241 @@
                                   :a-type t
                                   :flags flags})))))))
 
-(letfn [
-        
-        
-        ]
+(defmethod -subtype? := [sub super]
+  (cond (=? sub)
+        (subtype? (cons 'member (rest sub)) super)
 
-  (defmethod -subtype? := [sub super]
-    (cond (=? sub)
-          (subtype? (cons 'member (rest sub)) super)
+        (=? super)
+        (subtype? sub (cons 'member (rest super)))
 
-          (=? super)
-          (subtype? sub (cons 'member (rest super)))
+        :else
+        :dont-know))
 
-          :else
-          :dont-know))
+(defmethod -subtype? :not [sub super]
+  (cond (and (not? super)  ; (subtype? 'Long '(not Double))
+             (class-designator? sub)
+             (class-designator? (second super))
+             (= :final (class-type sub))
+             (= :final (class-type (second super))))
+        true
 
-  (defmethod -subtype? :not [sub super]
-    (cond (and (not? super)  ; (subtype? 'Long '(not Double))
-               (class-designator? sub)
-               (class-designator? (second super))
-               (= :final (class-type sub))
-               (= :final (class-type (second super))))
-          true
-
-          (and (not? sub)  ; (subtype? '(not Double) 'Long)
-               (class-designator? super)
-               (class-designator? (second sub))
-               (= :final (class-type super))
-               (= :final (class-type (second sub))))
-          false
-
-          (not (not? sub))
-          :dont-know
-
-          (not (not? super))
-          :dont-know
-
-          :else
-          (let [x (subtype? (second super) (second sub) (constantly :dont-know))]
-            (if (= :dont-know x)
-              :dont-know
-              x))))
-          
-  (defmethod -subtype? :member [sub super]
-    (cond (member? sub)
-          (every? (fn [e1]
-                    (typep e1 super)) (rest sub))
-
-          ;; (subtype? 'Long '(member 1 2 3))
-          (and (member? super)
-               (class-designator? sub)) ;; assuming a class is infinite
-          false
-
-          ;; (subtype? 'Long '(not (member 1 2 3))) ==> false
-          ;; (subtype? 'Long '(not (member 1.1 2 3))) ==> false
-          ;; (subtype? 'Long '(not (member 1.1 2.2 3.3))) ==> true
-          (and (not? super)
-               (class-designator? sub)
-               (member? (second super)))
-          (every? (fn [e2]
-                    (not (typep e2 sub))) (rest (second super)))
-
-          :else
-          :dont-know))
-  
-  (defmethod -subtype? :and [t1 t2]
-    (if (and (and? t1)
-             (some #{t2} (rest t1)))
-      false
-      :dont-know))
-
-  (defmethod -disjoint? :subtype [sub super]
-    (cond (and (subtype? sub super (constantly false))
-               (inhabited? sub (constantly false)))
-          false
-          
-          :else
-          :dont-know))
-
-  (defmethod -disjoint? :not-disjoint [t1 t2]
-    (cond (and (not? t2)
-               (disjoint? t1 (second t2) (constantly false)))
-          false
-          
-          ;; (disjoint?   'java.io.Serializable '(not java.lang.Comparable))
-          (and (not? t2)
-               (class-designator? t1)
-               (class-designator? (second t2))
-               (= :interface (class-type t1))
-               (= :interface (class-type (second t2)))
-               (not (= (find-class t1) (find-class (second t2)))))
-          false
-          
-          ;; (disjoint?   '(not java.io.Serializable) '(not java.lang.Comparable))
-          (and (not? t1)
-               (not? t2)
-               (class-designator? (second t1))
-               (class-designator? (second t2))
-               (= :interface (class-type (second t1)))
-               (= :interface (class-type (second t2)))
-               (not (= (find-class (second t1)) (find-class (second t2)))))
-          false
-          
-          :else :dont-know))
-
-  (defmethod -disjoint? :classes [t1 t2]
-    (if (and (class-designator? t1)
-             (class-designator? t2))
-      (if (= (find-class t1)
-             (find-class t2))
+        (and (not? sub)  ; (subtype? '(not Double) 'Long)
+             (class-designator? super)
+             (class-designator? (second sub))
+             (= :final (class-type super))
+             (= :final (class-type (second sub))))
         false
-        (case [(class-type t1) (class-type t2)]
-          ((:interface :interface)
-           (:interface :abstract)
-           (:abstract :interface))
-          false ;; not disjoint
-          
-          ((:final :final)
-           (:final :interface)
-           (:final :abstract))
-          (not (subtype? t1 t2 subtype?-error))
-          
-          ((:interface :final)
-           (:abstract :final))
-          (not (subtype? t2 t1 subtype?-error))
-          
-          ((:abstract :abstract))
-          (not (or (subtype? t1 t2 (constantly false))
-                   (subtype? t2 t1 subtype?-error)))))
-      
-      :dont-know))
 
-  (defmethod -inhabited? :not [t1]
-    (if (and (not? t1)
-             (class-designator? (second t1)))
-      (not (= (find-class (second t1))
-              Object))
-      :dont-know))
+        (not (not? sub))
+        :dont-know
 
-  (defmethod -inhabited? :member [t1]
-    (if (member? t1)
-      (boolean (rest t1))
-      :dont-know))
+        (not (not? super))
+        :dont-know
 
-  (defmethod -inhabited? := [t1]
-    (if (=? t1)
-      true
-      :dont-know))
+        :else
+        (let [x (subtype? (second super) (second sub) (constantly :dont-know))]
+          (if (= :dont-know x)
+            :dont-know
+            x))))
+
+(defmethod -subtype? :member [sub super]
+  (cond (member? sub)
+        (every? (fn [e1]
+                  (typep e1 super)) (rest sub))
+
+        ;; (subtype? 'Long '(member 1 2 3))
+        (and (member? super)
+             (class-designator? sub)) ;; assuming a class is infinite
+        false
+
+        ;; (subtype? 'Long '(not (member 1 2 3))) ==> false
+        ;; (subtype? 'Long '(not (member 1.1 2 3))) ==> false
+        ;; (subtype? 'Long '(not (member 1.1 2.2 3.3))) ==> true
+        (and (not? super)
+             (class-designator? sub)
+             (member? (second super)))
+        (every? (fn [e2]
+                  (not (typep e2 sub))) (rest (second super)))
+
+        :else
+        :dont-know))
+  
+(defmethod -subtype? :and [t1 t2]
+  (if (and (and? t1)
+           (some #{t2} (rest t1)))
+    false
+    :dont-know))
+
+(defmethod -disjoint? :subtype [sub super]
+  (cond (and (subtype? sub super (constantly false))
+             (inhabited? sub (constantly false)))
+        false
+        
+        :else
+        :dont-know))
+
+(defmethod -disjoint? :not-disjoint [t1 t2]
+  (cond (and (not? t2)
+             (disjoint? t1 (second t2) (constantly false)))
+        false
+        
+        ;; (disjoint?   'java.io.Serializable '(not java.lang.Comparable))
+        (and (not? t2)
+             (class-designator? t1)
+             (class-designator? (second t2))
+             (= :interface (class-type t1))
+             (= :interface (class-type (second t2)))
+             (not (= (find-class t1) (find-class (second t2)))))
+        false
+        
+        ;; (disjoint?   '(not java.io.Serializable) '(not java.lang.Comparable))
+        (and (not? t1)
+             (not? t2)
+             (class-designator? (second t1))
+             (class-designator? (second t2))
+             (= :interface (class-type (second t1)))
+             (= :interface (class-type (second t2)))
+             (not (= (find-class (second t1)) (find-class (second t2)))))
+        false
+        
+        :else :dont-know))
+
+(defmethod -disjoint? :classes [t1 t2]
+  (if (and (class-designator? t1)
+           (class-designator? t2))
+    (if (= (find-class t1)
+           (find-class t2))
+      false
+      (case [(class-type t1) (class-type t2)]
+        ((:interface :interface)
+         (:interface :abstract)
+         (:abstract :interface))
+        false ;; not disjoint
+        
+        ((:final :final)
+         (:final :interface)
+         (:final :abstract))
+        (not (subtype? t1 t2 subtype?-error))
+        
+        ((:interface :final)
+         (:abstract :final))
+        (not (subtype? t2 t1 subtype?-error))
+        
+        ((:abstract :abstract))
+        (not (or (subtype? t1 t2 (constantly false))
+                 (subtype? t2 t1 subtype?-error)))))
+    
+    :dont-know))
+
+(defmethod -inhabited? :not [t1]
+  (if (and (not? t1)
+           (class-designator? (second t1)))
+    (not (= (find-class (second t1))
+            Object))
+    :dont-know))
+
+(defmethod -inhabited? :member [t1]
+  (if (member? t1)
+    (boolean (rest t1))
+    :dont-know))
+
+(defmethod -inhabited? := [t1]
+  (if (=? t1)
+    true
+    :dont-know))
        
-  (defmethod -disjoint? :not [t1 t2]
-    (cond
-      ;; (disjoint? (not Object) X)
-      (and (not? t1)
-           (class-designator? (second t1))
-           (isa? Object (find-class (second t1))))
-      true
+(defmethod -disjoint? :not [t1 t2]
+  (cond
+    ;; (disjoint? (not Object) X)
+    (and (not? t1)
+         (class-designator? (second t1))
+         (isa? Object (find-class (second t1))))
+    true
 
-      ;; (disjoint? X (not X))
-      (and (not? t2)
-           (= t1 (second t2)))
-      true
-      
-      ;; (disjoint? X (not Y)) where X||Y
-      (and (not? t2)
-           (disjoint? (second t2) t1 (constantly false)))
-      false
-      
-      ;; if t1 < t2, then t1 disjoint from (not t2)
-      ;; (disjoint? '(member 1 2 3) '(not (member a b c 1 2 3)))
-      (and (not? t2)
-           (subtype? t1 (second t2) (constantly false))
-           (not (subtype? (second t2) t1 (constantly true))))
-      true
+    ;; (disjoint? X (not X))
+    (and (not? t2)
+         (= t1 (second t2)))
+    true
+    
+    ;; (disjoint? X (not Y)) where X||Y
+    (and (not? t2)
+         (disjoint? (second t2) t1 (constantly false)))
+    false
+    
+    ;; if t1 < t2, then t1 disjoint from (not t2)
+    ;; (disjoint? '(member 1 2 3) '(not (member a b c 1 2 3)))
+    (and (not? t2)
+         (subtype? t1 (second t2) (constantly false))
+         (not (subtype? (second t2) t1 (constantly true))))
+    true
 
-      ;; (disjoint? '(member a b c 1 2 3) '(not (member 1 2 3)))
-      (and (not? t2)
-           (subtype? (second t2) t1 (constantly false))
-           (not (subtype? t1 (second t2) (constantly true))))
-      false
+    ;; (disjoint? '(member a b c 1 2 3) '(not (member 1 2 3)))
+    (and (not? t2)
+         (subtype? (second t2) t1 (constantly false))
+         (not (subtype? t1 (second t2) (constantly true))))
+    false
 
-      ;; (disjoint? 'Number '(not Long))
-      (and (class-designator? t1)
-           (not? t2)
-           (class-designator? (second t2))
-           (not (= (find-class (second t2)) (find-class t1)))
-           (isa? (find-class (second t2)) (find-class t1)))
-      false
+    ;; (disjoint? 'Number '(not Long))
+    (and (class-designator? t1)
+         (not? t2)
+         (class-designator? (second t2))
+         (not (= (find-class (second t2)) (find-class t1)))
+         (isa? (find-class (second t2)) (find-class t1)))
+    false
 
 
-      ;; (disjoint? '(not Boolean) '(not Long))
-      ;; (disjoint? '(not A) '(not B))
-      ;; if disjoint classes A and B
-      (and (not? t1)
-           (not? t2)
-           (class-designator? (second t1))
-           (class-designator? (second t2))
-           (disjoint? (second t1) (second t2)))
-      false
+    ;; (disjoint? '(not Boolean) '(not Long))
+    ;; (disjoint? '(not A) '(not B))
+    ;; if disjoint classes A and B
+    (and (not? t1)
+         (not? t2)
+         (class-designator? (second t1))
+         (class-designator? (second t2))
+         (disjoint? (second t1) (second t2)))
+    false
 
-      ;; (disjoint? 'java.io.Serializable '(not java.lang.Comparable))
-      (and (class-designator? t1)
-           (not? t2)
-           (class-designator? (second t2))
-           ;; and neither is final
-           (not (= :final (class-type t1)))
-           (not (= :final (class-type (second t2)))))
-      false
+    ;; (disjoint? 'java.io.Serializable '(not java.lang.Comparable))
+    (and (class-designator? t1)
+         (not? t2)
+         (class-designator? (second t2))
+         ;; and neither is final
+         (not (= :final (class-type t1)))
+         (not (= :final (class-type (second t2)))))
+    false
 
-      ;; I don't know the general form of this, so make it a special case for the moment.
-      ;; (gns/disjoint? '(and Long (not (member 2 3 4))) 'java.lang.Comparable)
-      ;;                      A   (not B)                     C
-      ;; should return false
-      ;; TODO generalize this special case.
-      ;; If B < A and A !< B    and A < C and C !< A
-      ;;   then (and A !B) is NOT disjoint from C
-      (and (and? t1) ;; t1 of the form (and ...)
-           (= 3 (count t1)) ;; t1 of the form (and x y)
-           (not? (first (rest (rest t1))))  ;; t1 of the form (and x (not y))
-           (let [[_ A [_ B]] t1
-                 C t2]
-             (and (subtype? B A (constantly false))
-                  (not (subtype? A B (constantly true)))
-                  (subtype? A C (constantly false))
-                  (not (subtype? C A (constantly true))))))
-      false
+    ;; I don't know the general form of this, so make it a special case for the moment.
+    ;; (gns/disjoint? '(and Long (not (member 2 3 4))) 'java.lang.Comparable)
+    ;;                      A   (not B)                     C
+    ;; should return false
+    ;; TODO generalize this special case.
+    ;; If B < A and A !< B    and A < C and C !< A
+    ;;   then (and A !B) is NOT disjoint from C
+    (and (and? t1) ;; t1 of the form (and ...)
+         (= 3 (count t1)) ;; t1 of the form (and x y)
+         (not? (first (rest (rest t1))))  ;; t1 of the form (and x (not y))
+         (let [[_ A [_ B]] t1
+               C t2]
+           (and (subtype? B A (constantly false))
+                (not (subtype? A B (constantly true)))
+                (subtype? A C (constantly false))
+                (not (subtype? C A (constantly true))))))
+    false
 
-      
-      ;; (gns/disjoint? '(and String (not (member a b c 1 2 3))) 'java.lang.Comparable)
-      ;;                       A    (not B)                     C
-      ;;  since A and B are disjoint
-      ;;  we may ask (disjoint? A C)
-      (and (and? t1) ;; t1 of the form (and ...)
-           (= 3 (count t1)) ;; t1 of the form (and x y)
-           (not? (first (rest (rest t1))))  ;; t1 of the form (and x (not y))
-           (let [[_ A [_ B]] t1
-                 C t2]
-             (disjoint? A B)))
-      (disjoint? (second t1) t2)
-      
-      :else
-      :dont-know)))
+    
+    ;; (gns/disjoint? '(and String (not (member a b c 1 2 3))) 'java.lang.Comparable)
+    ;;                       A    (not B)                     C
+    ;;  since A and B are disjoint
+    ;;  we may ask (disjoint? A C)
+    (and (and? t1) ;; t1 of the form (and ...)
+         (= 3 (count t1)) ;; t1 of the form (and x y)
+         (not? (first (rest (rest t1))))  ;; t1 of the form (and x (not y))
+         (let [[_ A [_ B]] t1
+               C t2]
+           (disjoint? A B)))
+    (disjoint? (second t1) t2)
+    
+    :else
+    :dont-know))
 
 (defn type-min 
   "Find an element of the given sequence which is a subtype
