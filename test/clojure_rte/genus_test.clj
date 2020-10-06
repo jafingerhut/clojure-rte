@@ -129,6 +129,20 @@
     (is (typep 3 '(member 1 2 3 4)))
     (is (typep 3 '(satisfies integer?)))))
 
+(deftest t-member
+  (testing "member type"
+    (is (typep 3 '(member 1 2 3)) "test 0")
+    (is (not (typep true '(member 1 2 3))) "test 1")
+    (is (not (typep false '(member 1 2 3))) "test 2")
+    (is (not (typep nil '(member 1 2 3))) "test 3")
+    (is (not (typep () '(member 1 2 3))) "test 4")
+    (is (typep () '(member 1 () 3)) "test 5")
+    (is (typep true '(member 1 true 3)) "test 6")
+    (is (typep false '(member 1 false 3)) "test 7")
+    (is (typep nil '(member 1 nil 3)) "test 8")
+    (is (not (typep false '(member 1 nil 3))) "test 9")
+    (is (not (typep nil '(member 1 false 3))) "test 10")))
+
 (deftest t-type-max
   (testing "type-max"
     (is (= 'Number (type-max '(Number Integer))))
