@@ -23,6 +23,9 @@
   "This is an empty namespace to fool lein to load this file as part of
   the clojure-rte.core ns.")
 
+(in-ns 'clojure-rte.genus)
+(declare rte?)
+
 (in-ns 'clojure-rte.core)
 
 (declare traverse-pattern)
@@ -688,9 +691,6 @@
             (every? (fn [t2]
                       (or (= t1 t2)
                           (gns/disjoint? t1 t2))) type-set))
-          (rte? [t]
-            (and (sequential? t)
-                 (= 'rte (first t))))
           (count-if [pred items]
             (reduce (fn [acc item]
                       (if (pred item)
@@ -710,10 +710,10 @@
                    (empty? left))
               :sigma
 
-              (> (+ (count-if rte? left)
-                    (count-if rte? right)) 1)
-              (let [[left-rtes left] (partition-by-pred rte? left)
-                    [right-rtes right] (partition-by-pred rte? right)
+              (> (+ (count-if gns/rte? left)
+                    (count-if gns/rte? right)) 1)
+              (let [[left-rtes left] (partition-by-pred gns/rte? left)
+                    [right-rtes right] (partition-by-pred gns/rte? right)
                     left-patterns (map second left-rtes)
                     right-patterns (map second right-rtes)]
                 (cond (empty? left-rtes)
