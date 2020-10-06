@@ -302,19 +302,6 @@
   (and (sequential? t)
        (= 'not (first t))))
 
-  (defmethod -disjoint? := [t1 t2]
-    (cond (=? t1)
-          (not (typep (second t1) t2))
-          
-          ;; (= ...) is finite, types are infinite
-          ;; (disjoint? '(not (= 1 2 3)) 'Long)
-          (and (not? t1)
-               (=? (second t1))
-               (class-designator? t2))
-          false
-          
-          :else
-          :dont-know))
           
   ;; (defmethod -disjoint? :satisfies [t1 t2]
   ;;   (cond (and (satisfies? t1)
@@ -379,9 +366,20 @@
                (member? (second t1))
                (class-designator? t2))
           false
+(defmethod -disjoint? := [t1 t2]
+  (cond (=? t1)
+        (not (typep (second t1) t2))
+        
+        ;; (= ...) is finite, types are infinite
+        ;; (disjoint? '(not (= 1 2 3)) 'Long)
+        (and (not? t1)
+             (=? (second t1))
+             (class-designator? t2))
+        false
+        
+        :else
+        :dont-know))
           
-          :else
-          :dont-know)))
 
 (defmulti -subtype?
   "This function should never be called.
