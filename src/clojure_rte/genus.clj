@@ -1030,6 +1030,9 @@
 (defmethod canonicalize-type 'and
   [type-designator]
   (cond
+    (member :empty-set (rest type-designator))
+    :empty-set
+
     (some =? (rest type-designator))
     ;; (and Double (= "a")) --> (member)
     ;; (and String (= "a")) --> (member "a")
@@ -1041,15 +1044,34 @@
     (some member? (rest type-designator))
     (let [member-candidates (filter member? (rest type-designator))
           candidates (rest (first member-candidates))]
+      ;; TODO this might return the same thing as we started with,
+      ;;    we SHOULD in that case continue the cond...
       (cons 'member (filter (fn [x] (typep x type-designator)) candidates)))
-
-    (member :empty-set (rest type-designator))
-    :empty-set
 
     (member :sigma (rest type-designator))
     (cons 'and (map canonicalize-type (remove #{:sigma} (rest type-designator))))
     
     ;; TODO (and Double (not (member 1.0 2.0 "a" "b"))) --> (and Double (not (member 1.0 2.0)))
+    (some (fn [t]
+            (and (not? t)
+                 (member? (second t))))
+          (rest type-designator))
+    ;; TODO this might return the same thing as we started with,
+    ;;    we SHOULD in that case continue the cond...
+    (cons 'and
+          (map (fn [t]
+
+                 (if (and (not? t)
+                          (member? (second t)))
+                   (let [filtered-td (remove #{t} type-designator)
+                         [_not [_member & candidates]] t
+                         filtered-candidates (filter (fn [t2] (typep t2 filtered-td)) candidates)
+                         ]
+                     (cons 'member filtered-candidates))
+                   t
+                 ))
+               (rest type-designator)))
+
     ;; TODO (and Double (not (= "a"))) --> (and Double)
 
     :else
