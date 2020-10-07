@@ -191,6 +191,21 @@
                       (boolean (pred i))) items)]
     [(g true) (g false)]))
 
+(defn find-simplifier [obj simplifiers]
+  (if (empty? simplifiers)
+    obj
+    (loop [[f & fs] simplifiers]
+      (let [new-obj (f obj)]
+        (cond
+          (not= new-obj obj)
+          new-obj
+
+          (empty fs)
+          obj
+
+          :else
+          (recur fs))))))
+
 (defn fixed-point
   "Find the fixed point of the given function starting at the given value.
   Convergence is detected when the function good-enough returns Boolean true
