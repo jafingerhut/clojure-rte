@@ -559,8 +559,8 @@
       (is (disjoint? '(rte (:+ Number)) 
                      '(rte (:+ String))))
       (is (rte-to-dfa '(:or (rte (:* Number)) 
-                             (rte (:cat Double Number))
-                             (rte (:* Double))))))))
+                            (rte (:cat Double Number))
+                            (rte (:* Double))))))))
 
 (deftest t-pattern-with-=-and-class
   (testing "pattern with ="

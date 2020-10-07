@@ -42,7 +42,7 @@
   (if (gns/rte? t1)
     (boolean (rte-inhabited? (rte-compile (second t1))))
     :dont-know))
-       
+
 (defmethod gns/-disjoint? :rte [t1 t2]
   (cond (and (gns/rte? t1)
              (gns/rte? t2))
