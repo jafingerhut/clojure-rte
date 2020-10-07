@@ -24,7 +24,7 @@
   (:require [clojure.set :refer [intersection subset?]]
             [clojure.repl :refer [source-fn]]
             [clojure.pprint :refer [cl-format]]
-            [clojure-rte.util :refer [call-with-collector member]]
+            [clojure-rte.util :refer [call-with-collector member find-simplifier]]
             [clojure-rte.cl-compat :as cl]
             [clojure.reflect :as refl]
   ))
@@ -1021,103 +1021,119 @@
 
 (defmethod canonicalize-type 'not
   [type-designator]
-  (let [inverted (logical-inversion (second type-designator))]
-    (if (= (list 'not inverted)
-           type-designator)
-      type-designator
-      inverted)))
+  (find-simplifier type-designator
+                   [(fn [type-designator]
+                      ;; (not (not x)) --> x
+                      (if (not? (second type-designator))
+                        (second (second type-designator))
+                        type-designator))
+                    (fn [type-designator]
+                      (if (= :sigma (second type-designator))
+                        :empty-set
+                        type-designator))
+                    (fn [type-designator]
+                      (if (= :empty-set (second type-designator))
+                        :sigma
+                        type-designator))]))                    
 
 (defmethod canonicalize-type 'and
   [type-designator]
-  (cond
-    (member :empty-set (rest type-designator))
-    :empty-set
+  
+  (find-simplifier type-designator
+                   [(fn [type-designator]
+                      (if (member :empty-set (rest type-designator))
+                        :empty-set
+                        type-designator))
+                    
+                    (fn [type-designator]
+                      (if (some =? (rest type-designator))
+                        ;; (and Double (= "a")) --> (member)
+                        ;; (and String (= "a")) --> (member "a")
+                        (let [=-candidates (filter =? (rest type-designator))
+                              candidates (rest (first =-candidates))]
+                          (cons 'member (filter (fn [x] (typep x type-designator)) candidates)))
+                        type-designator))
+                    
+                    (fn [type-designator]
+                      ;; (and Double (member 1.0 2.0 "a" "b")) --> (member 1.0 2.0)
+                      (if (some member? (rest type-designator))
+                        (let [member-candidates (filter member? (rest type-designator))
+                              candidates (rest (first member-candidates))]
+                          (cons 'member (filter (fn [x] (typep x type-designator)) candidates)))
+                        type-designator))
 
-    (some =? (rest type-designator))
-    ;; (and Double (= "a")) --> (member)
-    ;; (and String (= "a")) --> (member "a")
-    (let [=-candidates (filter =? (rest type-designator))
-          candidates (rest (first =-candidates))]
-      (cons 'member (filter (fn [x] (typep x type-designator)) candidates)))
+                    
+                    (fn [type-designator]
+                      (if (member :sigma (rest type-designator))
+                        (cons 'and (map canonicalize-type (remove #{:sigma} (rest type-designator))))
+                        type-designator))
 
-    ;; (and Double (member 1.0 2.0 "a" "b")) --> (member 1.0 2.0)
-    (some member? (rest type-designator))
-    (let [member-candidates (filter member? (rest type-designator))
-          candidates (rest (first member-candidates))]
-      ;; TODO this might return the same thing as we started with,
-      ;;    we SHOULD in that case continue the cond...
-      (cons 'member (filter (fn [x] (typep x type-designator)) candidates)))
+                    (fn [type-designator]
+                      ;; (and Double (not (member 1.0 2.0 "a" "b"))) --> (and Double (not (member 1.0 2.0)))
+                      ;; (and Double (not (= "a"))) --> (and Double  (not (member)))
+                      (if (some (fn [t]
+                                  (and (not? t)
+                                       (or (member? (second t))
+                                           (=? (second t)))))
+                                (rest type-designator))
+                        (cons 'and
+                              (map (fn [t]
+                                     (if (and (not? t)
+                                              (or (member? (second t))
+                                                  (=? (second t))))
+                                       (let [filtered-td (remove #{t} type-designator)
+                                             [_not [_member & candidates]] t
+                                             filtered-candidates (filter (fn [t2] (typep t2 filtered-td)) candidates)
+                                             ]
+                                         (cons 'member filtered-candidates))
+                                       t
+                                       ))
+                                   (rest type-designator)))))
 
-    (member :sigma (rest type-designator))
-    (cons 'and (map canonicalize-type (remove #{:sigma} (rest type-designator))))
-    
-    ;; TODO (and Double (not (member 1.0 2.0 "a" "b"))) --> (and Double (not (member 1.0 2.0)))
-    (some (fn [t]
-            (and (not? t)
-                 (member? (second t))))
-          (rest type-designator))
-    ;; TODO this might return the same thing as we started with,
-    ;;    we SHOULD in that case continue the cond...
-    (cons 'and
-          (map (fn [t]
-
-                 (if (and (not? t)
-                          (member? (second t)))
-                   (let [filtered-td (remove #{t} type-designator)
-                         [_not [_member & candidates]] t
-                         filtered-candidates (filter (fn [t2] (typep t2 filtered-td)) candidates)
-                         ]
-                     (cons 'member filtered-candidates))
-                   t
-                 ))
-               (rest type-designator)))
-
-    ;; TODO (and Double (not (= "a"))) --> (and Double)
-
-    :else
-    (cons 'and (map canonicalize-type (rest type-designator)))))
+                    (fn [type-designator]
+                      (cons 'and (map canonicalize-type (rest type-designator))))]))
 
 (defmethod canonicalize-type 'member
   [type-designator]
-  (cond
-    (empty? (rest type-designator))
-    :empty-set
-
-    (empty (rest (rest type-designator)))
-    (list '= (second type-designator))
-
-    :else
-    (cons 'or (map canonicalize-type (rest type-designator)))))
+  (find-simplifier type-designator
+                   [(fn [type-designator]
+                      (if (empty? (rest type-designator))
+                        :empty-set
+                        type-designator))
+                    (fn [type-designator]
+                      (if  (empty (rest (rest type-designator)))
+                        (list '= (second type-designator))
+                        type-designator))]))
 
 (defmethod canonicalize-type 'or
   [type-designator]
-  (letfn [(simplify-a [td]
-            ;; (or Double (member 1.0 2.0 "a" "b")) --> (or Double (member "a" "b"))
-            (cons 'or
-                  (map (fn [t]
-                         (cond
-                           (member? t)
-                           (let [td2 (cons 'or (remove #{t} (rest type-designator)))]
-                             (cons 'member (filter (fn [candidate]
-                                                     (not (typep candidate td2)))
-                                                   (rest t))))
-                           :else
-                           t))
-                       (rest type-designator))))]
-    (cond
-      (member :emtpy-set (rest type-designator))
-      (cons 'or (map canonicalize-type
-                     (remove #{:empty-set} (rest type-designator))))
+  (find-simplifier type-designator
+                   [(fn [type-designator]
+                      (if (member :emtpy-set (rest type-designator))
+                        (cons 'or (map canonicalize-type
+                                       (remove #{:empty-set} (rest type-designator))))
+                        type-designator))
 
-      (member :sigma (rest type-designator))
-      :sigma
+                    (fn [type-designator]
+                      (if (member :sigma (rest type-designator))
+                        :sigma
+                        type-designator))
 
-      (and (some member? (rest type-designator))
-           (not= type-designator (simplify-a type-designator)))
-      (simplify-a type-designator)
-
-      :else
-      type-designator)))
+                    (fn [type-designator]
+                      ;; (or Double (member 1.0 2.0 "a" "b")) --> (or Double (member "a" "b"))
+                      (if (some member? (rest type-designator))
+                        (cons 'or
+                              (map (fn [t]
+                                     (cond
+                                       (member? t)
+                                       (let [td2 (cons 'or (remove #{t} (rest type-designator)))]
+                                         (cons 'member (filter (fn [candidate]
+                                                                 (not (typep candidate td2)))
+                                                               (rest t))))
+                                       :else
+                                       t))
+                                   (rest type-designator)))
+                        type-designator))]))
 
 (defmethod canonicalize-type :default
   [type-designator]
