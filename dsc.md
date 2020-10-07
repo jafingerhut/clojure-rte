@@ -174,7 +174,25 @@ not that `c` has type string.
 I.e., both constraints are required.
 `[[^Number a b] {a (not (= 0))}]` this means that `a` is both a `Number` and also different from zero, effectively `a` has type `(and Number (not (= 0)))`.
 
-- Multiple type constraints may accidentally make code unreachable.  E.g., `[[^Number a b] {a String}]` means 
-that `a` is both a `Number` and also a `String`.  Equivalently, `(and Number String)` is the empty type. 
+- Multiple type constraints may accidentally make code unreachable.  
+E.g., `[[^Number a b] {a String}]` means that `a` is both a `Number` and also a `String`.  Equivalently, `(and Number String)` is the empty type. 
 There is no such object so this pattern will never
 match and the corresponding consequent code will be unreachable.
+
+- A function such as `(fn [a & as] ...)` cannot be called on an empty
+ argument list as an exception will be thrown.  However, using `let`,
+`nil` can be destructured into `[a & as]` with both `a` and `as`
+ bound to `nil`.  The `destructuring-case` and `destructuring-fn`
+macros favor function application to let binding to determine
+semantics.  For example, the following evaluates to `13`, not to
+`12`.
+
+```clojure
+(destructuring-case '()
+  [[a & as]    {}] 
+  12
+
+  [[]       {}]
+  13
+)
+```
