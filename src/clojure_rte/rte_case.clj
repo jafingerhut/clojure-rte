@@ -22,7 +22,7 @@
 (ns clojure-rte.rte-case
   "This is an empty namespace to fool lein to load this file as part of
   the clojure-rte.core ns."
-  (:require [clojure-rte.genus-extend])
+  (:require [clojure-rte.genus-rte])
 )
 
 (in-ns 'clojure-rte.core)
