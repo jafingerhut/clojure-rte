@@ -196,11 +196,12 @@
     obj
     (loop [[f & fs] simplifiers]
       (let [new-obj (f obj)]
+        (println [:new new-obj :old obj :same? (= new-obj obj) :diff? (not= new-obj obj)])
         (cond
           (not= new-obj obj)
           new-obj
 
-          (empty fs)
+          (empty? fs)
           obj
 
           :else
