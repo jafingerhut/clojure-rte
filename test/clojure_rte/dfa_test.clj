@@ -186,7 +186,6 @@
 (defn t-acceptance-test-rte
   [rte]
   (doseq [seq-root test-seqs
-          _ (println [:seq-root seq-root])
           exit-value [42 true -1]
           :let [dfa (rte-to-dfa rte exit-value)
                 dfa-trim (trim dfa)
