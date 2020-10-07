@@ -222,6 +222,21 @@
                         (constantly true))))
     ))
 
+(deftest t-subtype?-and
+  (testing "subtype? and"
+    (is (gns/subtype? '(and String (not (= "a")))
+                      'String
+                      (constantly false))
+        "test 1")
+    (is (gns/subtype? '(and String (not (member "a" "b" "c")))
+                      'java.io.Serializable
+                      (constantly false))
+        "test 2")
+    (is (gns/subtype? '(and Long (not (member 1 2)) (satisfies odd?))
+                      '(and Long (satisfies odd?))
+                      (constantly false))
+        "test 3")))
+
 (deftest t-subtype?
   (testing "subtype?"
     ;; adding failing test, TODO need to fix

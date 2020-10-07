@@ -21,7 +21,7 @@
 
 (ns clojure-rte.genus
   (:refer-clojure :exclude [satisfies?])
-  (:require [clojure.set :refer [intersection]]
+  (:require [clojure.set :refer [intersection subset?]]
             [clojure.repl :refer [source-fn]]
             [clojure.pprint :refer [cl-format]]
             [clojure-rte.util :refer [call-with-collector member]]
@@ -555,10 +555,25 @@
         :dont-know))
 
 (defmethod -subtype? :and [t1 t2]
-  (if (and (and? t1)
-           (some #{t2} (rest t1)))
-    false
-    :dont-know))
+   (cond
+     (and (and? t1)
+          (member t2 (rest t1)))
+     ;; (subtype? (and A B) A)
+     true
+
+     (and (and? t1)
+          (some (fn [t] (subtype? t t2)) (rest t1)))
+     ;; (subtype?  '(and String (not (member "a" "b" "c")))  'java.io.Serializable)
+     true
+    
+     ;; (subtype? (and A B C X Y) (and A B C) )
+     (and (and? t1)
+          (and? t2)
+          (subset? (set (rest t2)) (set (rest t1))))
+     true
+     
+     :else
+     :dont-know))
 
 (defmethod -disjoint? :subtype [sub super]
   (cond (and (subtype? sub super (constantly false))

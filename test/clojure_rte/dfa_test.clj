@@ -181,7 +181,6 @@
                     dfa-complete (complete dfa)
                     incomplete-states (find-incomplete-states dfa-complete)]]
         (is (empty? incomplete-states))))))
-            
 
 (defn t-acceptance-test-rte
   [rte]
