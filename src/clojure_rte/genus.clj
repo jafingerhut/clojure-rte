@@ -29,6 +29,10 @@
             [clojure.reflect :as refl]
   ))
 
+(declare subtype?)
+(declare disjoint?)
+(declare inhabited?)
+
 (defn and? [t]
   (and (sequential? t)
        (= 'and (first t))))
@@ -274,31 +278,35 @@
   ([t1 t2 default]
    {:pre [(fn? default)]
     :post [(fn [v] (#{true false :dont-know} v))]}
-   (letfn [(fff [t1 t2 default]
+   (letfn [(check-disjoint [t1' t2' default]
              (binding [*disjoint?-default* default]
                (loop [[k & ks] (sort-method-keys -disjoint?)]
-                 (case ((k (methods -disjoint?)) t1 t2)
+                 (case ((k (methods -disjoint?)) t1' t2')
                    (true) true
                    (false) false
-                   (case ((k (methods -disjoint?)) t2 t1)
+                   (case ((k (methods -disjoint?)) t2' t1')
                      (true) true
                      (false) false
                      (if ks
                        (recur ks)
                        (default t1 t2)))))))]
-     (let [try1 (fff t1 t2 (constantly :dont-know))]
-       (println [:try1 try1 :t1 t1 :t2 t2])
-       (if (not= :dont-know try1)
-         try1
-         (let [t1-simple (canonicalize-type t1)
-               t2-simple (canonicalize-type t2)]
-           (println [:t1 t1-simple
-                     :t2 t2-simple])
-           (if (and (= t1-simple t1)
-                    (= t2-simple t2))
-             (default t1 t2)
-             (fff t1-simple t2-simple default)
-       )))))))
+     (cond
+       (not (inhabited? t1 (constantly true))) ;; if t1 is empty, t1 and t2 are disjoint
+       true
+
+       (not (inhabited? t2 (constantly true))) ;; if t2 is empty, t1 and t2 are disjoint
+       true
+
+       :else
+       (let [try1 (check-disjoint t1 t2 (constantly :dont-know))]
+         (if (not= :dont-know try1)
+           try1
+           (let [t1-simple (canonicalize-type t1)
+                 t2-simple (canonicalize-type t2)]
+             (if (and (= t1-simple t1)
+                      (= t2-simple t2))
+               (default t1 t2)
+               (check-disjoint t1-simple t2-simple default)))))))))
 
 (defmethod -disjoint? :primary [t1 t2]
   (cond
@@ -342,6 +350,16 @@
              (some #{t2} (rest t1)))
         false
         
+        ;; (disjoint? 'A '(and B C))
+        ;; (disjoint? 'java.lang.Comparable '(and String (not (member a b c 1 2 3))))
+        (and (and? t1)
+             (inhabited? t1 (constantly false))
+             (inhabited? t2 (constantly false))
+             (some (fn [t1'] (or (subtype? t1' t2 (constantly false))
+                                 (subtype? t2 t1' (constantly false))
+                                 )) (rest t1)))
+        false
+
         (and (and? t1)
              (class-designator? t2)
              (= (find-class t2) java.lang.Object)

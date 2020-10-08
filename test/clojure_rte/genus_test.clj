@@ -332,3 +332,12 @@
          '(or Double (member "a" "b")))
         "test 0")))
 
+(deftest t-symmetric-disjoint
+  (testing "disjoint test which was failing"
+    (let [t1 '(= ())
+          t2 '(and clojure.lang.IPersistentList
+                   clojure.lang.IPersistentVector
+                   (not (rte (:* (:cat clojure.lang.IPersistentVector (:* :sigma))))))]
+      (is (=
+           (gns/disjoint? t1 t2)
+           (gns/disjoint? t2 t1 ))))))
