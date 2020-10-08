@@ -235,11 +235,18 @@
     (is (gns/subtype? '(and Long (not (member 1 2)) (satisfies odd?))
                       '(and Long (satisfies odd?))
                       (constantly false))
-        "test 3")))
+        "test 3")
+
+    (is (not (gns/subtype? '(and Long (not (member 0 2 4 6)))
+                           '(not Long)
+                           (constantly :dont-know)))
+        "test 4")
+))
 
 (deftest t-subtype?
   (testing "subtype?"
     ;; adding failing test, TODO need to fix
+    (is (not (gns/subtype? 'Long '(not Long) (constantly :dont-know))))
     (is (gns/subtype? 'Long '(not Double) (constantly false)))
 
     (is (not (gns/subtype? '(not Long) '(not Boolean) (constantly true))))

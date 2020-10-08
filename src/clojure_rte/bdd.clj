@@ -101,7 +101,7 @@
               :else (cons 'or args)))
           (supertypes [sub types]
             (filter (fn [super]
-                      (c/and (c/not (= sub super))
+                      (c/and (not= sub super)
                              (gns/subtype? sub super (constantly false)))) types))
           (check-supers [args]
             (let [args (distinct args)
@@ -129,30 +129,29 @@
                    (let [my-label (:label node)
                          ;; two lazy sequences created by filter.  the filter loops are
                          ;; never called unless (empty? ...) is called below.
-                         disjoints (filter (fn [x] (gns/disjoint? x my-label (constantly false))) parents)
-                         subtypes  (filter (fn [x] (gns/subtype?  x my-label (constantly false))) parents)]
-
+                         disjoints (filter (fn [x] (if my-label (gns/disjoint? x my-label (constantly false)))) parents)
+                         subtypes  (filter (fn [x] (if my-label (gns/subtype?  x my-label (constantly false)))) parents)]
                      (cond
                        (= true node)
                        ;; we know parents ( ... A ... B ...) that B is not subtype of A, but maybe A subtype B
                        ;;   we need to remove the supertypes
                        ;;   E.g., (Long java.io.Comparable java.io.Serializable) -> (Long)
                        ;;   E.g.  (Long Number) -> Long
-                       (collect (pretty-and (loop [tail parents
-                                                   done '()]
-                                              (if (empty? tail)
-                                                done
-                                                (let [keeping (remove (fn [b]
-                                                                        ;; if we don't know, then keep it.  it might
-                                                                        ;; be redunant, but it won't be wrong.
-                                                                        ;; Is (first tail) <: b ?
-                                                                        ;;   if yes, then omit be in recur call
-                                                                        ;;   if :dont-know then keep it.
-                                                                        (gns/subtype? (first tail) b (constantly false)))
-                                                                       (rest tail))]
-                                                  
-                                                  (recur keeping
-                                                         (cons (first tail) done)))))))
+                       (let [term (loop [tail parents
+                                         done '()]
+                                    (if (empty? tail)
+                                      done
+                                      (let [keeping (remove (fn [b]
+                                                              ;; if we don't know, then keep it.  it might
+                                                              ;; be redunant, but it won't be wrong.
+                                                              ;; Is (first tail) <: b ?
+                                                              ;;   if yes, then omit b in recur call
+                                                              ;;   if :dont-know then keep it.
+                                                              (gns/subtype? (first tail) b (constantly false)))
+                                                            (rest tail))]
+                                        (recur keeping
+                                               (cons (first tail) done)))))]
+                         (collect (pretty-and term)))
                        
                        (= false node)
                        nil ;; do not collect, and prune recursion

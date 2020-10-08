@@ -571,16 +571,26 @@
              (class-designator? sub)
              (class-designator? (second super))
              (= :final (class-type sub))
-             (= :final (class-type (second super))))
+             (= :final (class-type (second super)))
+             (= false (type-equivalent? sub (second super) (constantly :dont-know))))
         true
 
         (and (not? sub)  ; (subtype? '(not Double) 'Long)
              (class-designator? super)
              (class-designator? (second sub))
              (= :final (class-type super))
-             (= :final (class-type (second sub))))
+             (= :final (class-type (second sub)))
+             (= false (type-equivalent? (second sub) super (constantly :dont-know))))
         false
 
+        (and (not? sub)
+             (type-equivalent? (second sub) super (constantly false)))
+        false
+
+        (and (not? super)
+             (type-equivalent? sub (second super) (constantly false)))
+        false
+        
         (not (not? sub))
         :dont-know
 
@@ -626,7 +636,7 @@
           (some (fn [t] (subtype? t t2)) (rest t1)))
      ;; (subtype?  '(and String (not (member "a" "b" "c")))  'java.io.Serializable)
      true
-    
+
      ;; (subtype? (and A B C X Y) (and A B C) )
      (and (and? t1)
           (and? t2)
