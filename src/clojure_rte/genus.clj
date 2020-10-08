@@ -32,6 +32,7 @@
 (declare subtype?)
 (declare disjoint?)
 (declare inhabited?)
+(declare type-equivalent?)
 
 (defn and? [t]
   (and (sequential? t)
@@ -69,6 +70,34 @@
   (if (class-designator? class-name)
     (resolve class-name)
     nil))
+
+(defn type-equivalent?-error [t1-designator t2-designator]
+  (throw (ex-info (format "type-equivalent? cannot decide %s vs %s" t1-designator t2-designator)
+                  {:error-type :not-yet-implemented
+                   :type-designators [t1-designator t1-designator]})))
+
+(def ^:dynamic *type-equivalent?-default*
+  "Default to return when type-equivalence cannot be determined.  This value is a binary
+  function which is called with the two type designators in question:
+  [t1 t2]"
+  type-equivalent?-error)
+
+(defn type-equivalent?
+  ([t1 t2]
+   (type-equivalent? t1 t2 *type-equivalent?-default*))
+  ([t1 t2 default]
+   (if (= t1 t2)
+     true
+     (binding [*type-equivalent?-default* default]
+       (let [s1 (subtype? t1 t2 (constantly :dont-know))
+             s2 (delay (subtype? t1 t2 (constantly :dont-know)))]
+         (case s1
+           (false) false
+           (case @s2
+             (false) false
+             (if (= true s1 @s2)
+               true
+               (default t1 t2)))))))))
 
 (defmulti typep 
   "Like clojure.core/instance? except that the arguments are reversed, and the
