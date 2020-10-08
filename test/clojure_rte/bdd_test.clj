@@ -224,15 +224,16 @@
   ;; convert bdd to dnf
   ;; convert dnf back to bdd
   ;; compare them
+
   (testing "dnf by serialization out and in"
     (bdd/with-hash []
       (let [bdd (bdd/bdd '(and
-                       (not Long)
-                       (and (not Long)
-                            (not Boolean))))]
+                           (not Long)
+                           (and (not Long)
+                                (not Boolean))))]
         (is (member '(not Long) (bdd/dnf bdd)))
         (is (member '(not Boolean) (bdd/dnf bdd))))
-               
+      
       (doseq [n (range num-random-samples)
               :let [bdd1 (bdd/gen-random)
                     serialized-1 (bdd/dnf bdd1)

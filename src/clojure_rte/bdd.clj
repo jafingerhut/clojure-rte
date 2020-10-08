@@ -102,13 +102,13 @@
           (supertypes [sub types]
             (filter (fn [super]
                       (c/and (c/not (= sub super))
-                           (gns/subtype? sub super (constantly false)))) types))
+                             (gns/subtype? sub super (constantly false)))) types))
           (check-supers [args]
             (let [args (distinct args)
                   complements (for [a args
                                     b args
                                     :when (c/or (= a (list 'not b))
-                                              (= b (list 'not a)))]
+                                                (= b (list 'not a)))]
                                 [a b])]
               (cond
                 ;; does the list contain A and (not A) ?
