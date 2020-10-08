@@ -1046,13 +1046,11 @@
   
   (find-simplifier type-designator
                    [(fn [type-designator]
-                      (println [:case-1])
                       (if (member :empty-set (rest type-designator))
                         :empty-set
                         type-designator))
                     
                     (fn [type-designator]
-                      (println [:case-2])
                       (if (some =? (rest type-designator))
                         ;; (and Double (= "a")) --> (member)
                         ;; (and String (= "a")) --> (member "a")
@@ -1062,7 +1060,6 @@
                         type-designator))
                     
                     (fn [type-designator]
-                      (println [:case-3])
                       ;; (and Double (member 1.0 2.0 "a" "b")) --> (member 1.0 2.0)
                       (if (some member? (rest type-designator))
                         (let [member-candidates (filter member? (rest type-designator))
@@ -1072,13 +1069,11 @@
 
                     
                     (fn [type-designator]
-                      (println [:case-4])
                       (if (member :sigma (rest type-designator))
                         (cons 'and (map canonicalize-type (remove #{:sigma} (rest type-designator))))
                         type-designator))
 
                     (fn [type-designator]
-                      (println [:case-5])
                       ;; (and Double (not (member 1.0 2.0 "a" "b"))) --> (and Double (not (member 1.0 2.0)))
                       ;; (and Double (not (= "a"))) --> (and Double  (not (member)))
                       (if (some (fn [t]
@@ -1093,27 +1088,15 @@
                                                   (=? (second t))))
                                        (let [filtered-td (remove #{t} type-designator)
                                              [_not [_member & candidates]] t
-                                             _ (println [:candidates candidates
-                                                         :filtered-td filtered-td
-                                                         :map (map (fn [t2]
-                                                                     (println [:t2 t2
-                                                                               :filtered-td filtered-td
-                                                                               :type-type (type filtered-td)
-                                                                               :type? (typep t2 filtered-td)])
-                                                                     (typep t2 filtered-td))
-                                                                   candidates)
-                                                         ])
                                              filtered-candidates (filter (fn [t2] (typep t2 filtered-td))
                                                                          candidates)
                                              ]
-                                         (println [:filtered-candidates filtered-candidates])
                                          (cons 'member filtered-candidates))
                                        t
                                        ))
                                    (rest type-designator)))))
 
                     (fn [type-designator]
-                      (println [:case-6])
                       (cons 'and (map canonicalize-type (rest type-designator))))]))
 
 (defmethod canonicalize-type 'member

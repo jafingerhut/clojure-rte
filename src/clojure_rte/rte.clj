@@ -640,7 +640,6 @@
                                          :epsilon)
                                 :type (fn [type _functions]
                                         (cond 
-                                              
                                               (gns/disjoint? wrt type)
                                               :empty-set
 
