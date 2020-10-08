@@ -35,3 +35,9 @@
        (rte-compile '(:and (:cat :sigma :sigma) (:cat (:not String) Long)))
        :title "Example"
        :view false))))
+
+(deftest t-stackoverflow
+  (testing "dfa-to-dot which caused stack overflow"
+    (sut/bdd-to-dot (rte-to-dfa '(:cat (:* Boolean) (:or Long Double) (:+ String)))
+                    :view false
+                    :title "sample 1")))
