@@ -139,6 +139,17 @@
   [dfa]
   (map serialize-state (states-as-seq dfa)))
 
+(defn optimized-transition-function
+  "Given a set of transitions each of the form [type-designator state-index],
+  return a function which can be called with an candidate element of a sequence,
+  and the function will return the state-index.  When called with the
+  candidate object, will not evaluate any type predicate more than once.
+  The function assumes the types are mutually disjoint."
+  [transitions]
+  (fn [candidate]
+    (call-with-escape (fn [escape]
+                        
+
 (defn delta
   "Given a state and target-label, find the destination state (object of type State)"
   [dfa source-state target-label]
