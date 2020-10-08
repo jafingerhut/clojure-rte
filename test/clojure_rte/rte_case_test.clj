@@ -48,7 +48,7 @@
                        (:* Boolean) 1
                        (:* Long) 2
                        (:cat (:* Number) (:+ String) (:* Boolean)) 3
-                       (:sigma 4))))))
+                       :sigma 4)))))
 
 (deftest t-rte-case-clauses-to-dfa
   (testing "rte-case-clauses-to-dfa"

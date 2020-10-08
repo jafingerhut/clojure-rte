@@ -63,9 +63,6 @@
   The expression should evaluate to an object which is `sequential?`.
   Each clause is of the form
      rte consequent.
-  But in the final clause the rte is optional.  In the case of missing
-  rte in the final clause, the rte, :sigma, is assumed, analagous
-  to the final/default clause of the  clojure.core/cond.
   The rte is NOT evaluated, and should not be quoted.  It should be
   a syntacticaly correct regular type expression.
   If the first rte matches the sequence, then the consequent is evaluated
@@ -87,13 +84,6 @@
                 (empty? remaining-clauses)
                 [acc-fns acc-int-rte-pairs]
 
-                (empty? (rest remaining-clauses))
-                (recur (cons '(:* :sigma) remaining-clauses)
-                       index
-                       used-rtes
-                       acc-int-rte-pairs
-                       acc-fns)
-
                 :else
                 (let [[rte consequent & more] remaining-clauses]
                   (recur more
@@ -101,6 +91,8 @@
                          (cons rte used-rtes)
                          (conj acc-int-rte-pairs [index (canonicalize-pattern `(:and ~rte (:not (:or ~@used-rtes))))])
                          (conj acc-fns `(fn [] ~consequent)))))))]
+    (if (odd? (count clauses))
+      (throw (IllegalArgumentException. (str "rte-case, odd number of clauses is not supported. No matching clause: " (last clauses)))))
     
     (let [[fns int-rte-pairs] (compile-clauses clauses)
           num-fns (count fns)
