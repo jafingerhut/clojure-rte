@@ -24,7 +24,6 @@
               clojure-rte.api-test
               clojure-rte.bdd-test
               clojure-rte.cl-compat-test
-              [clojure-rte.core-test :refer :all :exclude [-main]]
               clojure-rte.dfa-test
               clojure-rte.dot-test
               clojure-rte.rte-test
@@ -40,7 +39,6 @@
   (clojure.test/run-tests 'clojure-rte.api-test
                           'clojure-rte.bdd-test
                           'clojure-rte.cl-compat-test
-                          'clojure-rte.core-test
                           'clojure-rte.dfa-test
                           'clojure-rte.dot-test
                           'clojure-rte.rte-test

@@ -21,11 +21,11 @@
 
 (ns clojure-rte.rte-case
   "This is an empty namespace to fool lein to load this file as part of
-  the clojure-rte.core ns."
+  the clojure-rte.rte-core ns."
   (:require [clojure-rte.genus-rte])
 )
 
-(in-ns 'clojure-rte.core)
+(in-ns 'clojure-rte.rte-core)
 
 (defn- rte-case-clauses-to-dfa
   "Helper function for macro-expanding rte-case.

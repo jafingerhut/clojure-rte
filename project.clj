@@ -31,6 +31,6 @@
                  [lein-cloverage "1.1.2"]
                  [org.clojure/data.json "1.0.0"]
                  [org.clojure/math.combinatorics "0.1.6"]]
-  :main ^:skip-aot clojure-rte.core
+  :main ^:skip-aot clojure-rte.rte-core
   :target-path "target/%s"
   :profiles {:uberjar {:aot :all}})

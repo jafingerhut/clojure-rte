@@ -21,9 +21,9 @@
 
 (ns clojure-rte.memoize
   "This is an empty namespace to fool lein to load this file as part of
-  the clojure-rte.core ns.")
+  the clojure-rte.rte-core ns.")
 
-(in-ns 'clojure-rte.core)
+(in-ns 'clojure-rte.rte-core)
 
 
 (def ^:dynamic rte-compile 

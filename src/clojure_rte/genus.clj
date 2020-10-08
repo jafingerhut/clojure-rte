@@ -32,6 +32,7 @@
 (declare subtype?)
 (declare disjoint?)
 (declare inhabited?)
+(declare type-equivalent?)
 
 (defn and? [t]
   (and (sequential? t)
@@ -69,6 +70,34 @@
   (if (class-designator? class-name)
     (resolve class-name)
     nil))
+
+(defn type-equivalent?-error [t1-designator t2-designator]
+  (throw (ex-info (format "type-equivalent? cannot decide %s vs %s" t1-designator t2-designator)
+                  {:error-type :not-yet-implemented
+                   :type-designators [t1-designator t1-designator]})))
+
+(def ^:dynamic *type-equivalent?-default*
+  "Default to return when type-equivalence cannot be determined.  This value is a binary
+  function which is called with the two type designators in question:
+  [t1 t2]"
+  type-equivalent?-error)
+
+(defn type-equivalent?
+  ([t1 t2]
+   (type-equivalent? t1 t2 *type-equivalent?-default*))
+  ([t1 t2 default]
+   (if (= t1 t2)
+     true
+     (binding [*type-equivalent?-default* default]
+       (let [s1 (subtype? t1 t2 (constantly :dont-know))
+             s2 (delay (subtype? t1 t2 (constantly :dont-know)))]
+         (case s1
+           (false) false
+           (case @s2
+             (false) false
+             (if (= true s1 @s2)
+               true
+               (default t1 t2)))))))))
 
 (defmulti typep 
   "Like clojure.core/instance? except that the arguments are reversed, and the
@@ -542,16 +571,26 @@
              (class-designator? sub)
              (class-designator? (second super))
              (= :final (class-type sub))
-             (= :final (class-type (second super))))
+             (= :final (class-type (second super)))
+             (= false (type-equivalent? sub (second super) (constantly :dont-know))))
         true
 
         (and (not? sub)  ; (subtype? '(not Double) 'Long)
              (class-designator? super)
              (class-designator? (second sub))
              (= :final (class-type super))
-             (= :final (class-type (second sub))))
+             (= :final (class-type (second sub)))
+             (= false (type-equivalent? (second sub) super (constantly :dont-know))))
         false
 
+        (and (not? sub)
+             (type-equivalent? (second sub) super (constantly false)))
+        false
+
+        (and (not? super)
+             (type-equivalent? sub (second super) (constantly false)))
+        false
+        
         (not (not? sub))
         :dont-know
 
@@ -597,7 +636,7 @@
           (some (fn [t] (subtype? t t2)) (rest t1)))
      ;; (subtype?  '(and String (not (member "a" "b" "c")))  'java.io.Serializable)
      true
-    
+
      ;; (subtype? (and A B C X Y) (and A B C) )
      (and (and? t1)
           (and? t2)

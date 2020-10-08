@@ -24,7 +24,7 @@
             [clojure.string]
             [clojure.set]
             [clojure-rte.cl-compat :as cl]
-            [clojure-rte.core :refer :all :exclude [-main]]
+            [clojure-rte.rte-core :refer :all :exclude [-main]]
             [clojure-rte.dfa :as dfa]
             [clojure-rte.bdd :as bdd]
             [clojure-rte.util :refer [member print-vals mapc]]
@@ -208,26 +208,26 @@
                     (recur referenced-labels
                            (apply dissoc groups unreferenced-labels)
                            (concat acc unreferenced-labels))))))]
-
       (with-out-str
         (cl-format *out* "digraph G {~%")
         (when title
           (cl-format *out* "// ~a~%" title))
         (cl-format *out* "  fontname=courier;~%")
         (let [all-nodes (set (tree-seq (fn [node]
-                                              (not (member node '(true false))))
-                                            (fn [bdd]
-                                              (for [child '(:positive :negative)
-                                                    :when (or draw-false-leaf
-                                                              (child bdd))]
-                                                (child bdd)))
-                                            bdd))
+                                         (not (member node '(true false))))
+                                       (fn [bdd]
+                                         (for [child '(:positive :negative)
+                                               :when (or draw-false-leaf
+                                                         (child bdd))]
+                                           (child bdd)))
+                                       bdd))
               node-to-index (zipmap all-nodes (range))
               apex-node (first all-nodes)
               leaf-nodes (clojure.set/intersection #{true false} all-nodes)
               internal-nodes (clojure.set/difference all-nodes leaf-nodes)
               groups (group-by :label internal-nodes)
               sorted-labels (top-sort groups)]
+
 
           (if (member apex-node '(true false))
             (write-leaf apex-node node-to-index) ;; always draw the leaf if there's only one, independent of draw-false-leaf
@@ -250,5 +250,5 @@
                   (draw-connection :positive bdd node-to-index )
                   (draw-connection :negative bdd node-to-index )))
               
-        )))
+              )))
         (cl-format *out* "}~%")))))
