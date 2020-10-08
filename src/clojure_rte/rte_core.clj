@@ -19,7 +19,7 @@
 ;; OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
 ;; WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-(ns clojure-rte.core
+(ns clojure-rte.rte-core
   (:require [clojure.set :refer [union]]
             [clojure.pprint :refer [cl-format]]
             [clojure-rte.cl-compat :as cl]
@@ -30,7 +30,7 @@
                                       print-vals sort-operands member]]
             [clojure-rte.genus :as gns]
             [clojure-rte.dfa :as dfa ]
-            [clojure-rte.rte]
+            [clojure-rte.rte-construct]
             [clojure-rte.memoize]
             [clojure-rte.api]
             [clojure-rte.rte-case]

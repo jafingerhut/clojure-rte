@@ -22,7 +22,7 @@
 (ns clojure-rte.rte-tester
   (:require [clojure-rte.tester  :as tester]
             [clojure.pprint :refer [cl-format]]
-            [clojure-rte.core :refer [rte-to-dfa canonicalize-pattern nullable]]
+            [clojure-rte.rte-core :refer [rte-to-dfa canonicalize-pattern nullable]]
             ))
 
 (defn rte-components [pattern]

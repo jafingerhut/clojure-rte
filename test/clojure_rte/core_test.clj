@@ -24,6 +24,6 @@
             [clojure.pprint :refer [cl-format]]
             [clojure-rte.util :refer [sort-operands remove-once call-with-collector visit-permutations]]
             [clojure-rte.genus :refer [disjoint? typep inhabited?]]
-            [clojure-rte.core :refer :all :exclude [-main]]
+            [clojure-rte.rte-core :refer :all :exclude [-main]]
             [clojure-rte.rte-tester :refer :all]))
 

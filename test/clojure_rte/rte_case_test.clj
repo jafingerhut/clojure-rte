@@ -21,7 +21,7 @@
 
 (ns clojure-rte.rte-case-test
   (:require [clojure.test :refer :all]
-            [clojure-rte.core :refer :all :exclude [-main]]
+            [clojure-rte.rte-core :refer :all :exclude [-main]]
             [clojure-rte.rte-case :refer :all]
 ))
 
@@ -53,10 +53,10 @@
 (deftest t-rte-case-clauses-to-dfa
   (testing "rte-case-clauses-to-dfa"
     (is (= 0 (rte-match
-              ;; I don't know why it is necessary to prefix clojure-rte.core/rte-case-clauses-to-dfa
+              ;; I don't know why it is necessary to prefix clojure-rte.rte-core/rte-case-clauses-to-dfa
               ;; otherwise the loader complains:
               ;; java.lang.RuntimeException: Unable to resolve symbol: rte-case-clauses-to-dfa in this context
-              (#'clojure-rte.core/rte-case-clauses-to-dfa
+              (#'clojure-rte.rte-core/rte-case-clauses-to-dfa
 
                '[[0 (:and (:* Long) (:not (:or)))]
                  [1 (:and (:* Boolean) (:not (:or (:* Long))))]
@@ -69,7 +69,7 @@
         "case-0")
 
     (is (= 1 (rte-match
-              (#'clojure-rte.core/rte-case-clauses-to-dfa
+              (#'clojure-rte.rte-core/rte-case-clauses-to-dfa
                '[[0 (:and (:* Long) (:not (:or)))]
                  [1 (:and (:* Boolean) (:not (:or (:* Long))))]
                  [2 (:and (:* String) (:not (:or (:* Boolean) (:* Long))))]
@@ -81,7 +81,7 @@
         "case-1")
 
     (is (= 2 (rte-match
-              (#'clojure-rte.core/rte-case-clauses-to-dfa
+              (#'clojure-rte.rte-core/rte-case-clauses-to-dfa
                '[[0 (:and (:* Long) (:not (:or)))]
                  [1 (:and (:* Boolean) (:not (:or (:* Long))))]
                  [2 (:and (:* String) (:not (:or (:* Boolean) (:* Long))))]
@@ -93,7 +93,7 @@
         "case-2")
 
     (is (= 3 (rte-match
-              (#'clojure-rte.core/rte-case-clauses-to-dfa
+              (#'clojure-rte.rte-core/rte-case-clauses-to-dfa
                '[[0 (:and (:* Long) (:not (:or)))]
                  [1 (:and (:* Boolean) (:not (:or (:* Long))))]
                  [2 (:and (:* String) (:not (:or (:* Boolean) (:* Long))))]

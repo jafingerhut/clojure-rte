@@ -19,14 +19,14 @@
 ;; OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
 ;; WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-(ns clojure-rte.rte
+(ns clojure-rte.rte-construct
   "This is an empty namespace to fool lein to load this file as part of
-  the clojure-rte.core ns.")
+  the clojure-rte.rte-core ns.")
 
 (in-ns 'clojure-rte.genus)
 (declare rte?)
 
-(in-ns 'clojure-rte.core)
+(in-ns 'clojure-rte.rte-core)
 
 (declare traverse-pattern)
 (declare canonicalize-pattern)

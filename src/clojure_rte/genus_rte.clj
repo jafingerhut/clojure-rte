@@ -21,7 +21,7 @@
 
 (ns clojure-rte.genus-rte
   "This is an empty namespace to fool lein to load this file as part of
-  the clojure-rte.core ns.")
+  the clojure-rte.rte-core ns.")
 
 (in-ns 'clojure-rte.genus)
 
@@ -29,7 +29,7 @@
   (and (sequential? t)
        (= 'rte (first t))))
 
-(in-ns 'clojure-rte.core)
+(in-ns 'clojure-rte.rte-core)
 
 (defmethod gns/typep 'rte [a-value [_a-type pattern]]
   (and (sequential? a-value)

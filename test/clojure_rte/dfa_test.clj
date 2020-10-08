@@ -21,7 +21,7 @@
 
 (ns clojure-rte.dfa-test
   (:require ;; [clojure-rte.core :refer :all]
-            [clojure-rte.core :refer :all :exclude [-main]]
+            [clojure-rte.rte-core :refer :all :exclude [-main]]
             [clojure-rte.dfa :refer :all]
             [clojure-rte.bdd :as bdd]
             [clojure.pprint :refer [cl-format]]
