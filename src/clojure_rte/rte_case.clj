@@ -276,7 +276,7 @@
 
    [[name lambda-list & others] {lambda-list (satisfies vector?)}]
    `(destructuring-fn-many
-     ~@(if name (list name) nil) ;; either name or nothing
+     ~name
      (~lambda-list
       ~@others))
    
@@ -284,7 +284,7 @@
                                    (not (= ()))
                                    (rte (:* (:cat (satisfies vector?) (:* :sigma)))))}]
    `(destructuring-fn-many
-     ~@(if name (list name) nil) ;; either name or nothing
+     ~name
      ~@clauses)
 
    [[& others] {}]
