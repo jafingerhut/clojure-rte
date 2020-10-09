@@ -76,7 +76,7 @@
    ((sequential? (:states dfa))
     (:states dfa))
    (:else
-    (throw (ex-info (format "invalid :states = %s" (:states dfa)))))))
+    (throw (ex-info (format "invalid :states = %s" (:states dfa)) {})))))
 
 (defn ids-as-seq
   "Return a sequence of ids of the states which can be iterated over."
