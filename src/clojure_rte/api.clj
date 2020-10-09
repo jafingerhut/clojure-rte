@@ -110,7 +110,7 @@
                 (cl/cl-cond
                  ((member state-obj sink-states)
                   (reduced false))
-                 (((slow-transition-function (:transitions state-obj)) item))
+                 (((fast-transition-function (:transitions state-obj)) item))
                  (:else (reduced false)))))]
       (let [final-state (reduce consume 0 items)]
         ;; final-state may be integer desgnating the state which was
