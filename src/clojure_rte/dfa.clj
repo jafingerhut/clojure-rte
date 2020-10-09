@@ -152,16 +152,22 @@
     (letfn [(type-intersect [t1 t2]
               (list 'and t1 t2))]
     (let [state-id->pseudo-type (into {} (for [[type state-id] transitions
-                                               tag (gensym "pseudo-")]
+                                               :let [tag (gensym "pseudo-")]]
                                            [state-id `(~'satisfies ~tag)]))
           pseudo-type->state-id (into {} (for [[state-id tag] state-id->pseudo-type]
                                            [tag state-id]))
-          bdd (reduce (fn [accum-bdd [type state-id]]
-                        (println [:reduce :type type])
-                        (bdd/or accum-bdd
-                                (type-intersect (bdd/bdd type)
-                                                (state-id->pseudo-type state-id))))
-                      false transitions)]
+          pseudo-type-functions (for [[_ [_ function-designator]] state-id->pseudo-type]
+                                  function-designator)
+          ;; TODO need to set variable ordering to assure that satisfies come at bottom of bdd
+          ;;    and that pseudo types come at the very bottom.
+          bdd (binding [gns/*pseudo-type-functions* (concat pseudo-type-functions
+                                                            gns/*pseudo-type-functions*)]
+                (reduce (fn [accum-bdd [type state-id]]
+                          (bdd/or accum-bdd
+                                  (bdd/bdd (type-intersect type
+                                                           (state-id->pseudo-type state-id)))))
+                        false transitions))]
+      ;; (dot/bdd-to-dot bdd :title (gensym "bdd") :view true)
       (fn [candidate]
         (loop [bdd' bdd
                lineage ()]
@@ -172,13 +178,13 @@
                             {:lineage lineage
                              :transitions transitions
                              :bdd bdd})))
-           ((pseudo-type->state-id (:label bdd) false)) ;; this is the return value of the (fn [] ...)
-           ((gns/typep candidate (:label bdd))
-                (recur (:positive bdd)
-                       (cons (:label bdd) lineage)))
+           ((pseudo-type->state-id (:label bdd') false)) ;; this is the return value of the (fn [] ...)
+           ((gns/typep candidate (:label bdd'))
+            (recur (:positive bdd')
+                   (cons (:label bdd') lineage)))
            (true
-            (recur (:negative bdd)
-                       (cons (list 'not (:label bdd)) lineage))))))))))
+            (recur (:negative bdd')
+                   (cons (list 'not (:label bdd')) lineage))))))))))
 
 (defn delta
   "Given a state and target-label, find the destination state (object of type State)"

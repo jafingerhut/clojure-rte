@@ -206,8 +206,14 @@
        (resolve f)
        (fn? (deref (resolve f)))))
 
+(def ^:dynamic *pseudo-type-functions*
+  "List of function designators which will be trusted as operand of satisfies
+  for the purse of valid-type?"
+  ())
+
 (defmethod valid-type? 'satisfies [[_ f]]
-  (callable-designator? f))
+  (or (member f *pseudo-type-functions*)
+      (callable-designator? f)))
 
 (declare expand-satisfies)
 
