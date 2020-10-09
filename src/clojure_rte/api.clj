@@ -96,16 +96,21 @@
   [dfa items]
   (let [state-vec (:states dfa)
         sink-states (set (dfa/find-sink-states dfa))]
-    (letfn [(consume [state-index item]
+    (letfn [(slow-transition-function [transitions]
+              (fn [candidate]
+                (some (fn [[type next-state-index]]
+                        (if (gns/typep candidate type)
+                          next-state-index
+                          false))
+                      transitions)))
+            (fast-transition-function [transitions]
+              (dfa/optimized-transition-function transitions))
+            (consume [state-index item]
               (let [state-obj (state-vec state-index)]
                 (cl/cl-cond
                  ((member state-obj sink-states)
                   (reduced false))
-                 ((some (fn [[type next-state-index]]
-                          (if (gns/typep item type)
-                            next-state-index
-                            false))
-                        (:transitions state-obj)))
+                 (((slow-transition-function (:transitions state-obj)) item))
                  (:else (reduced false)))))]
       (let [final-state (reduce consume 0 items)]
         ;; final-state may be integer desgnating the state which was

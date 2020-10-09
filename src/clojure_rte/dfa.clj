@@ -148,9 +148,37 @@
   the universe.  I.e., the union of all the types is :sigma, and for any two
   of the types, (a,b), a ^ b = :empty-set."
   [transitions]
-  (fn [candidate]
-    (call-with-escape (fn [escape]
-                        
+  (bdd/with-hash []
+    (letfn [(type-intersect [t1 t2]
+              (list 'and t1 t2))]
+    (let [state-id->pseudo-type (into {} (for [[type state-id] transitions
+                                               tag (gensym "pseudo-")]
+                                           [state-id `(~'satisfies ~tag)]))
+          pseudo-type->state-id (into {} (for [[state-id tag] state-id->pseudo-type]
+                                           [tag state-id]))
+          bdd (reduce (fn [accum-bdd [type state-id]]
+                        (println [:reduce :type type])
+                        (bdd/or accum-bdd
+                                (type-intersect (bdd/bdd type)
+                                                (state-id->pseudo-type state-id))))
+                      false transitions)]
+      (fn [candidate]
+        (loop [bdd' bdd
+               lineage ()]
+          (cl/cl-cond
+           ((member bdd' '(true false))
+            (throw (ex-info (cl-format false "types given on transitions not exhaustive ~A, no case given for"
+                                       transitions (cons 'and lineage))
+                            {:lineage lineage
+                             :transitions transitions
+                             :bdd bdd})))
+           ((pseudo-type->state-id (:label bdd) false)) ;; this is the return value of the (fn [] ...)
+           ((gns/typep candidate (:label bdd))
+                (recur (:positive bdd)
+                       (cons (:label bdd) lineage)))
+           (true
+            (recur (:negative bdd)
+                       (cons (list 'not (:label bdd)) lineage))))))))))
 
 (defn delta
   "Given a state and target-label, find the destination state (object of type State)"
