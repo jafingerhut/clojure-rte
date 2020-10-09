@@ -386,9 +386,11 @@
                      (disjoint? t1 t)) (rest t2)))
         ;; (disjoint? X (and A B C))
         true
-        
+
+        ;; (disjoint? (and A B C) X)
         (and (and? t1)
-             (some #{t2} (rest t1)))
+             (some #{t2} (rest t1))
+             (inhabited? t2 (constantly false)))
         false
         
         ;; (disjoint? 'A '(and B C))
