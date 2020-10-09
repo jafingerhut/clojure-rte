@@ -216,12 +216,16 @@
 
 (deftest t-acceptance
   (testing "acceptance:  testing whether rte-match works same on dfa when trimmed and minimized."
+
+    (t-acceptance-test-rte  '(:and (:* Long) (:not (:* Short)))) ;; this was an explicit failing test
+    
     (doseq [
             rte-1 test-rtes
             rte-2 test-rtes
             rte [`(:and ~rte-1 (:not ~rte-2))
                  `(:or  ~rte-1 (:not ~rte-2))]
             ]
+      (println [:rte rte])
       (t-acceptance-test-rte rte))))
 
 (deftest t-test-1
