@@ -376,10 +376,15 @@
     :else
     :dont-know))
 
+(defmethod -disjoint? :or [t1 t2]
+  ;; TODO fill in some details
+  :dont-know)
+
 (defmethod -disjoint? :and [t1 t2]
   (cond (and (and? t2)
              (some (fn [t]
                      (disjoint? t1 t)) (rest t2)))
+        ;; (disjoint? X (and A B C))
         true
         
         (and (and? t1)
@@ -664,6 +669,7 @@
 (defmethod -disjoint? :not-disjoint [t1 t2]
   (cond (and (not? t2)
              (disjoint? t1 (second t2) (constantly false)))
+        ;; (disjoint? A (not B)) 
         false
         
         ;; (disjoint?   'java.io.Serializable '(not java.lang.Comparable))
@@ -744,7 +750,7 @@
          (= t1 (second t2)))
     true
     
-    ;; (disjoint? X (not Y)) where X||Y
+    ;; (disjoint? X (not Y)) where X||Y ;; TODO isn't this a duplicate?
     (and (not? t2)
          (disjoint? (second t2) t1 (constantly false)))
     false
@@ -770,7 +776,6 @@
          (isa? (find-class (second t2)) (find-class t1)))
     false
 
-
     ;; (disjoint? '(not Boolean) '(not Long))
     ;; (disjoint? '(not A) '(not B))
     ;; if disjoint classes A and B
@@ -781,7 +786,7 @@
          (disjoint? (second t1) (second t2)))
     false
 
-    ;; (disjoint? 'java.io.Serializable '(not java.lang.Comparable))
+    ;; (disjoint? 'java.io.Serializable '(not java.lang.Comparable)) ;; TODO isn't this a duplicate?
     (and (class-designator? t1)
          (not? t2)
          (class-designator? (second t2))
