@@ -144,7 +144,9 @@
   return a function which can be called with an candidate element of a sequence,
   and the function will return the state-index.  When called with the
   candidate object, will not evaluate any type predicate more than once.
-  The function assumes the types are mutually disjoint."
+  The function assumes the types are mutually disjoint and that they partition
+  the universe.  I.e., the union of all the types is :sigma, and for any two
+  of the types, (a,b), a ^ b = :empty-set."
   [transitions]
   (fn [candidate]
     (call-with-escape (fn [escape]

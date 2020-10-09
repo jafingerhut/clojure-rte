@@ -100,7 +100,8 @@
                (default t1 t2)))))))))
 
 (defmulti typep 
-  "Like clojure.core/instance? except that the arguments are reversed, and the
+  "(typep value type-descriptor)
+  Like clojure.core/instance? except that the arguments are reversed, and the
   given type designator need not be a class.  The given type 
   designator may be a (1) class, (2) a symbol resolving to a class, or
   (3) a CL style type designator such as
