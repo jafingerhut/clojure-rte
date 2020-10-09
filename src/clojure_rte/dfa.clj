@@ -139,7 +139,7 @@
   [dfa]
   (map serialize-state (states-as-seq dfa)))
 
-(defn optimized-transition-function
+(defn- -optimized-transition-function
   "Given a set of transitions each of the form [type-designator state-index],
   return a function which can be called with an candidate element of a sequence,
   and the function will return the state-index.  When called with the
@@ -151,40 +151,72 @@
   (bdd/with-hash []
     (letfn [(type-intersect [t1 t2]
               (list 'and t1 t2))]
-    (let [state-id->pseudo-type (into {} (for [[type state-id] transitions
-                                               :let [tag (gensym "pseudo-")]]
-                                           [state-id `(~'satisfies ~tag)]))
-          pseudo-type->state-id (into {} (for [[state-id tag] state-id->pseudo-type]
-                                           [tag state-id]))
-          pseudo-type-functions (for [[_ [_ function-designator]] state-id->pseudo-type]
-                                  function-designator)
-          ;; TODO need to set variable ordering to assure that satisfies come at bottom of bdd
-          ;;    and that pseudo types come at the very bottom.
-          bdd (binding [gns/*pseudo-type-functions* (concat pseudo-type-functions
-                                                            gns/*pseudo-type-functions*)]
-                (reduce (fn [accum-bdd [type state-id]]
-                          (bdd/or accum-bdd
-                                  (bdd/bdd (type-intersect type
-                                                           (state-id->pseudo-type state-id)))))
-                        false transitions))]
-      ;; (dot/bdd-to-dot bdd :title (gensym "bdd") :view true)
-      (fn [candidate]
-        (loop [bdd' bdd
-               lineage ()]
-          (cl/cl-cond
-           ((member bdd' '(true false))
-            (throw (ex-info (cl-format false "types given on transitions not exhaustive ~A, no case given for"
-                                       transitions (cons 'and lineage))
-                            {:lineage lineage
-                             :transitions transitions
-                             :bdd bdd})))
-           ((pseudo-type->state-id (:label bdd') false)) ;; this is the return value of the (fn [] ...)
-           ((gns/typep candidate (:label bdd'))
-            (recur (:positive bdd')
-                   (cons (:label bdd') lineage)))
-           (true
-            (recur (:negative bdd')
-                   (cons (list 'not (:label bdd')) lineage))))))))))
+      (let [firsts (map first transitions)
+            seconds (map second transitions)]
+        (assert (= (count first) (count (distinct firsts)))
+                (cl-format false "transitions has a duplication: ~A" (difference firsts (distinct firsts))))
+        (assert (= (count seconds) (count (distinct seconds)))
+                (cl-format false "transitions has a duplication: ~A" (difference seconds (distinct seconds)))))
+      (let [            state-id->pseudo-type (into {} (for [[type state-id] transitions
+                                                 :let [tag (gensym "pseudo-")]]
+                                             [state-id `(~'satisfies ~tag)]))
+            pseudos (for [[_ tag] state-id->pseudo-type]
+                      tag)
+            pseudo-type->state-id (into {} (for [[state-id tag] state-id->pseudo-type]
+                                             [tag state-id]))
+            pseudo-type-functions (for [[_ [_ function-designator]] state-id->pseudo-type]
+                                    function-designator)
+            old-label-< bdd/*label-<*
+            ;; TODO need to set variable ordering to assure that satisfies come at bottom of bdd
+            ;;    and that pseudo types come at the very bottom.
+            bdd (binding [gns/*pseudo-type-functions* (concat pseudo-type-functions
+                                                              gns/*pseudo-type-functions*)
+                          bdd/*label-<* (fn [t1 t2]
+                                          (cond (and (member t1 pseudos)
+                                                     (member t2 pseudos))
+                                                (old-label-< t1 t2)
+
+                                                (member t1 pseudos)
+                                                false
+
+                                                (member t2 pseudos)
+                                                true
+
+                                                :else
+                                                (old-label-< t1 t2)))]
+                  (reduce (fn [accum-bdd [type state-id]]
+                            (bdd/or accum-bdd
+                                    (bdd/bdd (type-intersect type
+                                                             (state-id->pseudo-type state-id)))))
+                          false transitions))]
+        ;; (dot/bdd-to-dot bdd :title (gensym "bdd") :view true)
+        (fn [candidate]
+          (loop [bdd' bdd
+                 lineage ()]
+            (cl/cl-cond
+             ((member bdd' '(true false))
+              (throw (ex-info (cl-format false "types given on transitions not exhaustive ~A, no case given for"
+                                         transitions (cons 'and lineage))
+                              {:lineage lineage
+                               :transitions transitions
+                               :bdd bdd})))
+             ((pseudo-type->state-id (:label bdd') false)) ;; this is the return value of the (fn [] ...)
+             ((gns/typep candidate (:label bdd'))
+              (recur (:positive bdd')
+                     (cons (:label bdd') lineage)))
+             (true
+              (recur (:negative bdd')
+                     (cons (list 'not (:label bdd')) lineage))))))))))
+
+(def optimized-transition-function 
+  "Given a set of transitions each of the form [type-designator state-index],
+  return a function which can be called with an candidate element of a sequence,
+  and the function will return the state-index.  When called with the
+  candidate object, will not evaluate any type predicate more than once.
+  The function assumes the types are mutually disjoint and that they partition
+  the universe.  I.e., the union of all the types is :sigma, and for any two
+  of the types, (a,b), a ^ b = :empty-set."
+  (memoize -optimized-transition-function))
 
 (defn delta
   "Given a state and target-label, find the destination state (object of type State)"
