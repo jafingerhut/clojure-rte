@@ -67,7 +67,8 @@
            (sh *dot-path* "-Tpng" "-o" png-file-name
                :in dot-string)
            (when (= "Mac OS X" (System/getProperty "os.name"))
-             (let [stat (sh "open" "-a" "Preview" png-file-name)]
+             ;; -g => don't bring Preview to forground, and thus don't steal focus
+             (let [stat (sh "open" "-g" "-a" "Preview" png-file-name)]
                (if (not (= 0 (:exit stat)))
                  (println dot-string))
                stat)))
@@ -153,7 +154,8 @@
              (if (not (= 0 (:exit stat)))
                (println stat)))
            (when (= "Mac OS X" (System/getProperty "os.name"))
-             (let [stat (sh "open" "-a" "Preview" png-file-name)]
+             ;; -g => don't bring Preview to forground, and thus don't steal focus
+             (let [stat (sh "open" "-g" "-a" "Preview" png-file-name)]
                (if (not (= 0 (:exit stat)))
                  (println dot-string))
                stat)))
