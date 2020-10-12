@@ -224,14 +224,14 @@
                     (empty? (rest tds))
                     (first tds)
                     :else
-                    (cons 'or (rest tds))))
+                    (cons 'or tds)))
             ]
       (let [types (map first transitions)
             duplicate-types (find-duplicates types)
             inhabited-types (delay (filter (fn [td] (gns/inhabited? td (constantly false)))
                                            types))
             consequents (map second transitions)]
-
+        
         (cond
           (not= (count consequents) (count (distinct consequents)))
           ;; If there is a duplicate consequent, then the corresponding types can be unioned.
