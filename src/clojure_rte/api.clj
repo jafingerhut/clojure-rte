@@ -29,7 +29,6 @@
   (cond (instance? (dfa/record-name) ;; parser cannot handle dfa/Dfa
                    obj)
         :Dfa
-
         (sequential? obj)
         :sequential
 
@@ -95,22 +94,26 @@
 (defmethod rte-match :Dfa
   [dfa items]
   (let [state-vec (:states dfa)
-        sink-states (set (dfa/find-sink-states dfa))]
+        sink-states (set (dfa/find-sink-states dfa))
+        sink-state-id (if (empty? sink-states)
+                        (throw (ex-info (cl-format false "rte-match requires a sink-state in the given Dfa")
+                                        {:dfa dfa}))
+                        (:index (first sink-states)))]
     (letfn [(slow-transition-function [transitions]
               (fn [candidate]
                 (some (fn [[type next-state-index]]
                         (if (gns/typep candidate type)
                           next-state-index
-                          false))
+                          sink-state-id))
                       transitions)))
             (fast-transition-function [transitions]
-              (dfa/optimized-transition-function transitions))
+              (dfa/optimized-transition-function transitions sink-state-id))
             (consume [state-index item]
               (let [state-obj (state-vec state-index)]
                 (cl/cl-cond
                  ((member state-obj sink-states)
                   (reduced false))
-                 (((fast-transition-function (:transitions state-obj)) item))
+                 (((fast-transition-function (:transitions state-obj)) item sink-state-id))
                  (:else (reduced false)))))]
       (let [final-state (reduce consume 0 items)]
         ;; final-state may be integer desgnating the state which was

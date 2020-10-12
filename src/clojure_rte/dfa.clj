@@ -91,6 +91,7 @@
   (assert (map? (:states dfa))  (format "states must be a map, not a ~A: ~A" (type (:states dfa)) (:states dfa)))
   (let [ids (set (ids-as-seq dfa))]
     (doseq [q (states-as-seq dfa)]
+      (assert (instance? State q) (cl-format false "expecting a State, got a ~A, ~A" (type q) q))
       (assert (:index q) (format "state %s has emtpy :index" q))
       (assert (= q (state-by-index dfa (:index q)))
               (format "state %s disagrees with its index %s" q (:index q)))
@@ -145,11 +146,8 @@
   "Given a set of transitions each of the form [type-designator state-index],
   return a function which can be called with an candidate element of a sequence,
   and the function will return the state-index.  When called with the
-  candidate object, will not evaluate any type predicate more than once.
-  The function assumes the types are mutually disjoint and that they partition
-  the universe.  I.e., the union of all the types is :sigma, and for any two
-  of the types, (a,b), a ^ b = :empty-set."
-  [transitions]
+  candidate object, will not evaluate any type predicate more than once."
+  [transitions default]
   (bdd/with-hash []
     (letfn [(type-intersect [t1 t2]
               (list 'and t1 t2))
@@ -168,6 +166,15 @@
                       (recur (rest items)
                              duplicates))))
 
+            ;; local-function pretty-or
+            (pretty-or [tds]
+              (cond (empty? tds);; should not occur
+                    :empty-set
+                    (empty? (rest tds))
+                    (first tds)
+                    :else
+                    (cons 'or tds)))
+            
             ;; local function gen-function
             (gen-function []
               (let [state-id->pseudo-type (into {} (for [[type state-id] transitions
@@ -195,22 +202,23 @@
 
                                                         :else
                                                         (old-label-< t1 t2)))]
-                          (reduce (fn [accum-bdd [type state-id]]
-                                    (bdd/or accum-bdd
-                                            (bdd/bdd (type-intersect type
-                                                                     (state-id->pseudo-type state-id)))))
-                                  false transitions))]
-                ;; (dot/bdd-to-dot bdd :title (gensym "bdd") :view true)
-                (fn [candidate]
+                          (first (reduce (fn [[accum-bdd previous-types] [type state-id]]
+                                           [(bdd/or accum-bdd
+                                                    (bdd/bdd `(~'and ~(type-intersect type
+                                                                                      (state-id->pseudo-type state-id))
+                                                               ;; in case the types are not disjoint
+                                                               (~'not (~'or ~@previous-types)))))
+                                            (cons type previous-types)])
+                                         [false '(:empty-set)] ;; initial bdd and empty-type
+                                         transitions)))]
+                ;;(clojure-rte.dot/bdd-to-dot bdd :title (gensym "bdd") :view true)
+                (fn [candidate default]
                   (loop [bdd' bdd
                          lineage ()]
                     (cl/cl-cond
                      ((member bdd' '(true false))
-                      (throw (ex-info (cl-format false "types given on transitions not exhaustive ~A, no case given for ~A"
-                                                 transitions (cons 'and lineage))
-                                      {:lineage lineage
-                                       :transitions transitions
-                                       :bdd bdd})))
+                      ;; transitions not exhaustive
+                      default)
                      ((pseudo-type->state-id (:label bdd') false)) ;; this is the return value of the (fn [] ...)
                      ((gns/typep candidate (:label bdd'))
                       (recur (:positive bdd')
@@ -218,15 +226,6 @@
                      (true
                       (recur (:negative bdd')
                              (cons (list 'not (:label bdd')) lineage))))))))
-
-            ;; local-function pretty-or
-            (pretty-or [tds]
-              (cond (empty? tds);; should not occur
-                    :empty-set
-                    (empty? (rest tds))
-                    (first tds)
-                    :else
-                    (cons 'or tds)))
             ]
       (let [types (map first transitions)
             duplicate-types (find-duplicates types)
@@ -238,7 +237,8 @@
           (not= (count consequents) (count (distinct consequents)))
           ;; If there is a duplicate consequent, then the corresponding types can be unioned.
           (-optimized-transition-function (for [[consequent transitions] (group-by second transitions)]
-                                            [(pretty-or (map first transitions)) consequent]))
+                                            [(pretty-or (map first transitions)) consequent])
+                                          default)
 
           (empty? duplicate-types)
           (gen-function)
@@ -262,7 +262,9 @@
   The function assumes the types are mutually disjoint and that they partition
   the universe.  I.e., the union of all the types is :sigma, and for any two
   of the types, (a,b), a ^ b = :empty-set."
-  (memoize -optimized-transition-function))
+  (memoize -optimized-transition-function)
+  ;;-optimized-transition-function
+  )
 
 (defn delta
   "Given a state and target-label, find the destination state (object of type State)"

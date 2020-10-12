@@ -187,10 +187,10 @@
   (doseq [seq-root test-seqs
           exit-value [42 true -1]
           :let [dfa (rte-to-dfa rte exit-value)
-                dfa-trim (trim dfa)
-                dfa-min (minimize dfa)
-                dfa-min-trim (trim dfa-min)
-                dfa-trim-min (minimize dfa-trim)]
+                dfa-trim (extend-with-sink-state (trim dfa))
+                dfa-min (extend-with-sink-state (minimize dfa))
+                dfa-min-trim (extend-with-sink-state (trim dfa-min))
+                dfa-trim-min (extend-with-sink-state (minimize dfa-trim))]
           reps (range 5)
           :let [seq-long (reduce concat (repeat reps seq-root))
                 match? (rte-match dfa seq-long)]

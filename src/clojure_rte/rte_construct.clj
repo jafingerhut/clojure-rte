@@ -811,25 +811,26 @@
                        ) triples)
         grouped (group-by (fn [trip]
                             (trip 0)) triples)]
-    (dfa/map->Dfa
-     {:pattern given-pattern
-      :canonicalized pattern
-      :exit-map (constantly exit-value)
-      :combine-labels rte-combine-labels
-      :states
-                      (let [transitions (if (and (grouped index)
-                                                 (apply = (map (fn [[_src _wrt dst]]
-                                                                 dst) (grouped index))))
-                                          ;; if all transitions have same dst, then don't draw
-                                          ;; multiple transitions, just draw with with label = :sigma
-                                          (list [:sigma ((first (grouped index)) 2)])
-                                          (map (fn [[_src wrt dst]]
-                                                 [wrt dst]) (grouped index)))]
-                        (dfa/map->State {:index index
-                                     :initial (= 0 index)
-                                     :accepting (nullable deriv)
-                                     :pattern deriv
-                                     :transitions transitions})))
-                    derivatives (range (count derivatives))))}))))
+    (dfa/extend-with-sink-state
+     (dfa/map->Dfa
+      {:pattern given-pattern
+       :canonicalized pattern
+       :exit-map (constantly exit-value)
+       :combine-labels rte-combine-labels
+       :states
        (into {} (map (fn [deriv index]
+                       (let [transitions (if (and (grouped index)
+                                                  (apply = (map (fn [[_src _wrt dst]]
+                                                                  dst) (grouped index))))
+                                           ;; if all transitions have same dst, then don't draw
+                                           ;; multiple transitions, just draw with with label = :sigma
+                                           (list [:sigma ((first (grouped index)) 2)])
+                                           (map (fn [[_src wrt dst]]
+                                                  [wrt dst]) (grouped index)))]
+                         (dfa/map->State {:index index
+                                          :initial (= 0 index)
+                                          :accepting (nullable deriv)
+                                          :pattern deriv
+                                          :transitions transitions})))
+                     derivatives (range (count derivatives))))})))))
 
