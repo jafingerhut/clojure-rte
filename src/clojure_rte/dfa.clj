@@ -153,11 +153,11 @@
               (list 'and t1 t2))]
       (let [firsts (map first transitions)
             seconds (map second transitions)]
-        (assert (= (count first) (count (distinct firsts)))
+        (assert (= (count firsts) (count (distinct firsts)))
                 (cl-format false "transitions has a duplication: ~A" (difference firsts (distinct firsts))))
         (assert (= (count seconds) (count (distinct seconds)))
                 (cl-format false "transitions has a duplication: ~A" (difference seconds (distinct seconds)))))
-      (let [            state-id->pseudo-type (into {} (for [[type state-id] transitions
+      (let [state-id->pseudo-type (into {} (for [[type state-id] transitions
                                                  :let [tag (gensym "pseudo-")]]
                                              [state-id `(~'satisfies ~tag)]))
             pseudos (for [[_ tag] state-id->pseudo-type]
