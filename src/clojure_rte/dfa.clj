@@ -355,6 +355,41 @@
   [dfa]
   (remove complete-state? (states-as-seq dfa)))
 
+(defn ensure-sink-state
+  "Return one of the sink states of the Dfa if there is one,
+  or allocate a sink state, without explicitly adding it to the Dfa.
+  The calling function is responsible for inserting the newly created
+  sink state into the Dfa if necessary."
+  [dfa]
+  (or (first (find-sink-states dfa))
+      (let [available-ids (filter (fn [id]
+                                    ;; find smallest non-negative integer which is not already
+                                    ;; a state-id in this Dfa
+                                    (not (contains? (:states dfa) id))) (range))
+            sink-id (first available-ids)]
+        (map->State {:index sink-id
+                     :accepting false
+                     :transitions (list [:sigma sink-id])}))))
+
+(defn extend-with-sink-state
+  "If the given Dfa has a sink state, then just return the Dfa, else
+  allocate a sink state, and return a new Dfa which differs from the given
+  Dfa on in that the sink state has been appended."
+  [dfa]
+  (let [sink-state (ensure-sink-state dfa)]
+    (assert (instance? State sink-state))
+    
+    (cond
+      (member sink-state (states-as-seq dfa))
+      dfa
+
+      (state-by-index dfa (:index sink-state))
+      (throw (ex-info (cl-format false "ensure-sink-state failed to create a proper state index") {}))
+
+      :else
+      (make-dfa dfa
+                {:states (assoc (states-as-map dfa) (:index sink-state) sink-state)}))))
+
 (defn complete
   "Render complete the given Dfa.
   If it is already complete, then simply return it,
@@ -367,13 +402,7 @@
        dfa
        (complete dfa incomplete))))
   ([dfa incomplete]
-   (let [sink-state (or (first (find-sink-states dfa))
-                        (let [available-ids (filter (fn [id]
-                                                      (not (contains? (:states dfa) id))) (range))
-                              sink-id (first available-ids)]
-                          (map->State {:index sink-id
-                                       :accepting false
-                                       :transitions (list [:sigma sink-id])})))]
+   (let [sink-state (ensure-sink-state dfa)]
      (make-dfa dfa
                {:states
                 (let [current-states (states-as-seq dfa)
