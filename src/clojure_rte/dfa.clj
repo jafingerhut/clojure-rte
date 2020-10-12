@@ -204,7 +204,7 @@
                          lineage ()]
                     (cl/cl-cond
                      ((member bdd' '(true false))
-                      (throw (ex-info (cl-format false "types given on transitions not exhaustive ~A, no case given for"
+                      (throw (ex-info (cl-format false "types given on transitions not exhaustive ~A, no case given for ~A"
                                                  transitions (cons 'and lineage))
                                       {:lineage lineage
                                        :transitions transitions
