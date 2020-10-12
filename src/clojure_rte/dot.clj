@@ -21,6 +21,7 @@
 
 (ns clojure-rte.dot
   (:require [clojure.pprint :refer [cl-format]]
+            [clojure.java.io :as io]
             [clojure.string]
             [clojure.set]
             [clojure-rte.cl-compat :as cl]
@@ -43,6 +44,20 @@
         tmp-dir (str (clojure.string/trim (:out m)) "/.")]
     (sh "mkdir" "-p" tmp-dir)
     tmp-dir))
+
+(def tmp-files
+  "array of tmp files names created by dfa-to-dot and bdd-to-dot"
+  (atom []))
+
+(defn delete-tmp-files 
+  "Delete the temporary files created by dfa-to-dot and bdd-to-dot."
+  []  
+  (doseq [fname @tmp-files]
+    (doseq [fn @tmp-files]
+      (when (.exists (io/file fn))
+        (io/delete-file fn)))
+    (swap! tmp-files (fn [files] (filter (fn [fn] (not (.exists (io/file fn))))
+                                         files)))))
 
 (defn dfa-to-dot 
   "Create (and possibly display) a graphical image rendering the automaton
@@ -67,6 +82,7 @@
            (sh *dot-path* "-Tpng" "-o" png-file-name
                :in dot-string)
            (when (= "Mac OS X" (System/getProperty "os.name"))
+             (swap! tmp-files conj png-file-name)
              ;; -g => don't bring Preview to forground, and thus don't steal focus
              (let [stat (sh "open" "-g" "-a" "Preview" png-file-name)]
                (if (not (= 0 (:exit stat)))
@@ -131,7 +147,6 @@
         
         (cl-format *out* "}~%")))))
 
-
 (defn bdd-to-dot 
   "Create (and possibly display) a graphical image rendering the given Bdd
   For Mac OS, the :view option may be used to display the image
@@ -154,6 +169,7 @@
              (if (not (= 0 (:exit stat)))
                (println stat)))
            (when (= "Mac OS X" (System/getProperty "os.name"))
+             (swap! tmp-files conj png-file-name)
              ;; -g => don't bring Preview to forground, and thus don't steal focus
              (let [stat (sh "open" "-g" "-a" "Preview" png-file-name)]
                (if (not (= 0 (:exit stat)))
