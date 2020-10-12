@@ -150,13 +150,31 @@
   [transitions]
   (bdd/with-hash []
     (letfn [(type-intersect [t1 t2]
-              (list 'and t1 t2))]
+              (list 'and t1 t2))
+            (find-duplicates [items]
+              (loop [items items
+                     duplicates []]
+                (cond (empty? items)
+                      (distinct duplicates)
+
+                      (member (first items) (rest items))
+                      (recur (rest items)
+                             (conj duplicates (first items)))
+
+                      :else
+                      (recur (rest items)
+                             duplicates))))
+            ]
       (let [firsts (map first transitions)
             seconds (map second transitions)]
+        ;; TODO we don't yet support duplications, but this needs to be done
+        ;;      to make the code robust.
         (assert (= (count firsts) (count (distinct firsts)))
-                (cl-format false "transitions has a duplication: ~A" (difference firsts (distinct firsts))))
+                (cl-format false "transitions ~A has a duplication: ~A"
+                           transitions (find-duplicates firsts)))
         (assert (= (count seconds) (count (distinct seconds)))
-                (cl-format false "transitions has a duplication: ~A" (difference seconds (distinct seconds)))))
+                (cl-format false "transitions ~A has a duplication: ~A"
+                           transitions (find-duplicates seconds))))
       (let [state-id->pseudo-type (into {} (for [[type state-id] transitions
                                                  :let [tag (gensym "pseudo-")]]
                                              [state-id `(~'satisfies ~tag)]))
