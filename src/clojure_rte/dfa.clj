@@ -67,16 +67,17 @@
   [dfa index]
   ((:states dfa) index))
 
+(defn states-as-map
+  "Return a map index -> state"
+  [dfa]
+  (assert (map? (:states dfa)))
+  (:states dfa))
+
 (defn states-as-seq
   "Return a sequence of states which can be iterated over."
   [dfa]
-  (cl/cl-cond
-   ((map? (:states dfa))
-    (vals (:states dfa)))
-   ((sequential? (:states dfa))
-    (:states dfa))
-   (:else
-    (throw (ex-info (format "invalid :states = %s" (:states dfa)) {})))))
+  (assert (map? (:states dfa)))
+  (vals (:states dfa)))
 
 (defn ids-as-seq
   "Return a sequence of ids of the states which can be iterated over."
@@ -87,6 +88,7 @@
   "assert that no transition references an invalid state"
   [dfa]
   (assert (:combine-labels dfa) (format "missing :combine-labels in Dfa %s" dfa))
+  (assert (map? (:states dfa))  (format "states must be a map, not a ~A: ~A" (type (:states dfa)) (:states dfa)))
   (let [ids (set (ids-as-seq dfa))]
     (doseq [q (states-as-seq dfa)]
       (assert (:index q) (format "state %s has emtpy :index" q))

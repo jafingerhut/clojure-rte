@@ -817,7 +817,6 @@
       :exit-map (constantly exit-value)
       :combine-labels rte-combine-labels
       :states
-      (into [] (map (fn [deriv index]
                       (let [transitions (if (and (grouped index)
                                                  (apply = (map (fn [[_src _wrt dst]]
                                                                  dst) (grouped index))))
@@ -832,4 +831,5 @@
                                      :pattern deriv
                                      :transitions transitions})))
                     derivatives (range (count derivatives))))}))))
+       (into {} (map (fn [deriv index]
 
