@@ -151,6 +151,7 @@
   (bdd/with-hash []
     (letfn [(type-intersect [t1 t2]
               (list 'and t1 t2))
+            ;; local function find-duplicates
             (find-duplicates [items]
               (loop [items items
                      duplicates []]
@@ -164,67 +165,92 @@
                       :else
                       (recur (rest items)
                              duplicates))))
+
+            ;; local function gen-function
+            (gen-function []
+              (let [state-id->pseudo-type (into {} (for [[type state-id] transitions
+                                                         :let [tag (gensym "pseudo-")]]
+                                                     [state-id `(~'satisfies ~tag)]))
+                    pseudos (for [[_ tag] state-id->pseudo-type]
+                              tag)
+                    pseudo-type->state-id (into {} (for [[state-id tag] state-id->pseudo-type]
+                                                     [tag state-id]))
+                    pseudo-type-functions (for [[_ [_ function-designator]] state-id->pseudo-type]
+                                            function-designator)
+                    old-label-< bdd/*label-<*
+                    bdd (binding [gns/*pseudo-type-functions* (concat pseudo-type-functions
+                                                                      gns/*pseudo-type-functions*)
+                                  bdd/*label-<* (fn [t1 t2]
+                                                  (cond (and (member t1 pseudos)
+                                                             (member t2 pseudos))
+                                                        (old-label-< t1 t2)
+
+                                                        (member t1 pseudos)
+                                                        false
+
+                                                        (member t2 pseudos)
+                                                        true
+
+                                                        :else
+                                                        (old-label-< t1 t2)))]
+                          (reduce (fn [accum-bdd [type state-id]]
+                                    (bdd/or accum-bdd
+                                            (bdd/bdd (type-intersect type
+                                                                     (state-id->pseudo-type state-id)))))
+                                  false transitions))]
+                ;; (dot/bdd-to-dot bdd :title (gensym "bdd") :view true)
+                (fn [candidate]
+                  (loop [bdd' bdd
+                         lineage ()]
+                    (cl/cl-cond
+                     ((member bdd' '(true false))
+                      (throw (ex-info (cl-format false "types given on transitions not exhaustive ~A, no case given for"
+                                                 transitions (cons 'and lineage))
+                                      {:lineage lineage
+                                       :transitions transitions
+                                       :bdd bdd})))
+                     ((pseudo-type->state-id (:label bdd') false)) ;; this is the return value of the (fn [] ...)
+                     ((gns/typep candidate (:label bdd'))
+                      (recur (:positive bdd')
+                             (cons (:label bdd') lineage)))
+                     (true
+                      (recur (:negative bdd')
+                             (cons (list 'not (:label bdd')) lineage))))))))
+
+            ;; local-function pretty-or
+            (pretty-or [tds]
+              (cond (empty? tds);; should not occur
+                    :empty-set
+                    (empty? (rest tds))
+                    (first tds)
+                    :else
+                    (cons 'or (rest tds))))
             ]
-      (let [firsts (map first transitions)
-            seconds (map second transitions)]
-        ;; TODO we don't yet support duplications, but this needs to be done
-        ;;      to make the code robust.
-        (assert (= (count firsts) (count (distinct firsts)))
-                (cl-format false "transitions ~A has a duplication: ~A"
-                           transitions (find-duplicates firsts)))
-        (assert (= (count seconds) (count (distinct seconds)))
-                (cl-format false "transitions ~A has a duplication: ~A"
-                           transitions (find-duplicates seconds))))
-      (let [state-id->pseudo-type (into {} (for [[type state-id] transitions
-                                                 :let [tag (gensym "pseudo-")]]
-                                             [state-id `(~'satisfies ~tag)]))
-            pseudos (for [[_ tag] state-id->pseudo-type]
-                      tag)
-            pseudo-type->state-id (into {} (for [[state-id tag] state-id->pseudo-type]
-                                             [tag state-id]))
-            pseudo-type-functions (for [[_ [_ function-designator]] state-id->pseudo-type]
-                                    function-designator)
-            old-label-< bdd/*label-<*
-            ;; TODO need to set variable ordering to assure that satisfies come at bottom of bdd
-            ;;    and that pseudo types come at the very bottom.
-            bdd (binding [gns/*pseudo-type-functions* (concat pseudo-type-functions
-                                                              gns/*pseudo-type-functions*)
-                          bdd/*label-<* (fn [t1 t2]
-                                          (cond (and (member t1 pseudos)
-                                                     (member t2 pseudos))
-                                                (old-label-< t1 t2)
+      (let [types (map first transitions)
+            duplicate-types (find-duplicates types)
+            inhabited-types (delay (filter (fn [td] (gns/inhabited? td (constantly false)))
+                                           types))
+            consequents (map second transitions)]
 
-                                                (member t1 pseudos)
-                                                false
+        (cond
+          (not= (count consequents) (count (distinct consequents)))
+          ;; If there is a duplicate consequent, then the corresponding types can be unioned.
+          (-optimized-transition-function (for [[consequent transitions] (group-by second transitions)]
+                                            [(pretty-or (map first transitions)) consequent]))
 
-                                                (member t2 pseudos)
-                                                true
+          (empty? duplicate-types)
+          (gen-function)
+          
+          (not (empty? (intersection duplicate-types inhabited-types)))
+          ;; if some duplicate types are inhbited
+          (throw (ex-info (cl-format false "transitions ~A has a duplication of types: ~A"
+                                     transitions (find-duplicates types))
+                          {:transitions transitions
+                           :duplicates (find-duplicates types)}))
 
-                                                :else
-                                                (old-label-< t1 t2)))]
-                  (reduce (fn [accum-bdd [type state-id]]
-                            (bdd/or accum-bdd
-                                    (bdd/bdd (type-intersect type
-                                                             (state-id->pseudo-type state-id)))))
-                          false transitions))]
-        ;; (dot/bdd-to-dot bdd :title (gensym "bdd") :view true)
-        (fn [candidate]
-          (loop [bdd' bdd
-                 lineage ()]
-            (cl/cl-cond
-             ((member bdd' '(true false))
-              (throw (ex-info (cl-format false "types given on transitions not exhaustive ~A, no case given for"
-                                         transitions (cons 'and lineage))
-                              {:lineage lineage
-                               :transitions transitions
-                               :bdd bdd})))
-             ((pseudo-type->state-id (:label bdd') false)) ;; this is the return value of the (fn [] ...)
-             ((gns/typep candidate (:label bdd'))
-              (recur (:positive bdd')
-                     (cons (:label bdd') lineage)))
-             (true
-              (recur (:negative bdd')
-                     (cons (list 'not (:label bdd')) lineage))))))))))
+          ;; if all duplicate types are empty types
+          :else
+          (gen-function))))))
 
 (def optimized-transition-function 
   "Given a set of transitions each of the form [type-designator state-index],
