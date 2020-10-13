@@ -139,16 +139,16 @@
         ;;       to Bdds thus each type check guarantees to never check the same
         ;;       type predicate multiple times, and sometimes not at all.
         (letfn [(slow-transition-function [transitions]
-                  (fn [candidate]
+                  (fn [candidate sink-state-id]
                     (some (fn [[type next-state-index]]
                             (if (gns/typep candidate type)
                               next-state-index
-                              sink-state-id))
                               ;; TODO I'm not sure this is correct, do we need to return false
                               ;;   indicating no-match, or return the sink-stat-id.
                               ;;   false makes the tests pass, but sink-state-id seems more
                               ;;   logical.  need to investigate whether something more fundamental
                               ;;   is wrong.
+                              false))
                           transitions)))
                 (fast-transition-function [transitions]
                   (dfa/optimized-transition-function transitions promise-disjoint sink-state-id))
