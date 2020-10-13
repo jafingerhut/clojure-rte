@@ -94,36 +94,35 @@
 (defmethod rte-match :Dfa
   [dfa items]
   (let [state-vec (:states dfa)
-        sink-states (set (dfa/find-sink-states dfa))
-        sink-state-id (if (empty? sink-states)
-                        (throw (ex-info (cl-format false "rte-match requires a sink-state in the given Dfa")
-                                        {:dfa dfa}))
-                        (:index (first sink-states)))]
-    (letfn [(slow-transition-function [transitions]
-              (fn [candidate]
-                (some (fn [[type next-state-index]]
-                        (if (gns/typep candidate type)
-                          next-state-index
-                          sink-state-id))
-                      transitions)))
-            (fast-transition-function [transitions]
-              (dfa/optimized-transition-function transitions sink-state-id))
-            (consume [state-index item]
-              (let [state-obj (state-vec state-index)]
-                (cl/cl-cond
-                 ((member state-obj sink-states)
-                  (reduced false))
-                 (((fast-transition-function (:transitions state-obj)) item sink-state-id))
-                 (:else (reduced false)))))]
-      (let [final-state (reduce consume 0 items)]
-        ;; final-state may be integer desgnating the state which was
-        ;;  reached on iterating successfully through the input
-        ;;  sequence, items.  Or final-state may false, if the
-        ;;  iteration finished without iterating through the entire
-        ;;  sequence, either because we found ourselves in a
-        ;;  sink-state, or we encountered a item for which no transition
-        ;;  was possible.
-        (cond
-          (= false final-state) false
-          (:accepting (state-vec final-state)) ((:exit-map dfa) final-state)
-          :else false)))))
+        sink-states (set (dfa/find-sink-states dfa))]
+    (if (empty? sink-states)
+      (rte-match (dfa/extend-with-sink-state dfa) items)
+      (let [sink-state-id (:index (first sink-states))]
+        (letfn [(slow-transition-function [transitions]
+                  (fn [candidate]
+                    (some (fn [[type next-state-index]]
+                            (if (gns/typep candidate type)
+                              next-state-index
+                              sink-state-id))
+                          transitions)))
+                (fast-transition-function [transitions]
+                  (dfa/optimized-transition-function transitions sink-state-id))
+                (consume [state-index item]
+                  (let [state-obj (state-vec state-index)]
+                    (cl/cl-cond
+                     ((member state-obj sink-states)
+                      (reduced false))
+                     (((fast-transition-function (:transitions state-obj)) item sink-state-id))
+                     (:else (reduced false)))))]
+          (let [final-state (reduce consume 0 items)]
+            ;; final-state may be integer desgnating the state which was
+            ;;  reached on iterating successfully through the input
+            ;;  sequence, items.  Or final-state may false, if the
+            ;;  iteration finished without iterating through the entire
+            ;;  sequence, either because we found ourselves in a
+            ;;  sink-state, or we encountered a item for which no transition
+            ;;  was possible.
+            (cond
+              (= false final-state) false
+              (:accepting (state-vec final-state)) ((:exit-map dfa) final-state)
+              :else false)))))))
