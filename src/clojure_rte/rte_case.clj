@@ -37,8 +37,8 @@
                  (rte-to-dfa rte index))
                pairs)))
 
-(def memoized-rte-case-clauses-to-dfa rte-case-clauses-to-dfa )
-;;(def memoized-rte-case-clauses-to-dfa (memoize rte-case-clauses-to-dfa))
+;;(def memoized-rte-case-clauses-to-dfa rte-case-clauses-to-dfa )
+(def memoized-rte-case-clauses-to-dfa (memoize rte-case-clauses-to-dfa))
 
 (defn ensure-fns-index
   "Internal function used in macro expansion of rte-case, to assure the index is in range
