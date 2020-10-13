@@ -95,8 +95,8 @@
 
 (defmethod rte-match :Dfa
   [dfa items & {:keys [
-                       ;; if the caller promises that now two transitions in the Dfa
-                       ;;   are labeled with intersecting types, the use
+                       ;; if the caller promises that never are two transitions in
+                       ;;   the Dfa labeled with intersecting types, the use
                        ;;   :promise-disjoint true, in this case rte-match
                        ;;   can be more efficient and can assume that the
                        ;;   clauses can be tested in any order.  If the transitions
@@ -109,6 +109,11 @@
                        ;;    re-use the same pattern, either because of loops in the
                        ;;    Dfa, or when the same Dfa is used to match different
                        ;;    input sequences.
+                       ;; TODO -- the value of promise-disjoint should really come from
+                       ;;    a slot in the dfa.  when the dfa is created, it should me
+                       ;;    *marked* as being disjoint.  I believe it already is always
+                       ;;    disjoint.
+                       ;;    
                        ;; hot-spot = false -- always interpret the type checks rather
                        ;;    than converting them to Bdd.  This option is probably faster
                        ;;    if there are few loops in the Dfa, or if you only use the
@@ -139,6 +144,11 @@
                             (if (gns/typep candidate type)
                               next-state-index
                               sink-state-id))
+                              ;; TODO I'm not sure this is correct, do we need to return false
+                              ;;   indicating no-match, or return the sink-stat-id.
+                              ;;   false makes the tests pass, but sink-state-id seems more
+                              ;;   logical.  need to investigate whether something more fundamental
+                              ;;   is wrong.
                           transitions)))
                 (fast-transition-function [transitions]
                   (dfa/optimized-transition-function transitions promise-disjoint sink-state-id))
