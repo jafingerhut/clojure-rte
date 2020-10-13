@@ -150,9 +150,15 @@
 
 (defn- -optimized-transition-function
   "Given a set of transitions each of the form [type-designator state-index],
-  return a function which can be called with an candidate element of a sequence,
-  and the function will return the state-index.  When called with the
-  candidate object, will not evaluate any type predicate more than once."
+  return a indicator function which can be called with an candidate element
+  of a sequence, and the function will return the state-index.  When called
+  with the candidate object, will not evaluate any type predicate more than
+  once."
+  ;; TODO, if we could know whether to trust that the transitions are
+  ;;  already disjoint this function could be made much faster.
+  ;;  It is not necessary to know whether the transitions cover the
+  ;;  universe because the indicator function has a second argument
+  ;;  to return if there is no match.
   [transitions default]
   (bdd/with-hash []
     (letfn [(type-intersect [t1 t2]
