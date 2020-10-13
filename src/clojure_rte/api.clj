@@ -123,7 +123,9 @@
   (let [state-vec (:states dfa)
         sink-states (set (dfa/find-sink-states dfa))]
     (if (empty? sink-states)
-      (rte-match (dfa/extend-with-sink-state dfa) items :promise-disjoint promise-disjoint)
+      (rte-match (dfa/extend-with-sink-state dfa) items
+                 :promise-disjoint promise-disjoint
+                 :not-spot hot-spot)
       (let [sink-state-id (:index (first sink-states))]
         ;; There are two possible transition functions
         ;;   slow-transition-function -- this is faster if the caller intends to match
