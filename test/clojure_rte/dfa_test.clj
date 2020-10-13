@@ -219,13 +219,13 @@
 
     (t-acceptance-test-rte  '(:and (:* Long) (:not (:* Short)))) ;; this was an explicit failing test
     
-    (doseq [
-            rte-1 test-rtes
-            rte-2 test-rtes
-            rte [`(:and ~rte-1 (:not ~rte-2))
-                 `(:or  ~rte-1 (:not ~rte-2))]
-            ]
-      (println [:rte rte])
+    (doseq [[inx rte] (reverse (map-indexed (fn [inx item] [inx item])
+                                            (distinct (for [ rte-1 test-rtes
+                                                            rte-2 test-rtes
+                                                            rte [`(:and ~rte-1 (:not ~rte-2))
+                                                                 `(:or  ~rte-1 (:not ~rte-2))]]
+                                                        rte))))]
+      (println [:inx inx :rte rte])
       (t-acceptance-test-rte rte))))
 
 (deftest t-test-1
