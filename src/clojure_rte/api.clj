@@ -90,9 +90,8 @@
 
 (defmethod rte-match :sequential
   [pattern items & {:keys [promise-disjoint
-                           hot-spot]
-                    :as all-keys}]
-  (apply rte-match (rte-compile pattern) items :promise-disjoint true all-keys))
+                           hot-spot]}]
+  (rte-match (rte-compile pattern) items :promise-disjoint true :hot-spot hot-spot))
 
 (defmethod rte-match :Dfa
   [dfa items & {:keys [
