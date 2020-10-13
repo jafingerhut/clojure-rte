@@ -256,3 +256,16 @@
     (f i))
   seq)
   
+(defn assert-type 
+  "Check the given value asserting it to be of the given type.
+  If the type check is satisfied, the value is returned, otherwise
+  an exception is throw.  This function can be used inline to
+  assert types without changing the control flow."
+  [type value]
+  (if (instance? type value)
+    value
+    (throw (ex-info (cl-format false "value ~A expected to be ~A, not ~A"
+                               value type (type value))
+                    {:expected-type type
+                     :actual-type (type value)
+                     :value value}))))
