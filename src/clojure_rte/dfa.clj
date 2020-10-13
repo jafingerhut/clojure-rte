@@ -65,30 +65,39 @@
 (defn state-by-index
   "Return the State object of the Dfa whose :index is the given index."
   [dfa index]
+  (assert (instance? Dfa dfa))
   ((:states dfa) index))
+
+(defn states-as-map
+  "Return a map index -> state"
+  [dfa]
+    (assert (instance? Dfa dfa))
+  (assert (map? (:states dfa)))
+  (:states dfa))
 
 (defn states-as-seq
   "Return a sequence of states which can be iterated over."
   [dfa]
-  (cl/cl-cond
-   ((map? (:states dfa))
-    (vals (:states dfa)))
-   ((sequential? (:states dfa))
-    (:states dfa))
-   (:else
-    (throw (ex-info (format "invalid :states = %s" (:states dfa)))))))
+    (assert (instance? Dfa dfa))
+  (assert (map? (:states dfa)))
+  (vals (:states dfa)))
 
 (defn ids-as-seq
   "Return a sequence of ids of the states which can be iterated over."
   [dfa]
+    (assert (instance? Dfa dfa))
   (map :index (states-as-seq dfa)))
 
 (defn check-dfa
   "assert that no transition references an invalid state"
   [dfa]
+  (assert (instance? Dfa dfa))
   (assert (:combine-labels dfa) (format "missing :combine-labels in Dfa %s" dfa))
+  (assert (map? (:states dfa))  (format "states must be a map, not a ~A: ~A" (type (:states dfa)) (:states dfa)))
   (let [ids (set (ids-as-seq dfa))]
-    (doseq [q (states-as-seq dfa)]
+    (doseq [id (keys (states-as-map dfa))
+            q (get (states-as-seq dfa) id)]
+      (assert (instance? State q) (cl-format false "expecting a State, got a ~A, ~A" (type q) q))
       (assert (:index q) (format "state %s has emtpy :index" q))
       (assert (= q (state-by-index dfa (:index q)))
               (format "state %s disagrees with its index %s" q (:index q)))
@@ -138,6 +147,151 @@
   "Serialize a Dfa for debugging"
   [dfa]
   (map serialize-state (states-as-seq dfa)))
+
+(defn- -optimized-transition-function
+  "Given a set of transitions each of the form [type-designator state-index],
+  return a indicator function which can be called with an candidate element
+  of a sequence, and the function will return the state-index.  When called
+  with the candidate object, will not evaluate any type predicate more than
+  once."
+  ;; TODO, if we could know whether to trust that the transitions are
+  ;;  already disjoint this function could be made much faster.
+  ;;  It is not necessary to know whether the transitions cover the
+  ;;  universe because the indicator function has a second argument
+  ;;  to return if there is no match.
+  [transitions promise-disjoint default]
+  (bdd/with-hash []
+    (letfn [(type-intersect [t1 t2]
+              (list 'and t1 t2))
+            (type-and-not [t1 t2]
+              (if (= :empty-set t2)
+                t1
+                (list 'and t1 (list 'not t2))))
+            ;; local function find-duplicates
+            (find-duplicates [items]
+              (loop [items items
+                     duplicates []]
+                (cond (empty? items)
+                      (distinct duplicates)
+
+                      (member (first items) (rest items))
+                      (recur (rest items)
+                             (conj duplicates (first items)))
+
+                      :else
+                      (recur (rest items)
+                             duplicates))))
+
+            ;; local-function pretty-or
+            (pretty-or [tds]
+              (cond (empty? tds);; should not occur
+                    :empty-set
+                    (empty? (rest tds))
+                    (first tds)
+                    :else
+                    (cons 'or tds)))
+            
+            ;; local function gen-function
+            (gen-function []
+              (let [state-id->pseudo-type (into {} (for [[type state-id] transitions
+                                                         :let [tag (gensym "pseudo-")]]
+                                                     [state-id `(~'satisfies ~tag)]))
+                    pseudos (for [[_ tag] state-id->pseudo-type]
+                              tag)
+                    pseudo-type->state-id (into {} (for [[state-id tag] state-id->pseudo-type]
+                                                     [tag state-id]))
+                    pseudo-type-functions (for [[_ [_ function-designator]] state-id->pseudo-type]
+                                            function-designator)
+                    old-label-< bdd/*label-<*
+                    bdd (binding [gns/*pseudo-type-functions* (concat pseudo-type-functions
+                                                                      gns/*pseudo-type-functions*)
+                                  bdd/*label-<* (fn [t1 t2]
+                                                  (cond (and (member t1 pseudos)
+                                                             (member t2 pseudos))
+                                                        (old-label-< t1 t2)
+
+                                                        (member t1 pseudos)
+                                                        false
+
+                                                        (member t2 pseudos)
+                                                        true
+
+                                                        :else
+                                                        (old-label-< t1 t2)))]
+                          (first
+                           (reduce
+                            (fn [[accum-bdd previous-types] [type state-id]]
+                              [(bdd/or accum-bdd
+                                       (bdd/bdd (type-and-not 
+                                                 (type-intersect type
+                                                                 (state-id->pseudo-type state-id))
+                                                 (if promise-disjoint
+                                                   ;; This is an optimization
+                                                   ;; see issue
+                                                   ;; https://gitlab.lrde.epita.fr/jnewton/clojure-rte/-/issues/27
+                                                   ;; If the given types are already promised to be disjoint,
+                                                   ;;  then no need to do an expensive Bdd operation
+                                                   :empty-set
+                                                   ;; in case the types are not disjoint
+                                                   (cons 'or previous-types)))))
+                               (cons type previous-types)])
+                            [false '(:empty-set)] ;; initial bdd and empty-type
+                            transitions)))]
+                ;;(clojure-rte.dot/bdd-to-dot bdd :title (gensym "bdd") :view true)
+                (fn [candidate default]
+                  (loop [bdd' bdd
+                         lineage ()]
+                    (cl/cl-cond
+                     ((member bdd' '(true false))
+                      ;; transitions not exhaustive
+                      default)
+                     ((pseudo-type->state-id (:label bdd') false)) ;; this is the return value of the (fn [] ...)
+                     ((gns/typep candidate (:label bdd'))
+                      (recur (:positive bdd')
+                             (cons (:label bdd') lineage)))
+                     (true
+                      (recur (:negative bdd')
+                             (cons (list 'not (:label bdd')) lineage))))))))
+            ]
+      (let [types (map first transitions)
+            duplicate-types (find-duplicates types)
+            inhabited-types (delay (filter (fn [td] (gns/inhabited? td (constantly false)))
+                                           types))
+            consequents (map second transitions)]
+        
+        (cond
+          (not= (count consequents) (count (distinct consequents)))
+          ;; If there is a duplicate consequent, then the corresponding types can be unioned.
+          (-optimized-transition-function (for [[consequent transitions] (group-by second transitions)]
+                                            [(pretty-or (map first transitions)) consequent])
+                                          promise-disjoint
+                                          default)
+
+          (empty? duplicate-types)
+          (gen-function)
+          
+          (not (empty? (intersection duplicate-types inhabited-types)))
+          ;; if some duplicate types are inhbited
+          (throw (ex-info (cl-format false "transitions ~A has a duplication of types: ~A"
+                                     transitions (find-duplicates types))
+                          {:transitions transitions
+                           :duplicates (find-duplicates types)}))
+
+          ;; if all duplicate types are empty types
+          :else
+          (gen-function))))))
+
+(def optimized-transition-function 
+  "Given a set of transitions each of the form [type-designator state-index],
+  return a function which can be called with an candidate element of a sequence,
+  and the function will return the state-index.  When called with the
+  candidate object, will not evaluate any type predicate more than once.
+  The function assumes the types are mutually disjoint and that they partition
+  the universe.  I.e., the union of all the types is :sigma, and for any two
+  of the types, (a,b), a ^ b = :empty-set."
+  (memoize -optimized-transition-function)
+  ;;-optimized-transition-function
+  )
 
 (defn delta
   "Given a state and target-label, find the destination state (object of type State)"
@@ -211,6 +365,7 @@
   is not an initial state,
   and all its transitions point to itself."
   [dfa]
+  (assert (instance? Dfa dfa))
   (filter (fn [q]
             (and (not (:accepting q))
                  (not (= 0 (:index q)))
@@ -232,6 +387,50 @@
   [dfa]
   (remove complete-state? (states-as-seq dfa)))
 
+(defn ensure-sink-state
+  "Return one of the sink states of the Dfa if there is one,
+  or allocate a sink state, without explicitly adding it to the Dfa.
+  The calling function is responsible for inserting the newly created
+  sink state into the Dfa if necessary."
+  [dfa]
+  (assert (instance? Dfa dfa))
+  (assert (every? (fn [q] (instance? State q)) (find-sink-states dfa))
+          (cl-format false "not all sink states are States: ~A: ~A"
+                     (map type (find-sink-states dfa))
+                     (find-sink-states dfa)))
+  (or (first (find-sink-states dfa))
+      (let [states (states-as-map dfa)
+            num-states (count states)
+            available-ids (filter (fn [id]
+                                    ;; find smallest non-negative integer which is not already
+                                    ;; a state-id in this Dfa
+                                    (and (> id 0)
+                                         (not (get states id false)))) (range 1 (+ 1 num-states)))
+            sink-id (first available-ids)]
+        (map->State {:index sink-id
+                     :accepting false
+                     :transitions (list [:sigma sink-id])}))))
+
+(defn extend-with-sink-state
+  "If the given Dfa has a sink state, then just return the Dfa, else
+  allocate a sink state, and return a new Dfa which differs from the given
+  Dfa on in that the sink state has been appended."
+  [dfa]
+  (let [sink-state (ensure-sink-state dfa)]
+    (assert (instance? State sink-state) (cl-format false "expecting a State, not a ~A: ~A"
+                                                    (type sink-state) sink-state))
+    
+    (cond
+      (member sink-state (states-as-seq dfa))
+      dfa
+
+      (state-by-index dfa (:index sink-state))
+      (throw (ex-info (cl-format false "ensure-sink-state failed to create a proper state index") {}))
+
+      :else
+      (make-dfa dfa
+                {:states (assoc (states-as-map dfa) (:index sink-state) sink-state)}))))
+
 (defn complete
   "Render complete the given Dfa.
   If it is already complete, then simply return it,
@@ -244,13 +443,7 @@
        dfa
        (complete dfa incomplete))))
   ([dfa incomplete]
-   (let [sink-state (or (first (find-sink-states dfa))
-                        (let [available-ids (filter (fn [id]
-                                                      (not (contains? (:states dfa) id))) (range))
-                              sink-id (first available-ids)]
-                          (map->State {:index sink-id
-                                       :accepting false
-                                       :transitions (list [:sigma sink-id])})))]
+   (let [sink-state (ensure-sink-state dfa)]
      (make-dfa dfa
                {:states
                 (let [current-states (states-as-seq dfa)

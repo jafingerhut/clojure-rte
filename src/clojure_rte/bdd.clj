@@ -240,6 +240,43 @@
     :else
     (node type-designator true false)))
 
+(defn label-<-by-index
+  "A strict ordering function on potential labels in a Bdd.
+  This function enforces that a < (satifies f) whenever
+  a is not a (satisfies g) type, but otherwise, a < b whenever
+  a was encountered first in the computation.  Whenever a new
+  label is discovered in generating a Bdd, it is given an index
+  higher than any other existing index.  The ordering of the labels
+  is the ordering of the index  index-of(a) < index-of(b)."
+  [t1 t2]
+  (let [label-index-1 (type-index t1)
+        label-index-2 (type-index t2)]
+    (assert (integer? label-index-1) (format "expecting integer got %s" (type label-index-1)))
+    (assert (integer? label-index-2) (format "expecting integer got %s" (type label-index-2)))
+    (cond (and (gns/satisfies? t1)
+               (gns/satisfies? t2))
+          (< label-index-1 label-index-2)
+
+          (gns/satisfies? t1)
+          false
+
+          (gns/satisfies? t2)
+          true
+
+          :else
+          (< label-index-1 label-index-2))))
+
+(def ^:dynamic *label-<*
+  "Dynamic variable stocking the function used to order labels in a Bdd.
+  This variable must be bound do a binary function such as label-<-by-index
+  (which is the default) which implements a total order relation on
+  the set of potential Bdd labels.  I.e., the function must be behave
+  analgous to < rather than analgous to <= .
+    transitive:  a<b and b<c => a<c
+    asymmetric:  a<a is false
+    irreflexive: if a<b then b<a is false"
+  label-<-by-index)
+
 (defn node
   "Internal function to function `bdd`.  This function is used during the
   recursive descent of the Bdd construction algorithm.  "
@@ -264,17 +301,15 @@
     (let [try-bdd (Bdd. type-designator positive negative)
           cached-bdd (@*hash* try-bdd)]
       (c/or cached-bdd
-          (do (swap! *hash* assoc try-bdd try-bdd)
-              (assert (c/or (instance? Boolean positive)
-                          (< (type-index type-designator)
-                             (type-index (:label positive))))
-                      (format "parent %s must be < positive %s" type-designator (:label positive)))
-              (assert (c/or (instance? Boolean negative)
-                          (< (type-index type-designator)
-                             (type-index (:label negative))))
-                      (format "parent %s must be < negative %s" type-designator (:label negative)))
-              
-              try-bdd)))))
+            (do (swap! *hash* assoc try-bdd try-bdd)
+                (assert (c/or (instance? Boolean positive)
+                              (*label-<* type-designator (:label positive)))
+                        (format "parent %s must be < positive %s" type-designator (:label positive)))
+                (assert (c/or (instance? Boolean negative)
+                              (*label-<* type-designator (:label negative)))
+                        (format "parent %s must be < negative %s" type-designator (:label negative)))
+                
+                try-bdd)))))
 
 (defn binary-op
   "Bdd abstract binary operation."
@@ -283,17 +318,13 @@
     (node (:label bdd1)
           (op (:positive bdd1) (:positive bdd2))
           (op (:negative bdd1) (:negative bdd2)))
-    (let [label-index-1 (type-index (:label bdd1))
-          label-index-2 (type-index (:label bdd2))]
-      (assert (integer? label-index-1) (format "expecting integer got %s" (type label-index-1)))
-      (assert (integer? label-index-2) (format "expecting integer got %s" (type label-index-2)))
-      (if (< label-index-1 label-index-2)
-        (node (:label bdd1)
-                  (op (:positive bdd1) bdd2)
-                  (op (:negative bdd1) bdd2))
-        (node (:label bdd2)
-                  (op bdd1 (:positive bdd2))
-                  (op bdd1 (:negative bdd2)))))))
+    (if (*label-<* (:label bdd1) (:label bdd2))
+      (node (:label bdd1)
+            (op (:positive bdd1) bdd2)
+            (op (:negative bdd1) bdd2))
+      (node (:label bdd2)
+            (op bdd1 (:positive bdd2))
+            (op bdd1 (:negative bdd2))))))
   
 (defn and ;; bdd/and
   "Perform a Boolean AND on 0 or more Bdds."

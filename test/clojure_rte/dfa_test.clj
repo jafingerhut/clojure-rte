@@ -187,10 +187,10 @@
   (doseq [seq-root test-seqs
           exit-value [42 true -1]
           :let [dfa (rte-to-dfa rte exit-value)
-                dfa-trim (trim dfa)
-                dfa-min (minimize dfa)
-                dfa-min-trim (trim dfa-min)
-                dfa-trim-min (minimize dfa-trim)]
+                dfa-trim (extend-with-sink-state (trim dfa))
+                dfa-min (extend-with-sink-state (minimize dfa))
+                dfa-min-trim (extend-with-sink-state (trim dfa-min))
+                dfa-trim-min (extend-with-sink-state (minimize dfa-trim))]
           reps (range 5)
           :let [seq-long (reduce concat (repeat reps seq-root))
                 match? (rte-match dfa seq-long)]
@@ -216,13 +216,18 @@
 
 (deftest t-acceptance
   (testing "acceptance:  testing whether rte-match works same on dfa when trimmed and minimized."
-    (doseq [
-            rte-1 test-rtes
-            rte-2 test-rtes
-            rte [`(:and ~rte-1 (:not ~rte-2))
-                 `(:or  ~rte-1 (:not ~rte-2))]
-            ]
-      (t-acceptance-test-rte rte))))
+
+    (t-acceptance-test-rte  '(:and (:* Long) (:not (:* Short)))) ;; this was an explicit failing test
+    (let [[left-rtes right-rtes] (split-at (unchecked-divide-int (count test-rtes) 2)
+                                           test-rtes)]
+      (doseq [[inx rte] (reverse (map-indexed (fn [inx item] [inx item])
+                                              (distinct (for [rte-1 right-rtes
+                                                              rte-2 left-rtes
+                                                              rte [`(:and ~rte-1 (:not ~rte-2))
+                                                                   `(:or  ~rte-1 (:not ~rte-2))]]
+                                                          rte))))]
+        (println [:inx inx :rte rte])
+        (t-acceptance-test-rte rte)))))
 
 (deftest t-test-1
   (testing "particular case 1 which was failing"
