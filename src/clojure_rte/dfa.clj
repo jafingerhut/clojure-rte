@@ -65,32 +65,38 @@
 (defn state-by-index
   "Return the State object of the Dfa whose :index is the given index."
   [dfa index]
+  (assert (instance? Dfa dfa))
   ((:states dfa) index))
 
 (defn states-as-map
   "Return a map index -> state"
   [dfa]
+    (assert (instance? Dfa dfa))
   (assert (map? (:states dfa)))
   (:states dfa))
 
 (defn states-as-seq
   "Return a sequence of states which can be iterated over."
   [dfa]
+    (assert (instance? Dfa dfa))
   (assert (map? (:states dfa)))
   (vals (:states dfa)))
 
 (defn ids-as-seq
   "Return a sequence of ids of the states which can be iterated over."
   [dfa]
+    (assert (instance? Dfa dfa))
   (map :index (states-as-seq dfa)))
 
 (defn check-dfa
   "assert that no transition references an invalid state"
   [dfa]
+  (assert (instance? Dfa dfa))
   (assert (:combine-labels dfa) (format "missing :combine-labels in Dfa %s" dfa))
   (assert (map? (:states dfa))  (format "states must be a map, not a ~A: ~A" (type (:states dfa)) (:states dfa)))
   (let [ids (set (ids-as-seq dfa))]
-    (doseq [q (states-as-seq dfa)]
+    (doseq [id (keys (states-as-map dfa))
+            q (get (states-as-seq dfa) id)]
       (assert (instance? State q) (cl-format false "expecting a State, got a ~A, ~A" (type q) q))
       (assert (:index q) (format "state %s has emtpy :index" q))
       (assert (= q (state-by-index dfa (:index q)))
@@ -144,13 +150,23 @@
 
 (defn- -optimized-transition-function
   "Given a set of transitions each of the form [type-designator state-index],
-  return a function which can be called with an candidate element of a sequence,
-  and the function will return the state-index.  When called with the
-  candidate object, will not evaluate any type predicate more than once."
-  [transitions default]
+  return a indicator function which can be called with an candidate element
+  of a sequence, and the function will return the state-index.  When called
+  with the candidate object, will not evaluate any type predicate more than
+  once."
+  ;; TODO, if we could know whether to trust that the transitions are
+  ;;  already disjoint this function could be made much faster.
+  ;;  It is not necessary to know whether the transitions cover the
+  ;;  universe because the indicator function has a second argument
+  ;;  to return if there is no match.
+  [transitions promise-disjoint default]
   (bdd/with-hash []
     (letfn [(type-intersect [t1 t2]
               (list 'and t1 t2))
+            (type-and-not [t1 t2]
+              (if (= :empty-set t2)
+                t1
+                (list 'and t1 (list 'not t2))))
             ;; local function find-duplicates
             (find-duplicates [items]
               (loop [items items
@@ -202,15 +218,25 @@
 
                                                         :else
                                                         (old-label-< t1 t2)))]
-                          (first (reduce (fn [[accum-bdd previous-types] [type state-id]]
-                                           [(bdd/or accum-bdd
-                                                    (bdd/bdd `(~'and ~(type-intersect type
-                                                                                      (state-id->pseudo-type state-id))
-                                                               ;; in case the types are not disjoint
-                                                               (~'not (~'or ~@previous-types)))))
-                                            (cons type previous-types)])
-                                         [false '(:empty-set)] ;; initial bdd and empty-type
-                                         transitions)))]
+                          (first
+                           (reduce
+                            (fn [[accum-bdd previous-types] [type state-id]]
+                              [(bdd/or accum-bdd
+                                       (bdd/bdd (type-and-not 
+                                                 (type-intersect type
+                                                                 (state-id->pseudo-type state-id))
+                                                 (if promise-disjoint
+                                                   ;; This is an optimization
+                                                   ;; see issue
+                                                   ;; https://gitlab.lrde.epita.fr/jnewton/clojure-rte/-/issues/27
+                                                   ;; If the given types are already promised to be disjoint,
+                                                   ;;  then no need to do an expensive Bdd operation
+                                                   :empty-set
+                                                   ;; in case the types are not disjoint
+                                                   (cons 'or previous-types)))))
+                               (cons type previous-types)])
+                            [false '(:empty-set)] ;; initial bdd and empty-type
+                            transitions)))]
                 ;;(clojure-rte.dot/bdd-to-dot bdd :title (gensym "bdd") :view true)
                 (fn [candidate default]
                   (loop [bdd' bdd
@@ -238,6 +264,7 @@
           ;; If there is a duplicate consequent, then the corresponding types can be unioned.
           (-optimized-transition-function (for [[consequent transitions] (group-by second transitions)]
                                             [(pretty-or (map first transitions)) consequent])
+                                          promise-disjoint
                                           default)
 
           (empty? duplicate-types)
@@ -338,6 +365,7 @@
   is not an initial state,
   and all its transitions point to itself."
   [dfa]
+  (assert (instance? Dfa dfa))
   (filter (fn [q]
             (and (not (:accepting q))
                  (not (= 0 (:index q)))
@@ -365,11 +393,19 @@
   The calling function is responsible for inserting the newly created
   sink state into the Dfa if necessary."
   [dfa]
+  (assert (instance? Dfa dfa))
+  (assert (every? (fn [q] (instance? State q)) (find-sink-states dfa))
+          (cl-format false "not all sink states are States: ~A: ~A"
+                     (map type (find-sink-states dfa))
+                     (find-sink-states dfa)))
   (or (first (find-sink-states dfa))
-      (let [available-ids (filter (fn [id]
+      (let [states (states-as-map dfa)
+            num-states (count states)
+            available-ids (filter (fn [id]
                                     ;; find smallest non-negative integer which is not already
                                     ;; a state-id in this Dfa
-                                    (not (contains? (:states dfa) id))) (range))
+                                    (and (> id 0)
+                                         (not (get states id false)))) (range 1 (+ 1 num-states)))
             sink-id (first available-ids)]
         (map->State {:index sink-id
                      :accepting false
@@ -381,7 +417,8 @@
   Dfa on in that the sink state has been appended."
   [dfa]
   (let [sink-state (ensure-sink-state dfa)]
-    (assert (instance? State sink-state))
+    (assert (instance? State sink-state) (cl-format false "expecting a State, not a ~A: ~A"
+                                                    (type sink-state) sink-state))
     
     (cond
       (member sink-state (states-as-seq dfa))
