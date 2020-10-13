@@ -312,9 +312,9 @@ string, including matching the empty sequence.
 
 (let [rte (rte-compile '(:cat (:* (:cat clojure.lang.Keyword java.lang.Long))
                               (:? String)))]
-  (rte-match '(:x 1 :y 2 :z 42)) ;; --> true
-  (rte-match '(:x 1 :y 2 :z 42 "Hello")) ;; --> true
-  (rte-match '(:x 1 :y 2 :z 42 "Hello" "World")) ;; --> false
+  (rte-match rte '(:x 1 :y 2 :z 42)) ;; --> true
+  (rte-match rte '(:x 1 :y 2 :z 42 "Hello")) ;; --> true
+  (rte-match rte '(:x 1 :y 2 :z 42 "Hello" "World")) ;; --> false
 )
 ```
 
