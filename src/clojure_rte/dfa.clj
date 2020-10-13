@@ -159,10 +159,14 @@
   ;;  It is not necessary to know whether the transitions cover the
   ;;  universe because the indicator function has a second argument
   ;;  to return if there is no match.
-  [transitions default]
+  [transitions promise-disjoint default]
   (bdd/with-hash []
     (letfn [(type-intersect [t1 t2]
               (list 'and t1 t2))
+            (type-and-not [t1 t2]
+              (if (= :empty-set t2)
+                t1
+                (list 'and t1 (list 'not t2))))
             ;; local function find-duplicates
             (find-duplicates [items]
               (loop [items items
@@ -214,15 +218,25 @@
 
                                                         :else
                                                         (old-label-< t1 t2)))]
-                          (first (reduce (fn [[accum-bdd previous-types] [type state-id]]
-                                           [(bdd/or accum-bdd
-                                                    (bdd/bdd `(~'and ~(type-intersect type
-                                                                                      (state-id->pseudo-type state-id))
-                                                               ;; in case the types are not disjoint
-                                                               (~'not (~'or ~@previous-types)))))
-                                            (cons type previous-types)])
-                                         [false '(:empty-set)] ;; initial bdd and empty-type
-                                         transitions)))]
+                          (first
+                           (reduce
+                            (fn [[accum-bdd previous-types] [type state-id]]
+                              [(bdd/or accum-bdd
+                                       (bdd/bdd (type-and-not 
+                                                 (type-intersect type
+                                                                 (state-id->pseudo-type state-id))
+                                                 (if promise-disjoint
+                                                   ;; This is an optimization
+                                                   ;; see issue
+                                                   ;; https://gitlab.lrde.epita.fr/jnewton/clojure-rte/-/issues/27
+                                                   ;; If the given types are already promised to be disjoint,
+                                                   ;;  then no need to do an expensive Bdd operation
+                                                   :empty-set
+                                                   ;; in case the types are not disjoint
+                                                   (cons 'or previous-types)))))
+                               (cons type previous-types)])
+                            [false '(:empty-set)] ;; initial bdd and empty-type
+                            transitions)))]
                 ;;(clojure-rte.dot/bdd-to-dot bdd :title (gensym "bdd") :view true)
                 (fn [candidate default]
                   (loop [bdd' bdd
@@ -250,6 +264,7 @@
           ;; If there is a duplicate consequent, then the corresponding types can be unioned.
           (-optimized-transition-function (for [[consequent transitions] (group-by second transitions)]
                                             [(pretty-or (map first transitions)) consequent])
+                                          promise-disjoint
                                           default)
 
           (empty? duplicate-types)

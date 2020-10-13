@@ -218,15 +218,16 @@
   (testing "acceptance:  testing whether rte-match works same on dfa when trimmed and minimized."
 
     (t-acceptance-test-rte  '(:and (:* Long) (:not (:* Short)))) ;; this was an explicit failing test
-    
-    (doseq [[inx rte] (reverse (map-indexed (fn [inx item] [inx item])
-                                            (distinct (for [ rte-1 test-rtes
-                                                            rte-2 test-rtes
-                                                            rte [`(:and ~rte-1 (:not ~rte-2))
-                                                                 `(:or  ~rte-1 (:not ~rte-2))]]
-                                                        rte))))]
-      (println [:inx inx :rte rte])
-      (t-acceptance-test-rte rte))))
+    (let [[left-rtes right-rtes] (split-at (unchecked-divide-int (count test-rtes) 2)
+                                           test-rtes)]
+      (doseq [[inx rte] (reverse (map-indexed (fn [inx item] [inx item])
+                                              (distinct (for [rte-1 right-rtes
+                                                              rte-2 left-rtes
+                                                              rte [`(:and ~rte-1 (:not ~rte-2))
+                                                                   `(:or  ~rte-1 (:not ~rte-2))]]
+                                                          rte))))]
+        (println [:inx inx :rte rte])
+        (t-acceptance-test-rte rte)))))
 
 (deftest t-test-1
   (testing "particular case 1 which was failing"

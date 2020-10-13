@@ -29,10 +29,9 @@
 
 (defn- rte-case-clauses-to-dfa
   "Helper function for macro-expanding rte-case.
-  Returns a Dfa which is the union of the input clauses."
+  Returns a complete Dfa which is the union of the input clauses."
   [pairs]
-  (reduce (fn [a b]
-            (dfa/synchronized-union a b))
+  (reduce dfa/synchronized-union
           (map (fn [[index rte]]
                  (rte-to-dfa rte index))
                pairs)))
@@ -97,7 +96,8 @@
     (let [[fns int-rte-pairs] (compile-clauses clauses)
           num-fns (count fns)
           var (gensym "index")]
-      `((~fns (ensure-fns-index (rte-match (memoized-rte-case-clauses-to-dfa '~int-rte-pairs) ~sequence)
+      `((~fns (ensure-fns-index (rte-match (memoized-rte-case-clauses-to-dfa '~int-rte-pairs) ~sequence
+                                           :promise-disjoint true)
                                 ~num-fns))))))
 
 (defn- lambda-list-to-rte
