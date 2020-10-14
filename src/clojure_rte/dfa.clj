@@ -93,7 +93,7 @@
   [dfa]
   (assert (instance? Dfa dfa))
   (assert (:combine-labels dfa) (format "missing :combine-labels in Dfa %s" dfa))
-  (assert (map? (:states dfa))  (format "states must be a map, not a ~A: ~A" (type (:states dfa)) (:states dfa)))
+  (assert (map? (:states dfa))  (cl-format false "states must be a map, not a ~A: ~A" (type (:states dfa)) (:states dfa)))
   (let [ids (set (ids-as-seq dfa))]
     (doseq [id (keys (states-as-map dfa))
             q (get (states-as-seq dfa) id)]
