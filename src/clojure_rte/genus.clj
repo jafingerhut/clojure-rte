@@ -377,7 +377,11 @@
     :dont-know))
 
 (defmethod -disjoint? :or [t1 t2]
-  ;; TODO fill in some details
+  (and (or? t1)
+       (every? (fn [t1'] (disjoint? t1' t2)) (rest t1)))
+  true
+
+  :else
   :dont-know)
 
 (defmethod -disjoint? :and [t1 t2]
@@ -668,33 +672,6 @@
         :else
         :dont-know))
 
-(defmethod -disjoint? :not-disjoint [t1 t2]
-  (cond (and (not? t2)
-             (disjoint? t1 (second t2) (constantly false)))
-        ;; (disjoint? A (not B)) 
-        false
-        
-        ;; (disjoint?   'java.io.Serializable '(not java.lang.Comparable))
-        (and (not? t2)
-             (class-designator? t1)
-             (class-designator? (second t2))
-             (= :interface (class-type t1))
-             (= :interface (class-type (second t2)))
-             (not (= (find-class t1) (find-class (second t2)))))
-        false
-        
-        ;; (disjoint?   '(not java.io.Serializable) '(not java.lang.Comparable))
-        (and (not? t1)
-             (not? t2)
-             (class-designator? (second t1))
-             (class-designator? (second t2))
-             (= :interface (class-type (second t1)))
-             (= :interface (class-type (second t2)))
-             (not (= (find-class (second t1)) (find-class (second t2)))))
-        false
-        
-        :else :dont-know))
-
 (defmethod -disjoint? :classes [t1 t2]
   (if (and (class-designator? t1)
            (class-designator? t2))
@@ -752,11 +729,30 @@
          (= t1 (second t2)))
     true
     
-    ;; (disjoint? X (not Y)) where X||Y ;; TODO isn't this a duplicate?
+    ;; (disjoint? A (not B)) 
     (and (not? t2)
-         (disjoint? (second t2) t1 (constantly false)))
+         (disjoint? t1 (second t2) (constantly false)))
     false
-    
+
+    ;; (disjoint?   'java.io.Serializable '(not java.lang.Comparable))
+    (and (not? t2)
+         (class-designator? t1)
+         (class-designator? (second t2))
+         (= :interface (class-type t1))
+         (= :interface (class-type (second t2)))
+         (not (= (find-class t1) (find-class (second t2)))))
+    false
+        
+    ;; (disjoint?   '(not java.io.Serializable) '(not java.lang.Comparable))
+    (and (not? t1)
+         (not? t2)
+         (class-designator? (second t1))
+         (class-designator? (second t2))
+         (= :interface (class-type (second t1)))
+         (= :interface (class-type (second t2)))
+         (not (= (find-class (second t1)) (find-class (second t2)))))
+    false
+
     ;; if t1 < t2, then t1 disjoint from (not t2)
     ;; (disjoint? '(member 1 2 3) '(not (member a b c 1 2 3)))
     (and (not? t2)
@@ -783,18 +779,9 @@
     ;; if disjoint classes A and B
     (and (not? t1)
          (not? t2)
-         (class-designator? (second t1))
-         (class-designator? (second t2))
-         (disjoint? (second t1) (second t2)))
-    false
-
-    ;; (disjoint? 'java.io.Serializable '(not java.lang.Comparable)) ;; TODO isn't this a duplicate?
-    (and (class-designator? t1)
-         (not? t2)
-         (class-designator? (second t2))
-         ;; and neither is final
-         (not (= :final (class-type t1)))
-         (not (= :final (class-type (second t2)))))
+         ;;(class-designator? (second t1))
+         ;;(class-designator? (second t2))
+         (disjoint? (second t1) (second t2) (constantly false)))
     false
 
     ;; I don't know the general form of this, so make it a special case for the moment.
@@ -814,7 +801,6 @@
                 (subtype? A C (constantly false))
                 (not (subtype? C A (constantly true))))))
     false
-
     
     ;; (gns/disjoint? '(and String (not (member a b c 1 2 3))) 'java.lang.Comparable)
     ;;                       A    (not B)                     C
@@ -825,7 +811,7 @@
          (not? (first (rest (rest t1))))  ;; t1 of the form (and x (not y))
          (let [[_ A [_ B]] t1
                C t2]
-           (disjoint? A B)))
+           (disjoint? A B (constantly false))))
     (disjoint? (second t1) t2)
     
     :else
