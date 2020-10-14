@@ -470,6 +470,23 @@
                                                            [new-label (:index sink-state)]))))
                              q)])))}))))
 
+(defn complement
+  "Accepts an object of type Dfa, and returns a new object of type Dfa
+  whose recognition languages is the complement of the given Dfa.
+  This is done by replacing accepting states with non-accepting states
+  and non-accepting with accepting.  The transformation looses exit-value
+  information."
+  [dfa]
+  (let [dfa-complete (complete dfa)]
+    (make-dfa dfa
+              {:states (into {} (map (fn [[index state]]
+                                       [(:index state)
+                                        (map->State {:index (:index state)
+                                                     :accepting (not (:accepting state))
+                                                     :transitions (:transitions state)})])
+                                     (:states dfa-complete)))
+               :pattern (list 'not (:pattern dfa))
+               :exit-map {} })))
 (defn minimize
   "Accepts an object of type Dfa, and returns a new object of type Dfa
   implementing the minimization of the state machine according to the
