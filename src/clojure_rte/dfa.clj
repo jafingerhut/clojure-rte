@@ -487,6 +487,101 @@
                                      (:states dfa-complete)))
                :pattern (list 'not (:pattern dfa))
                :exit-map {} })))
+
+
+(defn extract-rte
+  "Accepts an object of type Dfa, and returns an rte pattern of the accepting
+  langauge."
+  [dfa]
+  (letfn [(available-ids [dfa]
+            (let [states (states-as-map dfa)
+                  num-states (count states)]
+              (filter (fn [id]
+                        ;; find smallest non-negative integer which is not already
+                        ;; a state-id in this Dfa
+                        (and (> id 0)
+                             (not (get states id false)))) (range 1 (+ 1 num-states)))))
+          (prepend-initial [dfa]
+            (let [new-state-id (first (available-ids dfa))]
+              (make-dfa dfa
+                        {:states (assoc (states-as-map dfa)
+                                        new-state-id (map->State {:initial true
+                                                                  :accepting false
+                                                                  :transitions (for [id (ids-as-seq dfa)
+                                                                                     :when (:initial (state-by-index dfa id))]
+                                                                                 [:epsilon id])}))})))
+          (append-final [dfa]
+            (let [new-state-id (first (available-ids dfa))]
+              (make-dfa dfa
+                        {:states (assoc (into {}
+                                              (map (fn [q]
+                                                     [(:index q)
+                                                      (cond
+                                                        (:final q)
+                                                        (conj (:transitions q) [:epsilon new-state-id])
+                                                        
+                                                        :else
+                                                        q)])
+                                                   (states-as-seq dfa)))
+                                        new-state-id (map->State {:initial false
+                                                                  :accepting true
+                                                                  :transitions ()}))})))
+          (previous-states [dfa state]
+            (let [state-id (:index state)]
+              (filter (fn [q]
+                        (some (fn [[_ dst-id]] (= dst-id state-id)) (:transitions q)))
+                      (states-as-seq dfa))))
+          (next-states [dfa state]
+            (for [[_ dst-id] (:transitions state)]
+              (state-by-index dfa dst-id)))
+          (pretty-or [operands]
+            (cond (empty? operands)
+                  :empty-set
+                  (empty? (rest operands))
+                  (first operands)
+                  :else
+                  (cons :or operands)))
+          (find-self-loop-label [state]
+            (let [state-id (:index state)]
+              (pretty-or (for [[label dst-id] (:transitions state)
+                               :when (= dst-id state-id)]
+                           label))))
+          (eliminate-state [dfa state-to-eliminate]
+            (let [from (previous-states dfa state-to-eliminate)
+                  to   (next-states dfa state-to-eliminate)
+                  new-states (mapcat (fn [state]
+                                       (cond (= state state-to-eliminate)
+                                             ()
+
+                                             (member state from)
+                                             (list [(:index state)
+                                                    (map->State {:index (:index state)
+                                                                :transitions (new-transitions state state-to-eliminate)}
+                                                                )])
+                                             
+                                             :else
+                                             (list [(:index state) state]))) (states-as-seq dfa))
+                  ]
+              (make-dfa dfa {:states (into {} new-states)})))
+          (new-transitions [previous-state state-to-eliminate]
+            (concat (remove (fn [[_ dst-id]]
+                              (= dst-id (:index state-to-eliminate)))
+                            (:transitions previous-state))
+                    (for [[from-label dst-id] (:transitions previous-state)
+                          :when (= dst-id state-to-eliminate)
+                          [to-label dst-id] (:transitions state-to-eliminate)
+                          :let [self-loop-label (find-self-loop-label state-to-eliminate)
+                                loop-label (if (= :empty-set self-loop-label)
+                                             ()
+                                             (list (list :* self-loop-label)))]
+                          ]
+                      [`(:cat ~from-label ~@loop-label ~to-label) dst-id])))
+          ]
+    (:label (reduce (fn [dfa id]
+                      (eliminate-state dfa (state-by-index dfa id)))
+                    (append-final (prepend-initial dfa))
+                    (ids-as-seq dfa)))))
+
 (defn minimize
   "Accepts an object of type Dfa, and returns a new object of type Dfa
   implementing the minimization of the state machine according to the
