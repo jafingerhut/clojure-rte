@@ -21,6 +21,7 @@
 
 (ns clojure-rte.dfa
   "Definition of records State and Dfa."
+  (:refer-clojure :exclude [complement])
   (:require [clojure-rte.cl-compat :as cl]
             [clojure-rte.util :refer [fixed-point member group-by-mapped print-vals]]
             [clojure-rte.genus :as gns]
