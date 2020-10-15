@@ -22,7 +22,7 @@
 (ns clojure-rte.rte-test
   (:require [clojure.test :refer :all :exclude [testing]]
             [clojure.pprint :refer [cl-format]]
-            [clojure-rte.util :refer [sort-operands remove-once call-with-collector visit-permutations]]
+            [clojure-rte.util :refer [sort-operands remove-once call-with-collector visit-permutations member]]
             [clojure-rte.genus :refer [disjoint? typep inhabited?]]
             [clojure-rte.rte-core :refer :all :exclude [-main]]
             [clojure-rte.rte-tester :refer :all]))
@@ -176,6 +176,12 @@
         "cat x epsilon")
     (is (= (canonicalize-pattern '(:cat Number (:* :sigma) (:* :sigma) String))
            '(:cat Number (:* :sigma) String)) "cat sigma* sigma*")
+    (is (= (canonicalize-pattern '(:cat Number (:* String) (:* String) Number))
+           '(:cat Number (:* String)  Number)) "cat (:* x) (:* x)")
+    (is (= (canonicalize-pattern '(:cat Number (:* String) String Number))
+           '(:cat Number (:* String) String Number)) "cat (:* x) x")
+    (is (= (canonicalize-pattern '(:cat Number String (:* String) Number))
+           '(:cat Number String (:* String) Number)) "cat x (:* x)")
 
     ;; :not
     (is (= :empty-set (canonicalize-pattern-once '(:not (:* :sigma)))) "not sigma*")
@@ -210,7 +216,7 @@
     (is (= '(:not java.io.Serializable)
            (canonicalize-pattern '(:not (:or java.io.Serializable java.io.Serializable)))) "not or 4")
 
-    ;; and
+    ;; :and
     (is (= (canonicalize-pattern '(:and)) '(:* :sigma)) "(:and)")
     (is (= 'java.io.Serializable
            (canonicalize-pattern '(:and java.io.Serializable
@@ -218,14 +224,12 @@
     (is (= '(:and java.io.Serializable java.lang.Comparable)
            (canonicalize-pattern-once '(:and java.io.Serializable java.lang.Comparable java.io.Serializable java.lang.Comparable))) "and remove duplicate 2")
 
-    
-
     (is (= :empty-set
            (canonicalize-pattern '(:and  java.io.Serializable :empty-set java.lang.Comparable))) "and empty-set")
     (is (= '(:and java.io.Serializable java.lang.Comparable)
            (canonicalize-pattern '(:and  java.io.Serializable (:* :sigma) java.lang.Comparable))) "and sigma*")
 
-    ;; or
+    ;; :or
     (is (= (canonicalize-pattern '(:or)) :empty-set))
     (is (= 'java.io.Serializable
            (canonicalize-pattern '(:or java.io.Serializable java.io.Serializable))) "or remove duplicate 1 b")
@@ -236,6 +240,23 @@
     (is (= '(:* :sigma)
            (canonicalize-pattern '(:or  java.io.Serializable (:* :sigma) java.lang.Comparable))) "or sigma*")
 
+    ;; (:or A :epsilon B (:cat X (:* X)) C)
+    ;;   --> (:or A :epsilon B (:* X) C ) --> (:or A B (:* X) C)
+    (is (= (canonicalize-pattern '(:or :epsilon (:cat Integer (:* Integer))))
+           '(:* Integer))
+        "1: (:or :epsilon :+) -> :*")
+    (is (=
+         (canonicalize-pattern '(:or :epsilon (:cat  (:* Integer) Integer)))
+         '(:* Integer))
+        "2: (:or :epsilon :+) -> :*")
+    (is (= (canonicalize-pattern '(:or String :epsilon Long (:cat Integer (:* Integer)) Boolean))
+           '(:or (:* Integer) Boolean Long String))
+        "3: (:or :epsilon :+) -> :*")
+    (is (=
+         (canonicalize-pattern '(:or String :epsilon Long (:cat  (:* Integer) Integer) Boolean))
+         '(:or (:* Integer) Boolean Long String))
+        "4: (:or :epsilon :+) -> :*")
+    
     ;; permute
     (is (= (canonicalize-pattern '(:permute)) :epsilon) "permute 0 arg")
 
@@ -632,7 +653,10 @@
                                                          (or Long Number)))) "test 1")
       (is (thrown? Exception (canonicalize-pattern '(and (:or String Number)
                                                          (:or :sigma)))) "test 2")
-      (is (thrown? Exception (canonicalize-pattern '(or (:and String Number)))) "test 3"))))
+      (is (thrown? Exception (canonicalize-pattern '(or (:and String Number)))) "test 3")
+      ;; assert not an Exception
+      (canonicalize-pattern '(:or :epsilon (:cat Integer (:* Integer))))
+)))
 
 (deftest t-derivative-2
   (testing "derivative previous failure"
@@ -641,3 +665,26 @@
                                                 (:cat Boolean :sigma))))
                               '(not Boolean)))
         "derivative 2")))
+
+(deftest t-dfa-to-rte
+  (testing "dfa-to-rte"
+    (is (= '{13 (:* Integer)}
+           (dfa-to-rte (rte-to-dfa '(:* Integer) 13))) "(:* Integer)")
+
+    (is (= '{13 (:* Integer)
+             17 (:* String)}
+           (dfa-to-rte
+            (clojure-rte.dfa/synchronized-union (rte-to-dfa '(:+ Integer) 13)
+                                                (rte-to-dfa '(:+ String) 17))))
+        "synchronized union a")
+
+    (is (member (dfa-to-rte
+                 (clojure-rte.dfa/synchronized-union (rte-to-dfa '(:* Integer) 13)
+                                                     (rte-to-dfa '(:* String) 17)))
+                '({13 (:* Integer)
+                   17 (:cat String (:* String))}
+                  {13 (:* Integer)
+                   17 (:cat (:* String) String)})
+                )
+        "synchronized union b")
+    ))
