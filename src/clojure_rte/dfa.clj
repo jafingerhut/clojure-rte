@@ -581,6 +581,21 @@
                       (eliminate-state dfa (state-by-index dfa id)))
                     (append-final (prepend-initial dfa))
                     (ids-as-seq dfa)))))
+(defn merge-parallel-transitions [transitions pretty-or]
+  ;; if there are two transitions with the same src/dest, then
+  ;;   combine the labels with (or ...), or (:or ...) depending on the given pretty-or
+  ;; We do not, currently, try to reduce the union type.
+  ;; It may be something like:
+  ;; (or Long
+  ;;     (and (not Long) (not String)))
+  ;; which *could* be reduced to simply: Long
+  (let [grouped (group-by (fn [[_ to]]
+                            to)
+                          transitions)]
+    
+    (map (fn [[to transitions]]
+           [(pretty-or (map first transitions)) to])
+         grouped)))
 
 (defn minimize
   "Accepts an object of type Dfa, and returns a new object of type Dfa
