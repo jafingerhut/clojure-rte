@@ -158,13 +158,26 @@
                         (let [can (canonicalize-pattern rte)]
                           (if (nullable rte)
                             (assert (nullable can)
+
+(defn test-rte-not
+  "Testing several functions, dfa/complement, dfa-to-rte, dfa-equivalent"
+  [num-tries size verbose]
+  (tester/random-test num-tries
+                      (fn [rte]
+                        (with-compile-env []
+                          ;; is (not rte) equivalent to (complement dfa) ?
+                          (let [dfa (rte-to-dfa rte)
+                                dfa-complement (dfa/complement dfa)
+                                dfa-not-rte (dfa-to-rte (list :not rte))]
+                            (assert (dfa/dfa-equivalent dfa-complement
+                                                    dfa-not-rte)
                                     (cl-format false
-                                               "rte ~A is nullable but its canonicalization ~A is not"
-                                               rte can))
-                            (assert (not (nullable can))
+                                               "!dfa != (dfa (not rte)), when rte=~A" rte))
+                            (assert (dfa/dfa-equivalent dfa
+                                                    (dfa-to-rte (list :not (dfa-to-rte dfa-complement))))
                                     (cl-format false
-                                               "rte ~A is not nullable but its canonicalization ~A is nullable"
-                                               rte can)))))
+                                               "(rte (dfa (not rte))) != dfa, when rte=~A" rte)))))
+                            
                       (fn [] (gen-rte size *test-types*))
                       rte-components
                       verbose))

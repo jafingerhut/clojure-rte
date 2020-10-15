@@ -61,7 +61,11 @@
 
 (deftest t-rte-nullable-canonicalize-random
   (testing "canonicalize of :not"
-    (test-rte-canonicalize-nullable 1000 5 false)))
+    (test-rte-canonicalize-nullable 1000 4 false)))
+
+(deftest t-rte-not-random
+  (testing "canonicalize of :not"
+    (test-rte-not 500 4 false)))
 
 ;; this test is not yet correctly implemented,
 ;;    need a good way to compare two rtes for equivalence
