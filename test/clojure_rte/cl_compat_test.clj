@@ -128,5 +128,11 @@
                 (cl/with-escape ret2
                   (ret1 48))
                 (ret1 49))))))
-    
-    
+
+(deftest t-ldiff
+  (testing "ldiff"
+    (is (= (let [L '(1 2 3 4)]
+             (clojure-rte.cl-compat/ldiff L (rest (rest L))))
+           '(1 2)))
+    (is (= (clojure-rte.cl-compat/ldiff '(1 2 3 4) '(3 4))
+           '(1 2 3 4)))))

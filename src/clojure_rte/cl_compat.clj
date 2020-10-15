@@ -80,3 +80,18 @@
 (defmacro with-escape [ret & body]
   `(call-with-escape (fn [~ret] ~@body)))
 
+(defn ldiff [l-left l-mid]
+  "Returns a copy of the first prefix of l-left whose
+   tail is pointer-identical to l-mid."
+  (loop [acc ()
+         l-iter l-left]
+    (cond (identical? l-mid l-iter)
+          (reverse acc)
+
+          (empty? l-iter)
+          l-left
+
+          :else
+          (recur (cons (first l-iter) acc)
+                 (rest l-iter)))))
+          
