@@ -426,36 +426,42 @@
                                     (assert (< 1 (count operands))
                                             (format "traverse-pattern should have already eliminated this case: re=%s count=%s operands=%s" re (count operands) operands))
                                     (cl/cl-cond
-                                     ;; TODO (:cat A (:* :sigma) (:* :sigma) B)
-                                     ;;  --> (:cat A (:* :sigma) B)
+                                     ;; TODO (:cat A (:* X) (:* X) B)
+                                     ;;  --> (:cat A (:* X) B)
+                                     
 
 
-                                      ;; (:cat x (:cat a b) y) --> (:cat x a b y)
-                                      ((some cat? operands)
+                                     ;; TODO (:cat A X (:* X) B)
+                                     ;; TODO (:cat A (:* X) X B)
+                                     ;;  --> (:cat A (:* X) B)
+
+
+                                     ;; (:cat x (:cat a b) y) --> (:cat x a b y)
+                                     ((some cat? operands)
                                       (cons :cat (mapcat (fn [obj]
                                                            (if (cat? obj)
                                                              (rest obj)
                                                              (list obj))) operands)))
 
-                                      ;; (:cat x "empty-set" y) --> :emptyset
-                                      ((member :empty-set operands)
+                                     ;; (:cat x "empty-set" y) --> :emptyset
+                                     ((member :empty-set operands)
                                       :empty-set)
 
-                                      ;; (:cat x :epsilon y) --> (:cat x y)
-                                      ((member :epsilon operands)
+                                     ;; (:cat x :epsilon y) --> (:cat x y)
+                                     ((member :epsilon operands)
                                       (cons :cat (remove #{:epsilon} operands)))
 
-                                      ;; (:cat x (:* :sigma) (:* :sigma) y) --> (:cat x y)
-                                      ((let [[head tail] (split-with (complement #{'(:* :sigma)}) operands)]
-                                         ;; tail the first tail starting with  (:* :sigma)
-                                         (if (and tail
-                                                  (rest tail)
-                                                  (= '(:* :sigma) (first (rest tail))))
+                                     ;; (:cat x (:* :sigma) (:* :sigma) y) --> (:cat x y)
+                                     ((let [[head tail] (split-with (complement #{'(:* :sigma)}) operands)]
+                                        ;; tail the first tail starting with  (:* :sigma)
+                                        (if (and tail
+                                                 (rest tail)
+                                                 (= '(:* :sigma) (first (rest tail))))
                                           (cons :cat (concat head '((:* :sigma)) (drop-while #{'(:* :sigma)} tail)))
                                           false)))
 
-                                      (:else
-                                       (cons :cat operands)))))
+                                     (:else
+                                      (cons :cat operands)))))
                            :not (fn [operand _functions]
                                   (let [operand (canonicalize-pattern operand)]
                                     (case operand
