@@ -501,6 +501,8 @@
                         ;; a state-id in this Dfa
                         (and (> id 0)
                              (not (get states id false)))) (range 1 (+ 1 num-states)))))
+
+          ;; local function
           (prepend-initial [dfa]
             (let [new-state-id (first (available-ids dfa))]
               (make-dfa dfa
@@ -510,6 +512,8 @@
                                                                   :transitions (for [id (ids-as-seq dfa)
                                                                                      :when (:initial (state-by-index dfa id))]
                                                                                  [:epsilon id])}))})))
+
+          ;; local function
           (append-final [dfa]
             (let [new-state-id (first (available-ids dfa))]
               (make-dfa dfa
@@ -526,26 +530,40 @@
                                         new-state-id (map->State {:initial false
                                                                   :accepting true
                                                                   :transitions ()}))})))
+
+          ;; local function
           (previous-states [dfa state]
             (let [state-id (:index state)]
               (filter (fn [q]
                         (some (fn [[_ dst-id]] (= dst-id state-id)) (:transitions q)))
                       (states-as-seq dfa))))
+
+          ;; local function
           (next-states [dfa state]
             (for [[_ dst-id] (:transitions state)]
               (state-by-index dfa dst-id)))
+
+          ;; local function
           (pretty-or [operands]
             (cond (empty? operands)
                   :empty-set
+                  
                   (empty? (rest operands))
                   (first operands)
+                  
                   :else
                   (cons :or operands)))
+
+          ;; local function
+          ;; local function
           (find-self-loop-label [state]
             (let [state-id (:index state)]
               (pretty-or (for [[label dst-id] (:transitions state)
                                :when (= dst-id state-id)]
                            label))))
+
+          ;; local function
+          ;; local function
           (eliminate-state [dfa state-to-eliminate]
             (let [from (previous-states dfa state-to-eliminate)
                   to   (next-states dfa state-to-eliminate)
