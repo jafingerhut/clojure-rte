@@ -671,8 +671,8 @@
     (is (= '{13 (:* Integer)}
            (dfa-to-rte (rte-to-dfa '(:* Integer) 13))) "(:* Integer)")
 
-    (is (= '{13 (:* Integer)
-             17 (:* String)}
+    (is (= '{13 (:cat Integer (:* Integer))
+             17 (:cat String (:* String))}
            (dfa-to-rte
             (clojure-rte.dfa/synchronized-union (rte-to-dfa '(:+ Integer) 13)
                                                 (rte-to-dfa '(:+ String) 17))))
