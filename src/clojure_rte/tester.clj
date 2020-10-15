@@ -46,10 +46,8 @@
       to attempt to generate a simpler test case, if test fails.
   verbose indicates whether to print verbose information about progression of tests."
   [num-tries unary-test-fun arg-generator gen-components verbose]
-  (loop [n num-tries]
-    (if (< 0 n)
-      (let [data (arg-generator)]
-        (when verbose
-          (cl-format true "~d/~d: trying ~A~%" n num-tries data))
-        (unary-test-fun data)
-        (recur (dec n))))))
+  (doseq [n (range num-tries)
+          :let [data (arg-generator)]]
+    (when verbose
+      (cl-format true "~d/~d: trying ~A~%" n num-tries data))
+    (unary-test-fun data)))

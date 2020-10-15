@@ -21,8 +21,9 @@
 
 (ns clojure-rte.rte-tester
   (:require [clojure-rte.tester  :as tester]
+            [clojure-rte.dfa :as dfa]
             [clojure.pprint :refer [cl-format]]
-            [clojure-rte.rte-core :refer [rte-to-dfa canonicalize-pattern nullable]]
+            [clojure-rte.rte-core :refer [dfa-to-rte rte-to-dfa canonicalize-pattern nullable with-compile-env]]
             ))
 
 (defn rte-components [pattern]
@@ -155,9 +156,20 @@
   [num-tries size verbose]
   (tester/random-test num-tries
                       (fn [rte]
-                        (let [can (canonicalize-pattern rte)]
-                          (if (nullable rte)
-                            (assert (nullable can)
+                        (with-compile-env []
+                          (let [can (canonicalize-pattern rte)]
+                            (if (nullable rte)
+                              (assert (nullable can)
+                                      (cl-format false
+                                                 "rte ~A is nullable but its canonicalization ~A is not"
+                                                 rte can))
+                              (assert (not (nullable can))
+                                      (cl-format false
+                                                 "rte ~A is not nullable but its canonicalization ~A is nullable"
+                                                 rte can))))))
+                      (fn [] (gen-rte size *test-types*))
+                      rte-components
+                      verbose))
 
 (defn test-rte-not
   "Testing several functions, dfa/complement, dfa-to-rte, dfa-equivalent"
