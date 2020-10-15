@@ -79,7 +79,7 @@
 (defn states-as-seq
   "Return a sequence of states which can be iterated over."
   [dfa]
-    (assert (instance? Dfa dfa))
+  (assert (instance? Dfa dfa) (cl-format false "states-as-seq: expecting Dfa, not ~A ~A" (type dfa) dfa))
   (assert (map? (:states dfa)))
   (vals (:states dfa)))
 
@@ -600,6 +600,7 @@
   that the computed Dfa may not any longer be complete.
   Don't remove the initial state."
   [dfa]
+  (assert (instance? Dfa dfa) (cl-format false "trim: expecting Dfa, not ~A ~A" (type dfa) dfa))
   (let [transition-pairs (mapcat (fn [q]
                                      (map (fn [[_ dst-id]]
                                             [(:index q) dst-id])

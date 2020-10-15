@@ -862,6 +862,7 @@
   exit values of the dfa with canonicalized rte patterns of the accepting
   langauge."
   [dfa]
+  (assert (instance? (dfa/record-name) dfa) (cl-format false "dfa-to-rte: expecting Dfa, not ~A ~A" (type dfa) dfa))
   (into {} (for [[exit-value label] (dfa/extract-rte dfa)]
              [exit-value (canonicalize-pattern label)])))
 
