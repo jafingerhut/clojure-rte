@@ -426,15 +426,15 @@
                                     (assert (< 1 (count operands))
                                             (format "traverse-pattern should have already eliminated this case: re=%s count=%s operands=%s" re (count operands) operands))
                                     (cl/cl-cond
-                                     ;; TODO (:cat A (:* X) (:* X) B)
+                                     ;; (:cat A (:* X) (:* X) B)
                                      ;;  --> (:cat A (:* X) B)
-                                     
-
-
-                                     ;; TODO (:cat A X (:* X) B)
-                                     ;; TODO (:cat A (:* X) X B)
-                                     ;;  --> (:cat A (:* X) B)
-
+                                     ((let [ptr (first-repeat operands (fn [a b]
+                                                                         (and (= a b)
+                                                                              (*? a))))]
+                                        (if (empty? ptr)
+                                          false
+                                          (let [prefix (cl/ldiff operands ptr)]
+                                            (cons :cat (concat prefix (rest ptr)))))))
 
                                      ;; (:cat x (:cat a b) y) --> (:cat x a b y)
                                      ((some cat? operands)
@@ -450,15 +450,6 @@
                                      ;; (:cat x :epsilon y) --> (:cat x y)
                                      ((member :epsilon operands)
                                       (cons :cat (remove #{:epsilon} operands)))
-
-                                     ;; (:cat x (:* :sigma) (:* :sigma) y) --> (:cat x y)
-                                     ((let [[head tail] (split-with (complement #{'(:* :sigma)}) operands)]
-                                        ;; tail the first tail starting with  (:* :sigma)
-                                        (if (and tail
-                                                 (rest tail)
-                                                 (= '(:* :sigma) (first (rest tail))))
-                                          (cons :cat (concat head '((:* :sigma)) (drop-while #{'(:* :sigma)} tail)))
-                                          false)))
 
                                      (:else
                                       (cons :cat operands)))))
@@ -557,6 +548,29 @@
                                     ;; TODO (:or (:cat A B (:* :sigma))
                                     ;;           (:cat A B ))
                                     ;;  --> (:or (:cat A B (:* :sigma)))
+ 
+                                    ;; (:or A :epsilon B (:cat X (:* X)) C)
+                                    ;;   --> (:or A :epsilon B (:* X) C ) --> (:or A B (:* X) C)
+                                   ((and (member :epsilon operands)
+                                          (some (fn [obj]
+                                                  (and (cat? obj)
+                                                       (= 3 (count obj))
+                                                       (let [[_ x y] obj]
+                                                         (cond (and (*? x)
+                                                                    (= y (second x)))
+                                                               ;; (:or x A B C)
+                                                               (cons :or (cons x (remove (fn [o] (or (= o :epsilon)
+                                                                                                (= o obj))) operands)))
+
+                                                               (and (*? y)
+                                                                    (= x (second y)))
+                                                               ;; (:or y A B C)
+                                                               (cons :or (cons y (remove (fn [o] (or (= o :epsilon)
+                                                                                           (= o obj))) operands)))
+                                                               
+                                                               :else
+                                                               false))))
+                                                operands)))
 
                                     ((some or? operands)
                                      (cons :or (mapcat (fn [obj]
@@ -841,4 +855,15 @@
                                         :pattern deriv
                                         :transitions transitions})]))
                   derivatives (range (count derivatives))))})))))
+
+
+(defn dfa-to-rte
+  "Accepts an object of type Dfa, and returns a map which associates
+  exit values of the dfa with canonicalized rte patterns of the accepting
+  langauge."
+  [dfa]
+  (into {} (for [[exit-value label] (dfa/extract-rte dfa)]
+             [exit-value (canonicalize-pattern label)])))
+
+
 
