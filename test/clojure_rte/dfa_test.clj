@@ -20,6 +20,7 @@
 ;; WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 (ns clojure-rte.dfa-test
+  (:refer-clojure :exclude [complement])
   (:require ;; [clojure-rte.core :refer :all]
             [clojure-rte.rte-core :refer :all :exclude [-main]]
             [clojure-rte.dfa :refer :all]
