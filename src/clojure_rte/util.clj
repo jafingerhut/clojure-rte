@@ -269,3 +269,19 @@
                     {:expected-type type
                      :actual-type (type value)
                      :value value}))))
+
+(defn first-repeat
+  "Return the first tail, (a b ...) of data which satisfies (test a b)"
+  [data test]
+  (loop [tail data]
+    (cond (empty? tail)
+          ()
+
+          (empty? (rest tail))
+          ()
+
+          (test (first tail) (second tail))
+          tail
+
+          :else
+          (recur (rest tail)))))
