@@ -859,7 +859,8 @@
 (defn dfa-to-rte
   "Accepts an object of type Dfa, and returns a map which associates
   exit values of the dfa with canonicalized rte patterns of the accepting
-  langauge."
+  langauge.  If there are no accepting states in the Dfa, an empty map {}
+  is returned."
   [dfa]
   (assert (instance? (dfa/record-name) dfa) (cl-format false "dfa-to-rte: expecting Dfa, not ~A ~A" (type dfa) dfa))
   (into {} (for [[exit-value label] (dfa/extract-rte dfa)]

@@ -23,6 +23,7 @@
   (:require [clojure-rte.tester  :as tester]
             [clojure-rte.dfa :as dfa]
             [clojure.pprint :refer [cl-format]]
+            ;; [clojure-rte.dot :as dot]
             [clojure-rte.rte-core :refer [dfa-to-rte rte-to-dfa canonicalize-pattern nullable with-compile-env]]
             ))
 
@@ -98,10 +99,12 @@
     ))
 
 (defn test-rte-to-dfa [num-tries size verbose]
-  (tester/random-test num-tries rte-to-dfa
-                      (fn [] (gen-rte size *test-types*))
-                      rte-components
-                      verbose))
+  (tester/random-test num-tries (fn [rte]
+                                  (with-compile-env []
+                                    (rte-to-dfa rte)))
+                        (fn [] (gen-rte size *test-types*))
+                        rte-components
+                        verbose))
 
 (defn test-canonicalize-pattern [num-tries size verbose]
   (tester/random-test num-tries canonicalize-pattern
@@ -180,9 +183,9 @@
     (let [dfa (rte-to-dfa rte)
           dfa-complement (dfa/complement dfa)
           dfa-not-rte (rte-to-dfa (list :not rte))]
-      (dot/dfa-to-dot dfa :view true :title "dfa-sigma")
-      (dot/dfa-to-dot dfa-complement :view true :title "dfa-sigma-complement")
-      (dot/dfa-to-dot dfa-not-rte :view true :title "dfa-not-sigma")
+      ;;(dot/dfa-to-dot dfa :view true :title "dfa")
+      ;;(dot/dfa-to-dot dfa-complement :view true :title "dfa-complement")
+      ;;(dot/dfa-to-dot dfa-not-rte :view true :title "dfa-not-rte")
       
       (assert (dfa/dfa-equivalent dfa
                                   dfa)
@@ -199,12 +202,16 @@
               (cl-format false
                          "!dfa != (dfa (not rte)), when rte=~A" rte))
       
-      (assert (dfa/dfa-equivalent dfa
-                                  ;; dfa-to-rte returns a map
-                                  ;;   we have to find the value corresponding to the key=true
-                                  (rte-to-dfa (list :not (get (dfa-to-rte dfa-complement) true))))
-              (cl-format false
-                         "(rte (dfa (not rte))) != dfa, when rte=~A" rte)))))
+      (let [extracted-rte-map (dfa-to-rte dfa-complement)
+            extracted-rte (get extracted-rte-map true :empty-set)
+            ]
+        
+        (assert (dfa/dfa-equivalent dfa
+                                    ;; dfa-to-rte returns a map
+                                    ;;   we have to find the value corresponding to the key=true
+                                    (rte-to-dfa (list :not extracted-rte)))
+                (cl-format false
+                           "(rte (dfa (not rte))) != dfa, when rte=~A" rte))))))
 
 (defn test-rte-not
   "Testing several functions, dfa/complement, dfa-to-rte, dfa-equivalent"

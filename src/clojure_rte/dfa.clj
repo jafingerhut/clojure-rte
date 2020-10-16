@@ -291,8 +291,8 @@
   The function assumes the types are mutually disjoint and that they partition
   the universe.  I.e., the union of all the types is :sigma, and for any two
   of the types, (a,b), a ^ b = :empty-set."
-  (memoize -optimized-transition-function)
-  ;;-optimized-transition-function
+  ;;(memoize -optimized-transition-function)
+  -optimized-transition-function
   )
 
 (defn delta
@@ -667,7 +667,8 @@
 (defn extract-rte
   "Accepts an object of type Dfa, and returns a map which associates
   exit values of the dfa with non-canonicalized rte patterns of the accepting
-  langauge."
+  langauge. If there are no accepting states in the Dfa, an empty map {}
+  is returned."
   [dfa]
   (letfn [(available-ids [dfa]
             (let [states (states-as-map dfa)

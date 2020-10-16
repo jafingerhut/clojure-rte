@@ -51,7 +51,10 @@
 
 (deftest t-rte-to-dfa-random
   (testing "rte-to-dfa random"
-    (test-rte-to-dfa 30 5 false)))
+    (test-rte-to-dfa 30 ; num-tries
+                     5 ; size
+                     false ; verbose
+                     )))
 
 (deftest t-rte-nullable-not-random
   (testing "nullability of :not"
@@ -61,7 +64,10 @@
 
 (deftest t-rte-nullable-canonicalize-random
   (testing "canonicalize of :not"
-    (test-rte-canonicalize-nullable 1000 4 false)))
+    (test-rte-canonicalize-nullable 500 ; num-tries
+                                    4 ; size
+                                    true ;verbose
+                                    )))
 
 (deftest t-rte-not-random
   (testing ":not random"
