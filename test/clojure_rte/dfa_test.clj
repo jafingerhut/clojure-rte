@@ -214,7 +214,6 @@
           (format "case 4: rte=%s seq=%s got %s from dfa, got %s from dfa-trim-min"
                   rte (pr-str seq-long) match? (rte-match dfa-trim-min seq-long))))))
   
-
 (deftest t-acceptance
   (testing "acceptance:  testing whether rte-match works same on dfa when trimmed and minimized."
 
@@ -267,7 +266,6 @@
                 (format "dfa-1 => %s and dfa-2 => %s but dfa-sxp => %s, on sequence %s"
                         m-1 m-2 m-dfa-sxp s))))))
 
-
 (deftest t-test-2
  (testing "particular case 2 which was failing"
    (let [dfa-1 (rte-to-dfa '(:or (:* Long) 
@@ -279,7 +277,6 @@
          ]
      (is (= (rte-match dfa-1 test-seq)
             (rte-match dfa-min test-seq))))))
-
 
 (deftest t-sxp
   (testing "sxp"

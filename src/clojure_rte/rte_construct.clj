@@ -856,7 +856,6 @@
                                         :transitions transitions})]))
                   derivatives (range (count derivatives))))})))))
 
-
 (defn dfa-to-rte
   "Accepts an object of type Dfa, and returns a map which associates
   exit values of the dfa with canonicalized rte patterns of the accepting
