@@ -31,20 +31,21 @@
 ))
 
 (defrecord State 
-  ;; :index -- the index of this state in the array
-  ;; :accepting - Boolean true/false indicating whether this state is a
-  ;;     final/accepting state.
-  ;; :pattern -- the derivative value representing an rte pattern matching
-  ;;     any tail of the input sequence which is accepting from this point
-  ;;     onward.
-  ;; :pattern -- 
-  ;; :transitions -- A list of pairs, each pair is a 2 element array of the form
-  ;;     [type next-state], e.g., [clojure.lang.Keyword 1]
-  ;;     which means if the value at the head of the sequence is of type
-  ;;     clojure.lang.Keyword, then go to state 1.  The type is some value
-  ;;     compatible with isa?.  the state index is some index of the state
-  ;;     array representing the finite atomaton.
-  [index accepting pattern transitions])
+    ;; :index -- the index of this state in the array
+    ;; :accepting - Boolean true/false indicating whether this state is a
+    ;;     final/accepting state.
+    ;; :initial - Boolean indicating initial state
+    ;; :pattern -- the derivative value representing an rte pattern matching
+    ;;     any tail of the input sequence which is accepting from this point
+    ;;     onward.
+    ;; :pattern -- 
+    ;; :transitions -- A list of pairs, each pair is a 2 element array of the form
+    ;;     [type next-state], e.g., [clojure.lang.Keyword 1]
+    ;;     which means if the value at the head of the sequence is of type
+    ;;     clojure.lang.Keyword, then go to state 1.  The type is some value
+    ;;     compatible with isa?.  the state index is some index of the state
+    ;;     array representing the finite atomaton.
+    [index initial accepting pattern transitions])
 
 (defmethod print-method State [v w]
   (.write w (format "#<State %s>" (:index v))))
