@@ -152,7 +152,7 @@
 
 (defn test-rte-canonicalize-nullable
   "Run some tests to assure that if an rte r is nullable if and only
-  if (canonicalize-pattern r) is nullable."
+  if (canonicalize-pattern r) is also nullable."
   [num-tries size verbose]
   (tester/random-test num-tries
                       (fn [rte]
