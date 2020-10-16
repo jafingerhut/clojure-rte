@@ -171,25 +171,33 @@
                       rte-components
                       verbose))
 
+(defn test-rte-not-1
+  "Assert that the same result occurs from complementing a dfa
+  or building a Dfa from a complemented rte."
+  [rte]
+  (with-compile-env []
+    ;; is (not rte) equivalent to (complement dfa) ?
+    (let [dfa (rte-to-dfa rte)
+          dfa-complement (dfa/complement dfa)
+          dfa-not-rte (rte-to-dfa (list :not rte))]
+      (dot/dfa-to-dot dfa :view true :title "dfa-sigma")
+      (dot/dfa-to-dot dfa-complement :view true :title "dfa-sigma-complement")
+      (dot/dfa-to-dot dfa-not-rte :view true :title "dfa-not-sigma")
+      
+      (assert (dfa/dfa-equivalent dfa-complement
+                                  dfa-not-rte)
+              (cl-format false
+                         "!dfa != (dfa (not rte)), when rte=~A" rte))
+      (assert (dfa/dfa-equivalent dfa
+                                  (rte-to-dfa (list :not (dfa-to-rte dfa-complement))))
+              (cl-format false
+                         "(rte (dfa (not rte))) != dfa, when rte=~A" rte)))))
+
 (defn test-rte-not
   "Testing several functions, dfa/complement, dfa-to-rte, dfa-equivalent"
   [num-tries size verbose]
   (tester/random-test num-tries
-                      (fn [rte]
-                        (with-compile-env []
-                          ;; is (not rte) equivalent to (complement dfa) ?
-                          (let [dfa (rte-to-dfa rte)
-                                dfa-complement (dfa/complement dfa)
-                                dfa-not-rte (dfa-to-rte (list :not rte))]
-                            (assert (dfa/dfa-equivalent dfa-complement
-                                                    dfa-not-rte)
-                                    (cl-format false
-                                               "!dfa != (dfa (not rte)), when rte=~A" rte))
-                            (assert (dfa/dfa-equivalent dfa
-                                                    (dfa-to-rte (list :not (dfa-to-rte dfa-complement))))
-                                    (cl-format false
-                                               "(rte (dfa (not rte))) != dfa, when rte=~A" rte)))))
-                            
+                      test-rte-not-1                            
                       (fn [] (gen-rte size *test-types*))
                       rte-components
                       verbose))
