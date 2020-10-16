@@ -31,7 +31,7 @@
   [string & body]
   `(do (println [:testing ~string :starting (java.util.Date.)])
        (clojure.test/testing ~string ~@body)
-       (println [:finished  (java.util.Date.)])
+       (println [:finished  ~string (java.util.Date.)])
        ))
 
 
@@ -64,7 +64,10 @@
     (test-rte-canonicalize-nullable 1000 4 false)))
 
 (deftest t-rte-not-random
-  (testing "canonicalize of :not"
+  (testing ":not random"
+    (clojure-rte.rte-tester/test-rte-not-1 :sigma)
+    (clojure-rte.rte-tester/test-rte-not-1 :empty-set)
+    (clojure-rte.rte-tester/test-rte-not-1 '(:* :sigma))
     (test-rte-not 500 4 false)))
 
 ;; this test is not yet correctly implemented,
