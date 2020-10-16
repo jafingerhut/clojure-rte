@@ -184,12 +184,25 @@
       (dot/dfa-to-dot dfa-complement :view true :title "dfa-sigma-complement")
       (dot/dfa-to-dot dfa-not-rte :view true :title "dfa-not-sigma")
       
+      (assert (dfa/dfa-equivalent dfa
+                                  dfa)
+              (cl-format false
+                         "dfa not equivalent with self rte=~A" rte))
+
+      (assert (dfa/dfa-equivalent dfa-not-rte
+                                  dfa-not-rte)
+              (cl-format false
+                         "dfa of :not, not equivalent with self rte=~A" (list :not rte)))
+
       (assert (dfa/dfa-equivalent dfa-complement
                                   dfa-not-rte)
               (cl-format false
                          "!dfa != (dfa (not rte)), when rte=~A" rte))
+      
       (assert (dfa/dfa-equivalent dfa
-                                  (rte-to-dfa (list :not (dfa-to-rte dfa-complement))))
+                                  ;; dfa-to-rte returns a map
+                                  ;;   we have to find the value corresponding to the key=true
+                                  (rte-to-dfa (list :not (get (dfa-to-rte dfa-complement) true))))
               (cl-format false
                          "(rte (dfa (not rte))) != dfa, when rte=~A" rte)))))
 
