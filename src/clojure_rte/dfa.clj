@@ -480,15 +480,16 @@
   information."
   [dfa]
   (let [dfa-complete (complete dfa)]
-    (make-dfa dfa
-              {:states (into {} (map (fn [[index state]]
-                                       [(:index state)
-                                        (map->State {:index (:index state)
-                                                     :accepting (not (:accepting state))
-                                                     :transitions (:transitions state)})])
-                                     (:states dfa-complete)))
-               :pattern (list 'not (:pattern dfa))
-               :exit-map {} })))
+    (trim
+     (make-dfa dfa
+               {:states (into {} (map (fn [[index state]]
+                                        [(:index state)
+                                         (map->State {:index (:index state)
+                                                      :initial (:initial state)
+                                                      :accepting (not (:accepting state))
+                                                      :transitions (:transitions state)})])
+                                      (:states dfa-complete)))
+                :pattern (list 'not (:pattern dfa)) }))))
 
 (defn merge-parallel-transitions [transitions pretty-or]
   ;; if there are two transitions with the same src/dest, then
