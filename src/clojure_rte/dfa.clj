@@ -664,12 +664,132 @@
                                       (:states dfa-complete)))
                 :pattern (list 'not (:pattern dfa)) }))))
 
+(defn extract-rte-new
+  "Accepts an object of type Dfa, and returns a map which associates
+  exit values of the dfa with non-canonicalized rte patterns of the accepting
+  langauge. If there are no accepting states in the Dfa, an empty map {}
+  is returned."
+  [dfa]
+  ;; TODO - this can be done easiser
+  ;;    1. trim the given dfa
+  ;;    2. generate a list of transition triples [from label to]
+  ;;    3. add transitions from extra-state-I to all initial states with :epsilon transition
+  ;;    4. add transitions from all accepting states to extra-state-F (one per exit value) with :epsilon transition
+  ;;    5. loop on each state
+  ;;    6.    partition transitions into 4 groups [to-this-state loops-on-state from-state everything-else]
+  ;;    7.    combine parallel transitions
+  ;;    8.    n^2 iteration to-this-state x from-this-state
+  ;;    9.    append new transitions in next iteration of loop 5.
+  ;;    10. this reduces to one transtion, returns its label.
+  (let [;; #1
+        old-transition-triples (for [q (states-as-seq dfa)
+                                     [label dst-id] (:transitions q)]
+                                 [(:index q) label dst-id])
+        ;; #2
+        new-initial-transitions [[:I :epsion 0]]
+        ;; #3
+        new-final-transitions (for [q (states-as-seq dfa)
+                                    :when (:accepting q)]
+                                ;; we designate new final states each as [:f some-exit-value]
+                                [(:index q) :epsilon [:F ((:exit-map dfa) q)]])]
+    (letfn [          ;; local function
+            (pretty-or [operands]
+              (cond (empty? operands)
+                    :empty-set
+                    
+                    (empty? (rest operands))
+                    (first operands)
+                    
+                    :else
+                    (cons :or operands)))
+
+            ;; local function
+            (pretty-cat [operands]
+              (cond (member :epsilon operands)
+                    (pretty-cat (remove (fn [o] (= o :epsilon)) operands))
+
+                    (member '(:* :empty-set) operands)
+                    (pretty-cat (remove (fn [o] (= o '(:* :empty-set))) operands))
+
+                    (empty? operands)
+                    :epsilon
+
+                    (empty? (rest operands))
+                    (first operands)
+
+                    :else
+                    (cons :cat operands)))
+
+            ;; local function
+            (extract-labels [triples]
+              (map second triples))
+
+            ;; local function
+            (combine-parallel [triples]
+              triples)
+
+            ;; local function
+            (eliminate-state [transition-triples q-id]
+              (let [[x-to-q q-to-q q-to-x others]
+                    (reduce (fn [[x-to-q q-to-q q-to-x others] [src-id label dst-id :as triple]]
+                              (cond
+                                (and (= src-id q-id)
+                                     (= dst-id q-id))
+                                [x-to-q
+                                 (cons triple q-to-q)
+                                 q-to-x
+                                 others]
+
+                                (= src-id q-id)
+                                [x-to-q
+                                 q-to-q
+                                 (cons triple q-to-x)
+                                 others]
+                                
+                                (= dst-id q-id)
+                                [(cons triple x-to-q)
+                                 q-to-q
+                                 q-to-q
+                                 others]
+
+                                :else
+                                [x-to-q
+                                 q-to-q
+                                 q-to-q
+                                 (conj others triple)]))
+                            [() () () []]
+                            transition-triples)
+
+                    self-loop-label (pretty-or (extract-labels q-to-q))
+                    ;; #8
+                    new-triples (for [[src pre-label _] x-to-q
+                                      [_ post-label dst] q-to-x]
+                                  [src
+                                   (pretty-cat pre-label
+                                               (list :* self-loop-label)
+                                               post-label)
+                                   dst])]
+                (concat others new-triples)))]
+
+      ;; #5 / #9
+      (let [[[_ label _] & others :as all] (reduce eliminate-state old-transition-triples (ids-as-seq))]
+        ;; one label per return value
+        label))))
+
 (defn extract-rte
   "Accepts an object of type Dfa, and returns a map which associates
   exit values of the dfa with non-canonicalized rte patterns of the accepting
   langauge. If there are no accepting states in the Dfa, an empty map {}
   is returned."
   [dfa]
+  ;; TODO - this can be done easiser
+  ;;    1. generate a list of transition triples [from label to]
+  ;;    2. loop on each state
+  ;;    3.    partition transitions into 4 groups [to-this-state loops-on-state from-state everything-else]
+  ;;    4.    combine parallel transitions
+  ;;    5.    n^2 iteration to-this-state x from-this-state
+  ;;    6.    append new transitions in next iteration of loop 2.
+  ;;    7. this reduces to one transtion, returns its label.
   (letfn [(available-ids [dfa]
             (let [states (states-as-map dfa)
                   num-states (count states)]
