@@ -680,14 +680,14 @@
   ;;    7.    combine parallel transitions
   ;;    8.    n^2 iteration to-this-state x from-this-state
   ;;    9.    append new transitions in next iteration of loop 5.
-  ;;    10. this reduces to one transtion, returns its label.
-  (let [;; #1
+  ;;    10. this reduces to one transtion per exit value, returns the map of exit-value to label
+  (let [;; #2
         old-transition-triples (for [q (states-as-seq dfa)
                                      [label dst-id] (:transitions q)]
                                  [(:index q) label dst-id])
-        ;; #2
-        new-initial-transitions [[:I :epsion 0]]
         ;; #3
+        new-initial-transitions [[:I :epsion 0]]
+        ;; #4
         new-final-transitions (for [q (states-as-seq dfa)
                                     :when (:accepting q)]
                                 ;; we designate new final states each as [:f some-exit-value]
@@ -731,35 +731,30 @@
             ;; local function
             (eliminate-state [transition-triples q-id]
               (let [[x-to-q q-to-q q-to-x others]
-                    (reduce (fn [[x-to-q q-to-q q-to-x others] [src-id label dst-id :as triple]]
+                    ;; #6
+                    (reduce (fn [[x-to-q q-to-q q-to-x others]
+                                 [src-id label dst-id :as triple]]
                               (cond
                                 (and (= src-id q-id)
                                      (= dst-id q-id))
-                                [x-to-q
-                                 (cons triple q-to-q)
-                                 q-to-x
-                                 others]
+                                ;; extend q-to-q
+                                [x-to-q (cons triple q-to-q) q-to-x others]
 
                                 (= src-id q-id)
-                                [x-to-q
-                                 q-to-q
-                                 (cons triple q-to-x)
-                                 others]
+                                ;; extend q-to-x
+                                [x-to-q q-to-q (cons triple q-to-x) others]
                                 
                                 (= dst-id q-id)
-                                [(cons triple x-to-q)
-                                 q-to-q
-                                 q-to-q
-                                 others]
+                                ;; extend x-to-q
+                                [(cons triple x-to-q) q-to-q q-to-q others]
 
                                 :else
-                                [x-to-q
-                                 q-to-q
-                                 q-to-q
-                                 (conj others triple)]))
+                                ;; extend others
+                                [x-to-q q-to-q q-to-q (conj others triple)]))
                             [() () () []]
                             transition-triples)
 
+                    ;; #7
                     self-loop-label (pretty-or (extract-labels q-to-q))
                     ;; #8
                     new-triples (for [[src pre-label _] x-to-q
