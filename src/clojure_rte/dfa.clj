@@ -472,25 +472,6 @@
                                                            [new-label (:index sink-state)]))))
                              q)])))}))))
 
-(defn complement
-  "Accepts an object of type Dfa, and returns a new object of type Dfa
-  whose recognition languages is the complement of the given Dfa.
-  This is done by replacing accepting states with non-accepting states
-  and non-accepting with accepting.  The transformation looses exit-value
-  information."
-  [dfa]
-  (let [dfa-complete (complete dfa)]
-    (trim
-     (make-dfa dfa
-               {:states (into {} (map (fn [[index state]]
-                                        [(:index state)
-                                         (map->State {:index (:index state)
-                                                      :initial (:initial state)
-                                                      :accepting (not (:accepting state))
-                                                      :transitions (:transitions state)})])
-                                      (:states dfa-complete)))
-                :pattern (list 'not (:pattern dfa)) }))))
-
 (defn merge-parallel-transitions [transitions pretty-or]
   ;; if there are two transitions with the same src/dest, then
   ;;   combine the labels with (or ...), or (:or ...) depending on the given pretty-or
@@ -663,6 +644,25 @@
                                                                       (:transitions state))))]))
                                  useful))})
         ))))
+
+(defn complement
+  "Accepts an object of type Dfa, and returns a new object of type Dfa
+  whose recognition languages is the complement of the given Dfa.
+  This is done by replacing accepting states with non-accepting states
+  and non-accepting with accepting.  The transformation looses exit-value
+  information."
+  [dfa]
+  (let [dfa-complete (complete dfa)]
+    (trim
+     (make-dfa dfa
+               {:states (into {} (map (fn [[index state]]
+                                        [(:index state)
+                                         (map->State {:index (:index state)
+                                                      :initial (:initial state)
+                                                      :accepting (not (:accepting state))
+                                                      :transitions (:transitions state)})])
+                                      (:states dfa-complete)))
+                :pattern (list 'not (:pattern dfa)) }))))
 
 (defn extract-rte
   "Accepts an object of type Dfa, and returns a map which associates
