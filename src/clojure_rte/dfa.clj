@@ -767,11 +767,14 @@
                 (concat others new-triples)))]
 
       ;; #5 / #9
-        ;; one label per return value
-        label))))
 
 (defn extract-rte
       (let [new-transition-triples (reduce eliminate-state old-transition-triples (ids-as-seq dfa))
+            grouped (group-by (fn [_ _ [_ exit-value]] exit-value) new-transition-triples)]
+        (for [[exit-value triples] grouped]
+          ;; one label per return value
+          ;; #10
+          [exit-value (pretty-or (extract-labels triples))])))))
   "Accepts an object of type Dfa, and returns a map which associates
   exit values of the dfa with non-canonicalized rte patterns of the accepting
   langauge. If there are no accepting states in the Dfa, an empty map {}
