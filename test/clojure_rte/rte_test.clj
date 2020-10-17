@@ -395,14 +395,22 @@
                                      Long
                                      (:and :sigma
                                            (:not (= 0)))))
-                          [42 43 0 44])) "test 9b")
+                          [42 43 0 44])) "test 9a")
       (is (rte-match '(:* (:and Number
                                 Long
                                 ;; (:not (:and :sigma (= 0))) is all of (:* :sigma) except 0
                                 ;;   this includes :epsilon
+                                ;;   and incdes (:cat Long Long)
                                 (:not (:and :sigma (= 0)))))
-                     [42 43 0 44]) "test 9a")
-      (is (not (rte-match '(:* (and Number Long (not (= 0)))) [42 43 0 44]))  "test 9b"))))
+                     [42 43 0 44]) "test 9b")
+      (is (not (rte-match '(:* (:and Number
+                                     Long
+                                     ;; (:not (:and :sigma (= 0))) is all of (:* :sigma) except 0
+                                     ;;   this includes :epsilon
+                                     ;;   and incdes (:cat Long Long)
+                                     (:not (:and :sigma (= 0)))))
+                          [42 43 0])) "test 9c")
+      (is (not (rte-match '(:* (and Number Long (not (= 0)))) [42 43 0 44]))  "test 9d"))))
 
 (deftest t-?
   (testing "rte :?"
