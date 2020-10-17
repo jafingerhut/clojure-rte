@@ -767,24 +767,16 @@
                 (concat others new-triples)))]
 
       ;; #5 / #9
-      (let [[[_ label _] & others :as all] (reduce eliminate-state old-transition-triples (ids-as-seq))]
         ;; one label per return value
         label))))
 
 (defn extract-rte
+      (let [new-transition-triples (reduce eliminate-state old-transition-triples (ids-as-seq dfa))
   "Accepts an object of type Dfa, and returns a map which associates
   exit values of the dfa with non-canonicalized rte patterns of the accepting
   langauge. If there are no accepting states in the Dfa, an empty map {}
   is returned."
   [dfa]
-  ;; TODO - this can be done easiser
-  ;;    1. generate a list of transition triples [from label to]
-  ;;    2. loop on each state
-  ;;    3.    partition transitions into 4 groups [to-this-state loops-on-state from-state everything-else]
-  ;;    4.    combine parallel transitions
-  ;;    5.    n^2 iteration to-this-state x from-this-state
-  ;;    6.    append new transitions in next iteration of loop 2.
-  ;;    7. this reduces to one transtion, returns its label.
   (letfn [(available-ids [dfa]
             (let [states (states-as-map dfa)
                   num-states (count states)]
