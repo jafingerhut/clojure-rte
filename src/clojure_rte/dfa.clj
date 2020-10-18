@@ -664,7 +664,7 @@
                                       (:states dfa-complete)))
                 :pattern (list 'not (:pattern dfa)) }))))
 
-(defn extract-rte-new
+(defn extract-rte
   "Accepts an object of type Dfa, and returns a map which associates
   exit values of the dfa with non-canonicalized rte patterns of the accepting
   langauge. If there are no accepting states in the Dfa, an empty map {}
@@ -686,12 +686,12 @@
                                      [label dst-id] (:transitions q)]
                                  [(:index q) label dst-id])
         ;; #3
-        new-initial-transitions [[:I :epsion 0]]
+        new-initial-transitions [[:I :epsilon 0]]
         ;; #4
         new-final-transitions (for [q (states-as-seq dfa)
                                     :when (:accepting q)]
-                                ;; we designate new final states each as [:f some-exit-value]
-                                [(:index q) :epsilon [:F ((:exit-map dfa) q)]])]
+                                ;; we designate new final states each as [:F some-exit-value]
+                                [(:index q) :epsilon [:F ((:exit-map dfa) (:index q))]])]
     (letfn [          ;; local function
             (pretty-or [operands]
               (cond (empty? operands)
@@ -746,11 +746,11 @@
                                 
                                 (= dst-id q-id)
                                 ;; extend x-to-q
-                                [(cons triple x-to-q) q-to-q q-to-q others]
+                                [(cons triple x-to-q) q-to-q q-to-x others]
 
                                 :else
                                 ;; extend others
-                                [x-to-q q-to-q q-to-q (conj others triple)]))
+                                [x-to-q q-to-q q-to-x (conj others triple)]))
                             [() () () []]
                             transition-triples)
 
@@ -760,184 +760,23 @@
                     new-triples (for [[src pre-label _] x-to-q
                                       [_ post-label dst] q-to-x]
                                   [src
-                                   (pretty-cat pre-label
-                                               (list :* self-loop-label)
-                                               post-label)
+                                   (pretty-cat (list pre-label
+                                                     (list :* self-loop-label)
+                                                     post-label))
                                    dst])]
                 (concat others new-triples)))]
 
       ;; #5 / #9
-
-(defn extract-rte
-      (let [new-transition-triples (reduce eliminate-state old-transition-triples (ids-as-seq dfa))
-            grouped (group-by (fn [_ _ [_ exit-value]] exit-value) new-transition-triples)]
+      (let [new-transition-triples (reduce eliminate-state
+                                           (concat new-initial-transitions
+                                                   old-transition-triples
+                                                   new-final-transitions)
+                                           (ids-as-seq dfa))
+            grouped (group-by (fn [[_ _ [_ exit-value]]] exit-value) new-transition-triples)]
         (for [[exit-value triples] grouped]
           ;; one label per return value
           ;; #10
           [exit-value (pretty-or (extract-labels triples))])))))
-  "Accepts an object of type Dfa, and returns a map which associates
-  exit values of the dfa with non-canonicalized rte patterns of the accepting
-  langauge. If there are no accepting states in the Dfa, an empty map {}
-  is returned."
-  [dfa]
-  (letfn [(available-ids [dfa]
-            (let [states (states-as-map dfa)
-                  num-states (count states)]
-              (filter (fn [id]
-                        ;; find smallest non-negative integer which is not already
-                        ;; a state-id in this Dfa
-                        (and (> id 0)
-                             (not (get states id false)))) (range))))
-
-          ;; local function
-          (prepend-initial [dfa]
-            (let [new-state-id (first (available-ids dfa))]
-              (make-dfa dfa
-                        {:states (assoc (states-as-map dfa)
-                                        new-state-id (map->State {:initial true
-                                                                  :index new-state-id
-                                                                  :accepting false
-                                                                  :transitions (for [id (ids-as-seq dfa)
-                                                                                     :when (:initial (state-by-index dfa id))]
-                                                                                 [:epsilon id])}))})))
-
-          ;; local function
-          (append-final [dfa]
-            ;; each final state maps to an exit-value
-            ;; but several final states might map to the same exit-value
-            ;; we want to add one state per unique exit-value
-            ;; and create an epsilon transition from the final state to that new state
-            
-            (let [new-states (map (fn [exit-value new-state-id]
-                                    (map->State {:accepting true
-                                                 :transitions ()
-                                                 :exit-value exit-value
-                                                 :index new-state-id
-                                                 }))
-                                  (keys (group-by (fn [[_ value]] value) (:exit-map dfa)))
-                                  (available-ids dfa))
-                  new-state-exit-map (into {} (map (fn [q] [(:exit-value q) q]) new-states))
-                  ]
-              (make-dfa dfa
-                        {:exit-map (merge (:exit-map dfa)
-                                          (into {} (map (fn [q] [(:index q) (:exit-value q)]) new-states)))
-                         :states (into {}
-                                       (map (fn [q]
-                                              [(:index q)
-                                               (cond
-                                                 (member q new-states)
-                                                 q
-                                                 
-                                                 (:accepting q) ;; but not in new-states,
-                                                 ;; then create a transition to the new state corresponding
-                                                 ;;  to its exit value
-                                                 (map->State {:transitions (conj (:transitions q)
-                                                                                 [:epsilon (:index (get new-state-exit-map
-                                                                                                        (exit-value dfa q)))])
-                                                              :index (:index q)})
-                                                 
-                                                 :else
-                                                 q)])
-                                            (concat new-states (states-as-seq dfa))))})))
-
-          ;; local function
-          (previous-states [dfa state]
-            (let [state-id (:index state)]
-              (filter (fn [q]
-                        (some (fn [[_ dst-id]] (= dst-id state-id)) (:transitions q)))
-                      (states-as-seq dfa))))
-
-          ;; local function
-          (next-states [dfa state]
-            (for [[_ dst-id] (:transitions state)]
-              (state-by-index dfa dst-id)))
-
-          ;; local function
-          (pretty-or [operands]
-            (cond (empty? operands)
-                  :empty-set
-                  
-                  (empty? (rest operands))
-                  (first operands)
-                  
-                  :else
-                  (cons :or operands)))
-
-          ;; local function
-          (pretty-cat [operands]
-            (cond (member :epsilon operands)
-                  (pretty-cat (remove (fn [o] (= o :epsilon)) operands))
-
-                  (member '(:* :empty-set) operands)
-                  (pretty-cat (remove (fn [o] (= o '(:* :empty-set))) operands))
-
-                  (empty? operands)
-                  :epsilon
-
-                  (empty? (rest operands))
-                  (first operands)
-
-                  :else
-                  (cons :cat operands)))
-          
-          ;; local function
-          (find-self-loop-label [state]
-            (let [state-id (:index state)]
-              (pretty-or (for [[label dst-id] (:transitions state)
-                               :when (= dst-id state-id)]
-                           label))))
-
-          ;; local function
-          (new-transitions [previous-state state-to-eliminate]
-            (let [previous-id (:index previous-state)
-                  eliminate-id (:index state-to-eliminate)
-                  removed (remove (fn [[_ dst-id]]
-                                    (= dst-id eliminate-id))
-                                  (:transitions previous-state))
-                  add-these (for [[from-label dst-id-1] (:transitions previous-state)
-                                  :when (= dst-id-1 eliminate-id)
-                                  [to-label dst-id-2] (:transitions state-to-eliminate)
-                                  :when (not= dst-id-2 eliminate-id)
-                                  :let [new-label (pretty-cat (list from-label
-                                                                    (list :* (find-self-loop-label state-to-eliminate))
-                                                                    to-label))]
-                                  ]
-                              [new-label dst-id-2])]
-              (concat removed
-                      add-these)))
-          
-          ;; local function
-          (eliminate-state [dfa state-to-eliminate]
-            (let [from (previous-states dfa state-to-eliminate)
-                  to   (next-states dfa state-to-eliminate)
-                  new-states (mapcat (fn [state]
-                                       (cond (= state state-to-eliminate)
-                                             ()
-
-                                             (member state from)
-                                             (let [nt (new-transitions state state-to-eliminate)]
-                                               (list [(:index state)
-                                                      (map->State {:index (:index state)
-                                                                   :transitions nt}
-                                                                  )]))
-                                             
-                                             :else
-                                             (list [(:index state) state])))
-                                     (states-as-seq dfa))
-                  ]
-              (make-dfa dfa {:states (into {} new-states)})))
-          ]
-    (let [trim-dfa (trim dfa)
-          i-f (reduce (fn [dfa' id]
-                        (eliminate-state dfa' (state-by-index dfa' id)))
-                      (append-final (prepend-initial trim-dfa))
-                      (ids-as-seq trim-dfa))]
-      (into {}
-            (for [q (states-as-seq i-f)
-                  [label dst-id] (merge-parallel-transitions (:transitions q) pretty-or)
-                  :let [dst-state  (state-by-index i-f dst-id)]
-                  :when (:accepting dst-state)]
-              [(exit-value i-f dst-state) label])))))
 
 (defn intersect-labels
   ""
