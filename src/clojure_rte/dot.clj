@@ -28,6 +28,7 @@
             [clojure-rte.rte-core :refer :all :exclude [-main]]
             [clojure-rte.dfa :as dfa]
             [clojure-rte.bdd :as bdd]
+            [clojure.string :as str]
             [clojure-rte.util :refer [member print-vals mapc]]
             [clojure.java.shell :refer [sh]]))
 
@@ -136,14 +137,19 @@
             (when (:initial q)
               (cl-format *out* "   H~D [label=\"\", style=invis, width=0]~%" (:index q))
               (cl-format *out* "   H~D -> q~D;~%" (:index q) (:index q)))
-            (doseq [[type-desig next-state] (:transitions q)]
+            (doseq [[next-state transitions] (group-by second (:transitions q))
+                    ;; if there are parallel transitions, print them seperated by comma
+                    :let [type-desigs (map first transitions)
+                          labels (if abbrev
+                                   (for [td type-desigs]
+                                     (cl-format false "t~a" (abbrevs td)))
+                                   type-desigs)
+                          label (str/join "," labels)]]
               (cl/cl-cond
                ((and (member (dfa/state-by-index dfa next-state) sink-states)
                      (not draw-sink)))
-               (abbrev
-                (cl-format *out* "   q~D -> q~D [label=\"t~a\"];~%" (:index q) next-state (abbrevs type-desig)))
                (:else
-                (cl-format *out* "   q~D -> q~D [label=\"~a\"];~%" (:index q) next-state type-desig)))))))
+                (cl-format *out* "   q~D -> q~D [label=\"~a\"];~%" (:index q) next-state label)))))))
         
         (cl-format *out* "}~%")))))
 
