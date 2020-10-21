@@ -548,10 +548,10 @@
                                     ;; TODO (:or (:cat A B (:* :sigma))
                                     ;;           (:cat A B ))
                                     ;;  --> (:or (:cat A B (:* :sigma)))
- 
+                                    
                                     ;; (:or A :epsilon B (:cat X (:* X)) C)
                                     ;;   --> (:or A :epsilon B (:* X) C ) --> (:or A B (:* X) C)
-                                   ((and (member :epsilon operands)
+                                    ((and (member :epsilon operands)
                                           (some (fn [obj]
                                                   (and (cat? obj)
                                                        (= 3 (count obj))
@@ -560,13 +560,13 @@
                                                                     (= y (second x)))
                                                                ;; (:or x A B C)
                                                                (cons :or (cons x (remove (fn [o] (or (= o :epsilon)
-                                                                                                (= o obj))) operands)))
+                                                                                                     (= o obj))) operands)))
 
                                                                (and (*? y)
                                                                     (= x (second y)))
                                                                ;; (:or y A B C)
                                                                (cons :or (cons y (remove (fn [o] (or (= o :epsilon)
-                                                                                           (= o obj))) operands)))
+                                                                                                     (= o obj))) operands)))
                                                                
                                                                :else
                                                                false))))
