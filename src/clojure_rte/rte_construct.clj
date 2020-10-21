@@ -397,7 +397,7 @@
   [type-designator]
   (cons 'rte (map canonicalize-pattern (rest type-designator))))
 
-(defn canonicalize-pattern-once 
+(defn -canonicalize-pattern-once 
   "Rewrite the given rte patter to a canonical form.
   This involves recursive re-writing steps for each sub form,
   including searches for syntatical and semantical reductions.
@@ -601,6 +601,12 @@
                                     (:else
                                      (cons :or operands))
                                     ))))))
+
+(def ^:dynamic canonicalize-pattern-once 
+  ;;(memoize
+   -canonicalize-pattern-once
+  ;; )
+  )
 
 (defn canonicalize-pattern 
   "find the fixed point of canonicalize-pattern-once"

@@ -31,7 +31,8 @@
   (memoize rte-to-dfa))
 
 (defn call-with-compile-env [thunk]
-  (binding [rte-compile (memoize rte-to-dfa)]
+  (binding [rte-compile (memoize rte-to-dfa)
+            canonicalize-pattern-once (memoize -canonicalize-pattern-once)]
     (thunk)))
 
 (defmacro with-compile-env [[] & body]
