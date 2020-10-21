@@ -22,13 +22,12 @@
 (ns clojure-rte.dot
   (:require [clojure.pprint :refer [cl-format]]
             [clojure.java.io :as io]
-            [clojure.string]
+            [clojure.string :as str]
             [clojure.set]
             [clojure-rte.cl-compat :as cl]
             [clojure-rte.rte-core :refer :all :exclude [-main]]
             [clojure-rte.dfa :as dfa]
             [clojure-rte.bdd :as bdd]
-            [clojure.string :as str]
             [clojure-rte.util :refer [member print-vals mapc]]
             [clojure.java.shell :refer [sh]]))
 
@@ -36,13 +35,13 @@
   "Full path to the graphviz dot program"
   (let [m (sh "which" "dot")]
     (cond
-      (= 0 (:exit m)) (clojure.string/trim (:out m))
+      (= 0 (:exit m)) (str/trim (:out m))
       :else "dot")))
 
 (def ^:dynamic *dot-tmp-dir*
   "Directory to put temporary files"
   (let [m (sh "mktemp" "-d")
-        tmp-dir (str (clojure.string/trim (:out m)) "/.")]
+        tmp-dir (str (str/trim (:out m)) "/.")]
     (sh "mkdir" "-p" tmp-dir)
     tmp-dir))
 
@@ -109,7 +108,7 @@
         (cl-format *out* "  fontname=courier;~%")
         (when abbrev
           (cl-format *out* "  label=\"~a\\l\"~%"
-                     (clojure.string/join
+                     (str/join
                       "" (concat (map (fn [index]
                                         (cl-format false "\\lt~a= ~a" index (indices index)))
                                       (range (count (keys indices))))
