@@ -160,7 +160,9 @@
   (tester/random-test num-tries
                       (fn [rte]
                         (with-compile-env []
+                          ;;(cl-format true "canonicalizing:~%")
                           (let [can (canonicalize-pattern rte)]
+                            ;;(cl-format true "canonicalized: ~A~%" can)
                             (if (nullable rte)
                               (assert (nullable can)
                                       (cl-format false
