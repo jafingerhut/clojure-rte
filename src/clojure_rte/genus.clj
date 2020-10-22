@@ -278,8 +278,12 @@
   "Given a multimethod object, return a list of method keys.
   The :primary method comes first in the return list and the :default
   method has been filtered away."
-  (memoize (fn [f]
-             (cons :primary (remove #{:primary :default} (keys (methods f)))))))
+  ;;(memoize
+   (fn [f]
+     (cons :primary (remove #{:primary :default} (keys (methods f)))))
+
+   ;;)
+  )
 
 (defmulti -disjoint?
   "This function should never be called.
@@ -552,27 +556,30 @@
 (def class-type
   "Takes a class-name and returns either :abstract, :interface, or :final,
   or throws an ex-info exception."
-  (memoize (fn [t]
-             (let [c (find-class t)
-                   r (refl/type-reflect c)
-                   flags (:flags r)]
-               (cond
-                 (= c Object)
-                 :abstract
-                 (contains? flags :interface)
-                 :interface
-                 (contains? flags :final)
-                 :final
-                 (contains? flags :abstract)
-                 :abstract
-                 (= flags #{:public})
-                 :final
-                 
-                 :else
-                 (throw (ex-info (format "disjoint? type %s flags %s not yet implemented" t flags)
-                                 {:error-type :invalid-type-flags
-                                  :a-type t
-                                  :flags flags})))))))
+;;  (memoize
+   (fn [t]
+     (let [c (find-class t)
+           r (refl/type-reflect c)
+           flags (:flags r)]
+       (cond
+         (= c Object)
+         :abstract
+         (contains? flags :interface)
+         :interface
+         (contains? flags :final)
+         :final
+         (contains? flags :abstract)
+         :abstract
+         (= flags #{:public})
+         :final
+         
+         :else
+         (throw (ex-info (format "disjoint? type %s flags %s not yet implemented" t flags)
+                         {:error-type :invalid-type-flags
+                          :a-type t
+                          :flags flags})))))
+   ;;)
+  )
 
 (defmethod -subtype? := [sub super]
   (cond (=? sub)
@@ -998,7 +1005,7 @@
   "Look at the function definition s-expression of the named function, type-predicate,
   and apply heuristics to attempt to reverse-engineer the type being checked.  
   This works for type predicates as they are defined in core.clj."
-  (memoize
+  ;;(memoize
    (fn [type-predicate]
      (let [fn-s-expression (get-fn-source type-predicate)]
        (cond
@@ -1033,7 +1040,9 @@
              nil))
 
          :else
-         nil)))))
+         nil)))
+   ;;)
+  )
 
 (defn expand-satisfies [type-designator]
   "Expand (satisfies rational? to
