@@ -23,6 +23,7 @@
   (:require [clojure-rte.tester  :as tester]
             [clojure-rte.dfa :as dfa]
             [clojure.pprint :refer [cl-format]]
+            [clj-async-profiler.core :as prof] ;; this requirement is only temporary while trying to debug the out-of-memory error
             ;; [clojure-rte.dot :as dot]
             [clojure-rte.rte-core :refer [dfa-to-rte rte-to-dfa canonicalize-pattern nullable with-compile-env]]
             ))
@@ -223,3 +224,10 @@
                       (fn [] (gen-rte size *test-types*))
                       rte-components
                       verbose))
+(defn -main []
+  (prof/profile 
+   (test-rte-canonicalize-nullable 500 ;; 500 ; num-tries
+                                   4 ; size
+                                   true ;verbose
+                                   ))
+  )
