@@ -23,7 +23,7 @@
   "Definition of records State and Dfa."
   (:refer-clojure :exclude [complement])
   (:require [clojure-rte.cl-compat :as cl]
-            [clojure-rte.util :refer [fixed-point member group-by-mapped print-vals]]
+            [clojure-rte.util :refer [fixed-point member group-by-mapped print-vals defn-memoized]]
             [clojure-rte.genus :as gns]
             [clojure.pprint :refer [cl-format]]
             [clojure-rte.bdd :as bdd]
@@ -150,12 +150,13 @@
   [dfa]
   (map serialize-state (states-as-seq dfa)))
 
-(defn- -optimized-transition-function
+(defn-memoized [optimized-transition-function -optimized-transition-function]
   "Given a set of transitions each of the form [type-designator state-index],
   return a indicator function which can be called with an candidate element
   of a sequence, and the function will return the state-index.  When called
   with the candidate object, will not evaluate any type predicate more than
   once."
+  
   ;; TODO, if we could know whether to trust that the transitions are
   ;;  already disjoint this function could be made much faster.
   ;;  It is not necessary to know whether the transitions cover the
@@ -282,18 +283,6 @@
           ;; if all duplicate types are empty types
           :else
           (gen-function))))))
-
-(def optimized-transition-function 
-  "Given a set of transitions each of the form [type-designator state-index],
-  return a function which can be called with an candidate element of a sequence,
-  and the function will return the state-index.  When called with the
-  candidate object, will not evaluate any type predicate more than once.
-  The function assumes the types are mutually disjoint and that they partition
-  the universe.  I.e., the union of all the types is :sigma, and for any two
-  of the types, (a,b), a ^ b = :empty-set."
-  ;;(memoize -optimized-transition-function)
-  -optimized-transition-function
-  )
 
 (defn delta
   "Given a state and target-label, find the destination state (object of type State)"

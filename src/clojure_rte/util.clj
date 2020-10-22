@@ -285,3 +285,11 @@
 
           :else
           (recur (rest tail)))))
+
+(defmacro defn-memoized
+  [[public-name internal-name] docstring & body]
+  (assert (string? docstring))
+  `(let []
+     (defn ~internal-name ~@body)
+     (def ~(with-meta  public-name {:dynamic true}) ~docstring (memoize ~internal-name))
+     ))

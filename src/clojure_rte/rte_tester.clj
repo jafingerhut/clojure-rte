@@ -224,10 +224,11 @@
                       (fn [] (gen-rte size *test-types*))
                       rte-components
                       verbose))
-(defn -main []
-  (prof/profile 
-   (test-rte-canonicalize-nullable 500 ;; 500 ; num-tries
-                                   4 ; size
-                                   true ;verbose
-                                   ))
-  )
+;; (defn -main []
+;;   (prof/profile 
+;;    (test-rte-canonicalize-nullable 500 ;; 500 ; num-tries
+;;                                    4 ; size
+;;                                    true ;verbose
+;;                                    ))
+;;   )
+

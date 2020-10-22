@@ -27,7 +27,8 @@
 
 (in-ns 'clojure-rte.rte-core)
 
-(defn- rte-case-clauses-to-dfa
+(defn-memoized [memoized-rte-case-clauses-to-dfa
+                rte-case-clauses-to-dfa]
   "Helper function for macro-expanding rte-case.
   Returns a complete Dfa which is the union of the input clauses."
   [pairs]
@@ -35,9 +36,6 @@
           (map (fn [[index rte]]
                  (rte-to-dfa rte index))
                pairs)))
-
-;;(def memoized-rte-case-clauses-to-dfa rte-case-clauses-to-dfa )
-(def memoized-rte-case-clauses-to-dfa (memoize rte-case-clauses-to-dfa))
 
 (defn ensure-fns-index
   "Internal function used in macro expansion of rte-case, to assure the index is in range

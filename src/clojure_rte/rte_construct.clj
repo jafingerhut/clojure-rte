@@ -397,7 +397,7 @@
   [type-designator]
   (cons 'rte (map canonicalize-pattern (rest type-designator))))
 
-(defn -canonicalize-pattern-once 
+(defn-memoized [canonicalize-pattern-once -canonicalize-pattern-once]
   "Rewrite the given rte patter to a canonical form.
   This involves recursive re-writing steps for each sub form,
   including searches for syntatical and semantical reductions.
@@ -601,12 +601,6 @@
                                     (:else
                                      (cons :or operands))
                                     ))))))
-
-(def ^:dynamic canonicalize-pattern-once 
-  ;;(memoize
-   -canonicalize-pattern-once
-  ;; )
-  )
 
 (defn canonicalize-pattern 
   "find the fixed point of canonicalize-pattern-once"
@@ -819,7 +813,7 @@
          (gns/or? label2)) `(~(first label2) ~label1 ~@(rest label2))
     :else `(~'or ~label1 ~label2)))
 
-(defn rte-to-dfa
+(defn-memoized [rte-compile rte-to-dfa]
   "Use the Brzozowski derivative aproach to compute a finite automaton
   representing the given rte patten.  The finite automaton is in the
   form of an array of States.  The n'th State is array[n]."

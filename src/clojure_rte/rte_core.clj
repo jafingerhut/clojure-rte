@@ -24,6 +24,7 @@
             [clojure.pprint :refer [cl-format]]
             [clojure-rte.cl-compat :as cl]
             [clojure-rte.util :refer [with-first-match call-with-collector
+                                      defn-memoized
                                       first-repeat
                                       fixed-point
                                       visit-permutations rte-constantly rte-identity
@@ -37,3 +38,18 @@
             [clojure-rte.rte-case]
             [clojure-rte.genus-rte]
             ))
+
+;; (defn funny-function [n f]
+;;   (let [v (repeat n 12)
+;;         w (filter f v)
+;;         y (count w)]
+;;     (fn [x]
+;;       (list x y (count w) (count v)))))
+
+;; (defn test-out-of-memory [n]
+;;   (loop [a ()
+;;          n 0]
+;;     (when (= 0 (mod n 1000))
+;;       (println n))
+;;     (recur (cons (funny-function n (constantly false)) a)
+;;            (inc n))))

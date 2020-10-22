@@ -24,7 +24,7 @@
   (:require [clojure.set :refer [intersection subset?]]
             [clojure.repl :refer [source-fn]]
             [clojure.pprint :refer [cl-format]]
-            [clojure-rte.util :refer [call-with-collector member find-simplifier]]
+            [clojure-rte.util :refer [call-with-collector member find-simplifier defn-memoized]]
             [clojure-rte.cl-compat :as cl]
             [clojure.reflect :as refl]
   ))
@@ -274,16 +274,12 @@
   [sub-designator super-designator]"
   subtype?-error)
 
-(def sort-method-keys
+(defn-memoized [sort-method-keys -sort-method-keys ]
   "Given a multimethod object, return a list of method keys.
   The :primary method comes first in the return list and the :default
   method has been filtered away."
-  ;;(memoize
-   (fn [f]
-     (cons :primary (remove #{:primary :default} (keys (methods f)))))
-
-   ;;)
-  )
+  [f]
+  (cons :primary (remove #{:primary :default} (keys (methods f)))))
 
 (defmulti -disjoint?
   "This function should never be called.
@@ -553,33 +549,30 @@
         :else
         :dont-know))
 
-(def class-type
+(defn-memoized [class-type -class-type]
   "Takes a class-name and returns either :abstract, :interface, or :final,
   or throws an ex-info exception."
-;;  (memoize
-   (fn [t]
-     (let [c (find-class t)
-           r (refl/type-reflect c)
-           flags (:flags r)]
-       (cond
-         (= c Object)
-         :abstract
-         (contains? flags :interface)
-         :interface
-         (contains? flags :final)
-         :final
-         (contains? flags :abstract)
-         :abstract
-         (= flags #{:public})
-         :final
-         
-         :else
-         (throw (ex-info (format "disjoint? type %s flags %s not yet implemented" t flags)
-                         {:error-type :invalid-type-flags
-                          :a-type t
-                          :flags flags})))))
-   ;;)
-  )
+  [t]
+  (let [c (find-class t)
+        r (refl/type-reflect c)
+        flags (:flags r)]
+    (cond
+      (= c Object)
+      :abstract
+      (contains? flags :interface)
+      :interface
+      (contains? flags :final)
+      :final
+      (contains? flags :abstract)
+      :abstract
+      (= flags #{:public})
+      :final
+      
+      :else
+      (throw (ex-info (format "disjoint? type %s flags %s not yet implemented" t flags)
+                      {:error-type :invalid-type-flags
+                       :a-type t
+                       :flags flags})))))
 
 (defmethod -subtype? := [sub super]
   (cond (=? sub)
