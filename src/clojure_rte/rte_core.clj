@@ -29,7 +29,9 @@
                                       fixed-point
                                       visit-permutations rte-constantly rte-identity
                                       partition-by-pred
-                                      print-vals sort-operands member]]
+                                      print-vals sort-operands member
+                                      map-eagerly mapcat-eagerly filter-eagerly
+                                      concat-eagerly remove-eagerly]]
             [clojure-rte.genus :as gns]
             [clojure-rte.dfa :as dfa ]
             [clojure-rte.rte-construct]

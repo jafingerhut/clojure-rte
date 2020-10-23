@@ -23,7 +23,8 @@
   "Definition of records State and Dfa."
   (:refer-clojure :exclude [complement])
   (:require [clojure-rte.cl-compat :as cl]
-            [clojure-rte.util :refer [fixed-point member group-by-mapped print-vals defn-memoized]]
+            [clojure-rte.util :refer [fixed-point member group-by-mapped print-vals defn-memoized
+                                      filter-eagerly remove-eagerly map-eagerly mapcat-eagerly]]
             [clojure-rte.genus :as gns]
             [clojure.pprint :refer [cl-format]]
             [clojure-rte.bdd :as bdd]
@@ -88,7 +89,7 @@
   "Return a sequence of ids of the states which can be iterated over."
   [dfa]
     (assert (instance? Dfa dfa))
-  (map :index (states-as-seq dfa)))
+  (map-eagerly :index (states-as-seq dfa)))
 
 (defn check-dfa
   "assert that no transition references an invalid state"
@@ -115,7 +116,7 @@
         (assert (bdd/type-disjoint? label-1 label-2)
                 (cl-format false "overlapping types ~A vs ~A in ~A transitions ~A"
                            label-1 label-2 q (:transitions q))))
-      (doseq [:let [trans-labels (map first (:transitions q))]
+      (doseq [:let [trans-labels (map-eagerly first (:transitions q))]
               [label freq] (frequencies trans-labels)]
         (assert (= 1 freq)
                 (cl-format false "label ~A appears ~D times in transitions of ~A: transitions=~A"
@@ -148,7 +149,7 @@
 (defn serialize-dfa
   "Serialize a Dfa for debugging"
   [dfa]
-  (map serialize-state (states-as-seq dfa)))
+  (map-eagerly serialize-state (states-as-seq dfa)))
 
 (defn-memoized [optimized-transition-function -optimized-transition-function]
   "Given a set of transitions each of the form [type-designator state-index],
@@ -256,17 +257,17 @@
                       (recur (:negative bdd')
                              (cons (list 'not (:label bdd')) lineage))))))))
             ]
-      (let [types (map first transitions)
+      (let [types (map-eagerly first transitions)
             duplicate-types (find-duplicates types)
-            inhabited-types (delay (filter (fn [td] (gns/inhabited? td (constantly false)))
+            inhabited-types (delay (filter-eagerly (fn [td] (gns/inhabited? td (constantly false)))
                                            types))
-            consequents (map second transitions)]
+            consequents (map-eagerly second transitions)]
         
         (cond
           (not= (count consequents) (count (distinct consequents)))
           ;; If there is a duplicate consequent, then the corresponding types can be unioned.
           (-optimized-transition-function (for [[consequent transitions] (group-by second transitions)]
-                                            [(pretty-or (map first transitions)) consequent])
+                                            [(pretty-or (map-eagerly first transitions)) consequent])
                                           promise-disjoint
                                           default)
 
@@ -302,7 +303,7 @@
   [objects f]
   (if (= 1 (count objects))
     #{ objects}
-    (set (map set (vals (group-by f objects))))))
+    (set (map-eagerly set (vals (group-by f objects))))))
 
 (defn find-eqv-class
   "Given a sequence of sequences, find the leaf level
@@ -320,7 +321,7 @@
   State's, not state-id's, E.g., ( ... #{#<State 9> #<State 2>} #{#<State 0} ...),
   not (... #{9 2} #{0} ...)"
   [dfa]
-  (let [[finals non-finals] (map (group-by (comp boolean :accepting)
+  (let [[finals non-finals] (map-eagerly (group-by (comp boolean :accepting)
                                            (states-as-seq dfa)) [true false])
         pi-0 (conj (split-eqv-class finals
                                     (fn [state]
@@ -337,18 +338,18 @@
                           [label (phi s label)]))
                       (Phi [s]
                         (for [[k pairs] (group-by second (Phi' s))
-                              :let [labels (map first pairs)
+                              :let [labels (map-eagerly first pairs)
                                     label (reduce (:combine-labels dfa) labels)]]
                           [label k]))
                       (repartition [eqv-class]
                         (split-eqv-class eqv-class Phi))]
-                (mapcat repartition partition)))]
+                (mapcat-eagerly repartition partition)))]
       (fixed-point pi-0 refine =))))
 
 (defn min-state
   "Compute the minimimum :index of the given set of states"
   [eqv-class] ;; a set of states
-  (reduce min (map :index eqv-class)))
+  (reduce min (map-eagerly :index eqv-class)))
 
 (defn find-sink-states
   "Find the set (as sequence) of all sink states in the given Dfa.
@@ -357,7 +358,7 @@
   and all its transitions point to itself."
   [dfa]
   (assert (instance? Dfa dfa))
-  (filter (fn [q]
+  (filter-eagerly (fn [q]
             (and (not (:accepting q))
                  (not (= 0 (:index q)))
                  (every? (fn [[label dst]]
@@ -367,7 +368,7 @@
 
 (defn complete-state?
   [state]
-  (let [labels (map first (:transitions state))]
+  (let [labels (map-eagerly first (:transitions state))]
     (and (not (empty? labels))
          (or (member :sigma labels)
              (bdd/type-subtype? :sigma (cons 'or labels))))))
@@ -376,7 +377,7 @@
   "Return a sequence containing all the State's of the given Dfa which are not complete,
   according to the function complete-state?"
   [dfa]
-  (remove complete-state? (states-as-seq dfa)))
+  (remove-eagerly complete-state? (states-as-seq dfa)))
 
 (defn ensure-sink-state
   "Return one of the sink states of the Dfa if there is one,
@@ -387,7 +388,7 @@
   (assert (instance? Dfa dfa))
   (assert (every? (fn [q] (instance? State q)) (find-sink-states dfa))
           (cl-format false "not all sink states are States: ~A: ~A"
-                     (map type (find-sink-states dfa))
+                     (map-eagerly type (find-sink-states dfa))
                      (find-sink-states dfa)))
   (or (first (find-sink-states dfa))
       (let [states (states-as-map dfa)
@@ -449,7 +450,7 @@
                           ;;   union of the transition labels is now :sigma
                           [(:index q)
                            (if (member q incomplete)
-                             (let [existing-labels (map first (:transitions q))
+                             (let [existing-labels (map-eagerly first (:transitions q))
                                    new-label (if (empty? existing-labels)
                                                :sigma
                                                (bdd/canonicalize-type
@@ -473,8 +474,8 @@
                             to)
                           transitions)]
     
-    (map (fn [[to transitions]]
-           [(pretty-or (map first transitions)) to])
+    (map-eagerly (fn [[to transitions]]
+           [(pretty-or (map-eagerly first transitions)) to])
          grouped)))
 
 (defn minimize
@@ -483,7 +484,7 @@
   Hopcroft minimization algorithm."
   [dfa]
   (let [pi-minimized (find-hopcroft-partition dfa)
-        ids (map min-state pi-minimized)
+        ids (map-eagerly min-state pi-minimized)
         partitions-map (zipmap ids pi-minimized)
         ids-map (zipmap pi-minimized ids)]
     (assert (sequential? pi-minimized))
@@ -511,13 +512,13 @@
                                         [from to])
                                       transitions)]
                 
-                (map (fn [[[from to] transitions]]
-                       [from (pretty-or-type (map second transitions)) to])
+                (map-eagerly (fn [[[from to] transitions]]
+                       [from (pretty-or-type (map-eagerly second transitions)) to])
                      grouped)))
             (new-id [state]
               (assert (instance? State state))
               (ids-map (find-eqv-class pi-minimized state)))]
-      (let [new-fids (mapcat (fn [id eqv-class]
+      (let [new-fids (mapcat-eagerly (fn [id eqv-class]
                                ;; does there exists an s in eqv-class such that (:accepting s)
                                (if (some :accepting eqv-class)
                                  (list id)
@@ -533,7 +534,7 @@
             
             grouped (group-by (fn [[new-src-id _ _]] new-src-id) new-proto-delta)
             new-exit-map (into {}
-                               (mapcat (fn [id eqv-class]
+                               (mapcat-eagerly (fn [id eqv-class]
                                          (if (some :accepting eqv-class)
                                            (list [id
                                                   ((:exit-map dfa) (:index (first eqv-class)))])
@@ -549,18 +550,18 @@
                               id)
               new-states (for [id new-state-ids
                                :let [transitions (merge-parallel (grouped id))
-                                     new-transitions (filter (fn [[_ dst-id]]
+                                     new-transitions (filter-eagerly (fn [[_ dst-id]]
                                                                (member dst-id new-state-ids))
-                                                             (map rest transitions))]
+                                                             (map-eagerly rest transitions))]
                                ]
                            
                            [id (map->State
                                 {:index id
                                  :initial (= 0 id)
-                                 :pattern (pretty-or-rte (map :pattern (partitions-map id)))
+                                 :pattern (pretty-or-rte (map-eagerly :pattern (partitions-map id)))
                                  :accepting (member id new-fids)
                                  :transitions new-transitions})])]
-          (make-dfa dfa { :exit-map (into {} (map (fn [id]
+          (make-dfa dfa { :exit-map (into {} (map-eagerly (fn [id]
                                                     [id (exit-value dfa id)])
                                                   new-fids))
                          :states
@@ -573,8 +574,8 @@
   Don't remove the initial state."
   [dfa]
   (assert (instance? Dfa dfa) (cl-format false "trim: expecting Dfa, not ~A ~A" (type dfa) dfa))
-  (let [transition-pairs (mapcat (fn [q]
-                                     (map (fn [[_ dst-id]]
+  (let [transition-pairs (mapcat-eagerly (fn [q]
+                                     (map-eagerly (fn [[_ dst-id]]
                                             [(:index q) dst-id])
                                           (:transitions q)))
                                  (states-as-seq dfa))
@@ -585,7 +586,7 @@
                      done #{}]
                 (if (empty? states)
                   done
-                  (let [next-states (mapcat (fn [id]
+                  (let [next-states (mapcat-eagerly (fn [id]
                                               (if (member id done)
                                                 nil
                                                 (fb-map id))) states)
@@ -600,7 +601,7 @@
             ;; These are the accessible states.
             accessible (trace-forward #{0})
             final-accessible (clojure.set/intersection accessible
-                                                       (set (map :index (filter :accepting (states-as-seq dfa)))))
+                                                       (set (map-eagerly :index (filter-eagerly :accepting (states-as-seq dfa)))))
             ;; trace backward starting from the set of all final states which are
             ;; co-accessible, collecting all states.  But do not traverse into
             ;; states which are not accessible.  This computes the set
@@ -608,7 +609,7 @@
             useful (conj (trace-backward final-accessible (difference (set (ids-as-seq dfa))
                                                                 accessible))
                          0)
-            new-fids (filter (fn [id] (:accepting (state-by-index dfa id)))
+            new-fids (filter-eagerly (fn [id] (:accepting (state-by-index dfa id)))
                              useful)
             ]
         (assert (not (= 0 (count useful))))
@@ -628,7 +629,7 @@
                                                  :index id
                                                  :accepting (member id new-fids)
                                                  :initial (= id 0)
-                                                 :transitions (filter (fn [[label dst-id]]
+                                                 :transitions (filter-eagerly (fn [[label dst-id]]
                                                                         (member dst-id useful))
                                                                       (:transitions state))))]))
                                  useful))})
@@ -695,10 +696,10 @@
             ;; local function
             (pretty-cat [operands]
               (cond (member :epsilon operands)
-                    (pretty-cat (remove (fn [o] (= o :epsilon)) operands))
+                    (pretty-cat (remove-eagerly (fn [o] (= o :epsilon)) operands))
 
                     (member '(:* :empty-set) operands)
-                    (pretty-cat (remove (fn [o] (= o '(:* :empty-set))) operands))
+                    (pretty-cat (remove-eagerly (fn [o] (= o '(:* :empty-set))) operands))
 
                     (empty? operands)
                     :epsilon

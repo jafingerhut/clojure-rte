@@ -162,6 +162,7 @@
                       (fn [rte]
                         (with-compile-env []
                           ;;(cl-format true "canonicalizing:~%")
+                          ;; TODO doall this lazy seq
                           (let [can (canonicalize-pattern rte)]
                             ;;(cl-format true "canonicalized: ~A~%" can)
                             (if (nullable rte)
@@ -181,6 +182,7 @@
   "Assert that the same result occurs from complementing a dfa
   or building a Dfa from a complemented rte."
   [rte]
+  (println [:test-rte-not-1 rte])
   (with-compile-env []
     ;; is (not rte) equivalent to (complement dfa) ?
     (let [dfa (rte-to-dfa rte)

@@ -22,7 +22,8 @@
 (ns clojure-rte.bdd
   "Definition of Bdd."
   (:refer-clojure :exclude [and or not])
-  (:require [clojure-rte.util :refer [member call-with-collector]]
+  (:require [clojure-rte.util :refer [member call-with-collector
+                                      filter-eagerly remove-eagerly map-eagerly]]
             [clojure-rte.genus :as gns]
             [clojure.pprint :refer [cl-format]]
             [clojure.set :refer [union difference intersection]]
@@ -100,7 +101,7 @@
               (empty? (rest args)) (first args)
               :else (cons 'or args)))
           (supertypes [sub types]
-            (filter (fn [super]
+            (filter-eagerly (fn [super]
                       (c/and (not= sub super)
                              (gns/subtype? sub super (constantly false)))) types))
           (check-supers [args]
@@ -117,7 +118,7 @@
 
                 ;; does the list contain A and B where A is subtype B
                 :else
-                (remove (fn [sub]
+                (remove-eagerly (fn [sub]
                           (c/not (empty? (supertypes sub args))))
                         args))))]
 
@@ -129,8 +130,8 @@
                    (let [my-label (:label node)
                          ;; two lazy sequences created by filter.  the filter loops are
                          ;; never called unless (empty? ...) is called below.
-                         disjoints (filter (fn [x] (if my-label (gns/disjoint? x my-label (constantly false)))) parents)
-                         subtypes  (filter (fn [x] (if my-label (gns/subtype?  x my-label (constantly false)))) parents)]
+                         disjoints (filter-eagerly (fn [x] (if my-label (gns/disjoint? x my-label (constantly false)))) parents)
+                         subtypes  (filter-eagerly (fn [x] (if my-label (gns/subtype?  x my-label (constantly false)))) parents)]
                      (cond
                        (= true node)
                        ;; we know parents ( ... A ... B ...) that B is not subtype of A, but maybe A subtype B
@@ -141,7 +142,7 @@
                                          done '()]
                                     (if (empty? tail)
                                       done
-                                      (let [keeping (remove (fn [b]
+                                      (let [keeping (remove-eagerly (fn [b]
                                                               ;; if we don't know, then keep it.  it might
                                                               ;; be redunant, but it won't be wrong.
                                                               ;; Is (first tail) <: b ?
@@ -226,9 +227,9 @@
   (cond
     (sequential? type-designator)
     (case (first type-designator)
-      (and) (reduce and (map bdd (rest type-designator)))
-      (or)  (reduce or (map bdd (rest type-designator)))
-      (not) (apply not (map bdd (rest type-designator)))
+      (and) (reduce and (map-eagerly bdd (rest type-designator)))
+      (or)  (reduce or (map-eagerly bdd (rest type-designator)))
+      (not) (apply not (map-eagerly bdd (rest type-designator)))
       (node type-designator true false))
 
     (= :sigma type-designator)
