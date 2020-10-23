@@ -293,3 +293,28 @@
      (defn ~internal-name ~@body)
      (def ~(with-meta  public-name {:dynamic true}) ~docstring (memoize ~internal-name))
      ))
+
+(defn map-eagerly 
+  "Like map, but forces non-lazy behavior"
+  [& map-args]
+  (doall (apply map map-args)))
+
+(defn mapcat-eagerly 
+  "Like mapcat, but forces non-lazy behavior"
+  [& mapcat-args]
+  (doall (apply mapcat mapcat-args)))
+
+(defn filter-eagerly 
+  "Like filter, but forces non-lazy behavior"
+  [& filter-args]
+  (doall (apply filter filter-args)))
+
+(defn remove-eagerly 
+  "Like remove, but forces non-lazy behavior"
+  [& remove-args]
+  (doall (apply remove remove-args)))
+
+(defn concat-eagerly 
+  "Like concat, but forces non-lazy behavior"
+  [& concat-args]
+  (doall (apply concat concat-args)))
