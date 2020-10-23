@@ -27,7 +27,7 @@
   :plugins [[lein-cloverage "1.1.2"]
             [lein-ns-dep-graph "0.2.0-SNAPSHOT"]
             ]
-  :jvm-opts ["-Xmx1g"] ;; 
+  :jvm-opts ["-Xmx1g" "-XX:+HeapDumpOnOutOfMemoryError"] ;; 
   :dependencies [[org.clojure/clojure "1.10.0"]
                  [lein-cloverage "1.1.2"]
                  [org.clojure/data.json "1.0.0"]
