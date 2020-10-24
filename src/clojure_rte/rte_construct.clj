@@ -194,6 +194,8 @@
               (invalid-pattern pattern functions '[:exp [_ _ _ & _]])))
            (rest pattern))))
 
+(def call-count-traverse-pattern (atom 0))
+
 (defn traverse-pattern
   "Workhorse function for walking an rte pattern.
    This function is the master of understanding the syntax of an rte
@@ -204,6 +206,7 @@
    keyword such as :* :cat etc.  The philosophy is that no other
    function needs to understand how to walk an rte pattern."
   [given-pattern functions]
+  (swap! call-count-traverse-pattern inc)
   (letfn [(if-atom [pattern]
             (cond
               (member pattern '(:epsilon :empty-set :sigma))
@@ -397,6 +400,9 @@
   [type-designator]
   (cons 'rte (map canonicalize-pattern (rest type-designator))))
 
+(def call-count-canonicalize-pattern-once (atom 0))
+(def arg-freq-canonicalize-pattern-once (atom {}))
+
 (defn -canonicalize-pattern-once 
   "Rewrite the given rte patter to a canonical form.
   This involves recursive re-writing steps for each sub form,
@@ -406,6 +412,11 @@
   keeps calling canonicalize-pattern-once until it finally
   stops changing."
   [re]
+  (swap! call-count-canonicalize-pattern-once inc)
+  (swap! arg-freq-canonicalize-pattern-once #(assoc % re (inc (get % re 0))))
+  ;;(println "can-once:" re)
+  ;;(flush)
+  ;;(assert false)
   (traverse-pattern re
                     (assoc *traversal-functions*
                            :type (fn [tag _functions]
@@ -608,9 +619,68 @@
   ;; )
   )
 
+(def call-count-canonicalize-pattern (atom 0))
+
+(defn reset-stats! []
+  (reset! call-count-canonicalize-pattern-once 0)
+  (reset! call-count-canonicalize-pattern 0)
+  (reset! call-count-traverse-pattern 0)
+  (reset! arg-freq-canonicalize-pattern-once {}))
+
+(defn get-stats []
+  {:call-count-canonicalize-pattern-once
+   call-count-canonicalize-pattern-once
+   :call-count-canonicalize-pattern
+   call-count-canonicalize-pattern
+   :call-count-traverse-pattern
+   call-count-traverse-pattern
+   :arg-freq-canonicalize-pattern-once
+   arg-freq-canonicalize-pattern-once})
+
+(defn print-most-freq-first [freqs]
+  (let [call-counts (for [[v cnt] freqs]
+                      {:count cnt, :value v,
+                       :value-size (if (sequential? v) (count v) 0)})
+        call-counts (sort-by (fn [m]
+                               [(- (:count m)) (- (:value-size m))])
+                             call-counts)]
+    (doseq [m call-counts]
+      (binding [*print-length* 50]
+        (println "  " (:count m) ":"
+                 (if (zero? (:value-size m))
+                   ""
+                   (str "(seq len " (:value-size m) ")"))
+                 (:value m))))))
+
+(defn print-current-call-stack []
+  (let [my-exc (try
+                 (throw (ex-info "only for creating stack trace" {}))
+                 (catch Throwable e
+                   e))]
+    (clojure.repl/pst my-exc 100)
+    (. *err* (flush))))
+
+(defn print-stats [pattern]
+  (let [c1 @call-count-canonicalize-pattern-once
+        c2 @call-count-canonicalize-pattern
+        c3 @call-count-traverse-pattern
+        args @arg-freq-canonicalize-pattern-once
+        ]
+    (println "cp calls=" c2 "  cpo calls=" c1 " tp calls=" c3 " pattern" pattern)
+    (println "    cpo arg frequencies:")
+    (print-most-freq-first args)
+    (println "    --------------------")
+    (flush)
+    ;;(print-current-call-stack)
+    ))
+
 (defn canonicalize-pattern 
   "find the fixed point of canonicalize-pattern-once"
   [pattern]
+  (swap! call-count-canonicalize-pattern inc)
+  (let [c1 @call-count-canonicalize-pattern-once]
+    (when (and (not (zero? c1)) (zero? (mod c1 100000)))
+      (print-stats pattern)))
   (fixed-point pattern canonicalize-pattern-once =))
 
 (defn compute-compound-derivative

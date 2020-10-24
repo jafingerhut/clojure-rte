@@ -1,0 +1,75 @@
+nREPL server started on port 63138 on host 127.0.0.1 - nrepl://127.0.0.1:63138
+REPL-y 0.4.4, nREPL 0.6.0
+Clojure 1.10.0
+OpenJDK 64-Bit Server VM 1.8.0_222-b10
+    Docs: (doc function-name-here)
+          (find-doc "part-of-name-here")
+  Source: (source function-name-here)
+ Javadoc: (javadoc java-object-or-class-here)
+    Exit: Control+D or (exit) or (quit)
+ Results: Stored in vars *1, *2, *3, an exception in *e
+
+user=> (require 'clojure-rte.rte-tester)[32D[33C
+nil
+user=> (require '[clojure-rte.rte-core :as co][28D[29C)[39D[40C
+nil
+user=> (def maybe-troublesome-pattern '(:cat :epsilon (:not (:and :empty-set (:c at :epsilon)[A[66C
+[12C)[A[48C
+[13C)[A[41C
+[14C (:or clojure.lang.IMeta :empty-set (:* (:or (:and)[5D[6C)[11D[12C)[16D[17C)[52D[53C (:and :sigm a (:+ :sigma)[10D[11C (:cat (:+ (:cat)[5D[6C)[10D[11C :sigma)[24D[25C)[A[30C
+[40C)[2A
+
+[41C)[2A[34D
+
+[42C
+#'user/maybe-troublesome-pattern
+user=> (def prev-stats (atom nil)[9D[10C)[26D[27C
+#'user/prev-stats
+user=> (def same-stats (atom 0)[7D[8C)[24D[25C
+#'user/same-stats
+user=> (defn repeat-same-call [pattern n][10D[11C
+  #_=>   (reset! prev-stats nil)[22D[23C
+  #_=>   (reset! same-stats 0)[20D[21C
+  #_=>   (dotimes [i n][4D[5C
+  #_=>     (co/reset-stats!)[16D[17C
+  #_=>     (doall (co/canonicalize-pattern pattern)[32D[33C)[40D[41C
+  #_=>     (let [s (co/get-stats)[13D[14C][17D[18C
+  #_=>       (if (= @prev-stats s)[16D[17C
+  #_=>         (swap! same-stats inc)[21D[22C
+  #_=>         (do
+  #_=>           (println "i=" i " stats different than previous:")[49D[50C
+  #_=>           (co/print-stats pattern)[23D[24C
+  #_=>           (reset! prev-stats s)[20D[21C)[C)[C)[C)[C
+  #_=>   (println "same stats count=" @same-stats)[40D[41C)[C
+#'user/repeat-same-call
+user=> (repeat-same-call maybe-troublesome-pattern 500)[47D[48C
+i= 0  stats different than previous:
+cp calls= 65   cpo calls= 82  tp calls= 91  pattern (:cat :epsilon (:not (:and :empty-set (:cat :epsilon))) (:or clojure.lang.IMeta :empty-set (:* (:or (:and)))) (:and :sigma (:+ :sigma) (:cat (:+ (:cat)) :sigma)))
+    cpo arg frequencies:
+   35 :  :sigma
+   11 : (seq len 2) (:* :sigma)
+   7 :  :epsilon
+   4 : (seq len 3) (:cat :sigma (:* :sigma))
+   3 : (seq len 3) (:and (:cat :sigma (:* :sigma)) :sigma)
+   3 : (seq len 1) (:cat)
+   3 :  :empty-set
+   1 : (seq len 5) (:cat :epsilon (:not (:and :empty-set (:cat :epsilon))) (:or clojure.lang.IMeta :empty-set (:* (:or (:and)))) (:and :sigma (:+ :sigma) (:cat (:+ (:cat)) :sigma)))
+   1 : (seq len 4) (:or clojure.lang.IMeta :empty-set (:* (:or (:and))))
+   1 : (seq len 4) (:and :sigma (:+ :sigma) (:cat (:+ (:cat)) :sigma))
+   1 : (seq len 4) (:cat :epsilon (:* :sigma) (:and (:cat :sigma (:* :sigma)) :sigma))
+   1 : (seq len 3) (:and :empty-set (:cat :epsilon))
+   1 : (seq len 3) (:cat (:* :sigma) (:and (:cat :sigma (:* :sigma)) :sigma))
+   1 : (seq len 3) (:cat (:+ (:cat)) :sigma)
+   1 : (seq len 2) (:* (:cat))
+   1 : (seq len 2) (:cat :sigma)
+   1 : (seq len 2) (:+ (:cat))
+   1 : (seq len 2) (:* (:or (:and)))
+   1 : (seq len 2) (:+ :sigma)
+   1 : (seq len 2) (:or (:and))
+   1 : (seq len 2) (:not (:and :empty-set (:cat :epsilon)))
+   1 : (seq len 2) (:cat :epsilon)
+   1 :  clojure.lang.IMeta
+    --------------------
+same stats count= 499
+nil
+user=> Bye for now!

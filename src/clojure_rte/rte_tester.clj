@@ -25,7 +25,7 @@
             [clojure.pprint :refer [cl-format]]
             [clj-async-profiler.core :as prof] ;; this requirement is only temporary while trying to debug the out-of-memory error
             ;; [clojure-rte.dot :as dot]
-            [clojure-rte.rte-core :refer [dfa-to-rte rte-to-dfa canonicalize-pattern nullable with-compile-env]]
+            [clojure-rte.rte-core :refer [dfa-to-rte rte-to-dfa canonicalize-pattern reset-stats! print-stats nullable with-compile-env]]
             ))
 
 (defn rte-components [pattern]
@@ -161,9 +161,13 @@
   (tester/random-test num-tries
                       (fn [rte]
                         (with-compile-env []
-                          ;;(cl-format true "canonicalizing:~%")
+                          (println)
+                          (println "----------------------------------------")
+                          (cl-format true "canonicalizing: ~A~%" rte)
+                          (reset-stats!)
                           (let [can (canonicalize-pattern rte)]
-                            ;;(cl-format true "canonicalized: ~A~%" can)
+                            (cl-format true "canonicalized: ~A~%" can)
+                            (print-stats rte)
                             (if (nullable rte)
                               (assert (nullable can)
                                       (cl-format false
