@@ -52,18 +52,30 @@
    :cat :permute
    :sigma :empty-set :epsilon])
 
+
+(defn my-rand
+  ([rng] (. rng (nextDouble)))
+  ([rng n] (* n (my-rand rng))))
+
+(defn my-rand-int [rng n]
+  (int (my-rand rng n)))
+
+(defn my-rand-nth [rng coll]
+  (nth coll (my-rand-int rng (count coll))))
+
+
 (defn gen-rte
-  ([size types]
-   (let [key (rand-nth *rte-keywords*)] 
-     (gen-rte key size types)))
-  ([key size types]
+  ([rng size types]
+   (let [key (my-rand-nth rng *rte-keywords*)]
+     (gen-rte rng key size types)))
+  ([rng key size types]
     (case key
-      (:type) (rand-nth types)
+      (:type) (my-rand-nth rng types)
       (:sigma :empty-set :epsilon) key
-      (:permute) (gen-rte :cat size types)
-      (:and :or :cat) (cons key (map (fn [k] (gen-rte (dec size) types))
-                                              (range size)))
-      (:? :+ :* :not) (list key (gen-rte (dec size) types)))))
+      (:permute) (gen-rte rng :cat size types)
+      (:and :or :cat) (cons key (doall (map (fn [k] (gen-rte rng (dec size) types))
+                                            (range size))))
+      (:? :+ :* :not) (list key (gen-rte rng (dec size) types)))))
 
 
 (def ^:dynamic *test-types*
@@ -99,24 +111,24 @@
     (member 1 "a")
     ))
 
-(defn test-rte-to-dfa [num-tries size verbose]
+(defn test-rte-to-dfa [rng num-tries size verbose]
   (tester/random-test num-tries (fn [rte]
                                   (with-compile-env []
                                     (rte-to-dfa rte)))
-                        (fn [] (gen-rte size *test-types*))
+                        (fn [] (gen-rte rng size *test-types*))
                         rte-components
                         verbose))
 
-(defn test-canonicalize-pattern [num-tries size verbose]
+(defn test-canonicalize-pattern [rng num-tries size verbose]
   (tester/random-test num-tries canonicalize-pattern
-                      (fn [] (gen-rte size *test-types*))
+                      (fn [] (gen-rte rng size *test-types*))
                       rte-components verbose))
 
 
 (defn test-rte-not-nullable
   "Run some tests to assure that if an rte r is nullable if and only
   if (:not r) is not nullable."
-  [num-tries size verbose]
+  [rng num-tries size verbose]
   (tester/random-test num-tries
                       (fn [rte]
                         (if (nullable rte)
@@ -128,7 +140,7 @@
                                   (cl-format false
                                              "rte ~A is not nullable but its complement (:not ...) is nullable"
                                              rte))))                          
-                      (fn [] (gen-rte size *test-types*))
+                      (fn [] (gen-rte rng size *test-types*))
                       rte-components
                       verbose))
 
@@ -157,7 +169,7 @@
 (defn test-rte-canonicalize-nullable
   "Run some tests to assure that if an rte r is nullable if and only
   if (canonicalize-pattern r) is also nullable."
-  [num-tries size verbose]
+  [rng num-tries size verbose]
   (tester/random-test num-tries
                       (fn [rte]
                         (with-compile-env []
@@ -177,7 +189,7 @@
                                       (cl-format false
                                                  "rte ~A is not nullable but its canonicalization ~A is nullable"
                                                  rte can))))))
-                      (fn [] (gen-rte size *test-types*))
+                      (fn [] (gen-rte rng size *test-types*))
                       rte-components
                       verbose))
 
@@ -222,16 +234,18 @@
 
 (defn test-rte-not
   "Testing several functions, dfa/complement, dfa-to-rte, dfa-equivalent"
-  [num-tries size verbose]
+  [rng num-tries size verbose]
   (tester/random-test num-tries
                       test-rte-not-1                            
-                      (fn [] (gen-rte size *test-types*))
+                      (fn [] (gen-rte rng size *test-types*))
                       rte-components
                       verbose))
-(defn -main []
-  (prof/profile 
-   (test-rte-canonicalize-nullable 500 ;; 500 ; num-tries
-                                   4 ; size
-                                   true ;verbose
-                                   ))
-  )
+(defn -main [seed]
+  (let [rng (java.util.Random. seed)]
+    (prof/profile
+     (test-rte-canonicalize-nullable rng
+                                     500 ;; 500 ; num-tries
+                                     4 ; size
+                                     true ;verbose
+                                     ))
+    ))
