@@ -28,6 +28,77 @@
 
 (in-ns 'clojure-rte.rte-core)
 
+
+(def call-count-canonicalize-pattern-once (atom 0))
+(def call-count-canonicalize-pattern (atom 0))
+(def call-count-traverse-pattern (atom 0))
+(def traverse-pattern-call-count-by-depth (atom {}))
+(def traverse-pattern-call-stack (atom []))
+(def arg-freq-canonicalize-pattern-once (atom {}))
+
+(defn assoc-inc [m k]
+  (assoc m k (inc (get m k 0))))
+
+(defn print-current-call-stack []
+  (let [my-exc (try
+                 (throw (ex-info "only for creating stack trace" {}))
+                 (catch Throwable e
+                   e))]
+    (clojure.repl/pst my-exc 100)
+    (. *err* (flush))))
+
+(defn print-pattern-abbrev [pat]
+  (binding [*print-length* 50]
+    (let [sz (if (sequential? pat) (count pat) 0)]
+      (print (if (zero? sz)
+               ""
+               (str "(seq len " sz ")"))
+             pat))))
+
+(defn print-most-freq-first [freqs]
+  (let [call-counts (for [[v cnt] freqs]
+                      {:count cnt, :value v,
+                       :value-size (if (sequential? v) (count v) 0)})
+        call-counts (sort-by (fn [m]
+                               [(- (:count m)) (- (:value-size m))])
+                             call-counts)]
+    (doseq [m call-counts]
+      (print "  " (:count m) ":")
+      (print-pattern-abbrev (:value m))
+      (println))))
+
+(defn reset-stats! []
+  (reset! call-count-canonicalize-pattern-once 0)
+  (reset! call-count-canonicalize-pattern 0)
+  (reset! call-count-traverse-pattern 0)
+  (reset! arg-freq-canonicalize-pattern-once {})
+  (reset! call-count-traverse-pattern 0)
+  (reset! traverse-pattern-call-count-by-depth {}))
+
+(defn get-stats []
+  {:call-count-canonicalize-pattern-once
+   call-count-canonicalize-pattern-once
+   :call-count-canonicalize-pattern
+   call-count-canonicalize-pattern
+   :call-count-traverse-pattern
+   call-count-traverse-pattern
+   :arg-freq-canonicalize-pattern-once
+   arg-freq-canonicalize-pattern-once})
+
+(defn print-stats [pattern]
+  (let [c1 @call-count-canonicalize-pattern-once
+        c2 @call-count-canonicalize-pattern
+        c3 @call-count-traverse-pattern
+        args @arg-freq-canonicalize-pattern-once
+        ]
+    (println "cp calls=" c2 "  cpo calls=" c1 " tp calls=" c3 " pattern" pattern)
+    (println "    cpo arg frequencies:")
+    (print-most-freq-first args)
+    (println "    --------------------")
+    (flush)
+    ;;(print-current-call-stack)
+    ))
+
 (declare traverse-pattern)
 (declare canonicalize-pattern)
 
@@ -194,9 +265,33 @@
               (invalid-pattern pattern functions '[:exp [_ _ _ & _]])))
            (rest pattern))))
 
-(def call-count-traverse-pattern (atom 0))
+(declare traverse-pattern-impl)
 
 (defn traverse-pattern
+  [given-pattern functions]
+  (swap! call-count-traverse-pattern inc)
+  (swap! traverse-pattern-call-stack conj given-pattern)
+  (let [depth (count @traverse-pattern-call-stack)]
+    (swap! traverse-pattern-call-count-by-depth assoc-inc depth))
+  (when-not (or (keyword? given-pattern)
+                (and (sequential? given-pattern)
+                     (= 2 (count given-pattern))
+                     (= :* (first given-pattern))
+                     (= :sigma (second given-pattern))))
+    (print "traverse-pattern")
+    (doseq [[depth pat] (reverse
+                         (map-indexed (fn [depth-1 pat] [(inc depth-1) pat])
+                                      @traverse-pattern-call-stack))]
+      (print (str " (depth " depth ", " (get @traverse-pattern-call-count-by-depth depth) " calls): "))
+      (print-pattern-abbrev pat)
+      (println))
+    (flush)
+    (print-current-call-stack))
+  (let [ret (traverse-pattern-impl given-pattern functions)]
+    (swap! traverse-pattern-call-stack pop)
+    ret))
+
+(defn traverse-pattern-impl
   "Workhorse function for walking an rte pattern.
    This function is the master of understanding the syntax of an rte
    pattern.  Any function which needs to perform a recursive operation
@@ -206,7 +301,6 @@
    keyword such as :* :cat etc.  The philosophy is that no other
    function needs to understand how to walk an rte pattern."
   [given-pattern functions]
-  (swap! call-count-traverse-pattern inc)
   (letfn [(if-atom [pattern]
             (cond
               (member pattern '(:epsilon :empty-set :sigma))
@@ -400,9 +494,6 @@
   [type-designator]
   (cons 'rte (map canonicalize-pattern (rest type-designator))))
 
-(def call-count-canonicalize-pattern-once (atom 0))
-(def arg-freq-canonicalize-pattern-once (atom {}))
-
 (defn -canonicalize-pattern-once 
   "Rewrite the given rte patter to a canonical form.
   This involves recursive re-writing steps for each sub form,
@@ -433,7 +524,7 @@
                                       operand ;; (:* (:* something)) --> (:* something)
                                       (list :* (canonicalize-pattern operand))))))
                            :cat (fn [operands _functions]
-                                  (let [operands (map canonicalize-pattern operands)]
+                                  (let [operands (doall (map canonicalize-pattern operands))]
                                     (assert (< 1 (count operands))
                                             (format "traverse-pattern should have already eliminated this case: re=%s count=%s operands=%s" re (count operands) operands))
                                     (cl/cl-cond
@@ -445,14 +536,14 @@
                                         (if (empty? ptr)
                                           false
                                           (let [prefix (cl/ldiff operands ptr)]
-                                            (cons :cat (concat prefix (rest ptr)))))))
+                                            (cons :cat (doall (concat prefix (rest ptr))))))))
 
                                      ;; (:cat x (:cat a b) y) --> (:cat x a b y)
                                      ((some cat? operands)
-                                      (cons :cat (mapcat (fn [obj]
+                                      (cons :cat (doall (mapcat (fn [obj]
                                                            (if (cat? obj)
                                                              (rest obj)
-                                                             (list obj))) operands)))
+                                                             (list obj))) operands))))
 
                                      ;; (:cat x "empty-set" y) --> :emptyset
                                      ((member :empty-set operands)
@@ -460,7 +551,7 @@
 
                                      ;; (:cat x :epsilon y) --> (:cat x y)
                                      ((member :epsilon operands)
-                                      (cons :cat (remove #{:epsilon} operands)))
+                                      (cons :cat (doall (remove #{:epsilon} operands))))
 
                                      (:else
                                       (cons :cat operands)))))
@@ -476,12 +567,12 @@
                                         (second operand)
 
                                         (and? operand) ;;  (:not (:and A B)) --> (:or (:not A) (:not B))
-                                        (cons :or (map (fn [obj]
-                                                         (list :not obj)) (rest operand)))
+                                        (cons :or (doall (map (fn [obj]
+                                                         (list :not obj)) (rest operand))))
 
                                         (or? operand) ;;   (:not (:or A B)) --> (:and (:not A) (:not B))
-                                        (cons :and (map (fn [obj]
-                                                          (list :not obj)) (rest operand)))
+                                        (cons :and (doall (map (fn [obj]
+                                                          (list :not obj)) (rest operand))))
 
                                         :else
                                         ;; TODO in CL this expands to
@@ -492,7 +583,7 @@
                                         (list :not operand))
                                       )))
                            :and (fn [operands _functions]
-                                  (let [operands (dedupe (sort-operands (map canonicalize-pattern operands)))]
+                                  (let [operands (dedupe (sort-operands (doall (map canonicalize-pattern operands))))]
                                     (cl/cl-cond
                                      ;; TODO - (:and :epsilon ...)
                                      ;;    if any of the :and arguments is not nullable,
@@ -505,34 +596,34 @@
 
 
                                      ((some and? operands)
-                                      (cons :and (mapcat (fn [obj]
+                                      (cons :and (doall (mapcat (fn [obj]
                                                            (if (and? obj)
                                                              (rest obj)
-                                                             (list obj))) operands)))
+                                                             (list obj))) operands))))
 
                                      ((member :empty-set operands)
                                       :empty-set)
 
                                      ((member '(:* :sigma) operands)
-                                      (cons :and (remove (fn [obj]
-                                                           (= '(:* :sigma) obj)) operands)))
+                                      (cons :and (doall (remove (fn [obj]
+                                                           (= '(:* :sigma) obj)) operands))))
 
                                      ((some or? operands)
                                       ;; (:and (:or A B) C D) --> (:or (:and A C D) (:and B C D))
                                       (with-first-match or? operands
                                         (fn [or-item]
-                                          (let [others (remove (fn [x] (= or-item x)) operands)]
-                                            (cons :or (map (fn [x] (list* :and x others)) (rest or-item)))))))
+                                          (let [others (doall (remove (fn [x] (= or-item x)) operands))]
+                                            (cons :or (doall (map (fn [x] (list* :and x others)) (rest or-item))))))))
 
                                      ;; (:and x (:not x)) --> :empty-set
-                                     ((let [nots (filter not? operands)
-                                            others (remove not? operands)]
+                                     ((let [nots (doall (filter not? operands))
+                                            others (doall (remove not? operands))]
                                         (when (some (fn [item]
                                                       (some #{(list :not item)} nots)) others)
                                           :empty-set)))
 
                                      ;; (:and of disjoint types) --> :empty-set
-                                     ((let [atoms (filter (complement seq?) operands)
+                                     ((let [atoms (doall (filter (complement seq?) operands))
                                             ]
                                         (when (some (fn [i1]
                                                       (some (fn [i2]
@@ -541,11 +632,11 @@
                                           :empty-set)))
                                      
                                      ;; (:and subtype supertype x y z) --> (:and subtype x y z)
-                                     ((let [atoms (filter (complement seq?) operands)
+                                     ((let [atoms (doall (filter (complement seq?) operands))
                                             max (gns/type-max atoms)
                                             ]
                                         (when max
-                                          (cons :and (remove #{max} operands)))))
+                                          (cons :and (doall (remove #{max} operands))))))
                                      
                                      (:else
                                       (cons :and operands))
@@ -554,7 +645,7 @@
                            :or (fn [operands _functions]
                                  (assert (< 1 (count operands))
                                          (format "traverse-pattern should have already eliminated this case: re=%s count=%s operands=%s" re (count operands) operands))
-                                 (let [operands (dedupe (sort-operands (map canonicalize-pattern operands)))]
+                                 (let [operands (dedupe (sort-operands (doall (map canonicalize-pattern operands))))]
                                    (cl/cl-cond
                                     ;; TODO (:or (:cat A B (:* :sigma))
                                     ;;           (:cat A B ))
@@ -570,44 +661,44 @@
                                                          (cond (and (*? x)
                                                                     (= y (second x)))
                                                                ;; (:or x A B C)
-                                                               (cons :or (cons x (remove (fn [o] (or (= o :epsilon)
-                                                                                                     (= o obj))) operands)))
+                                                               (cons :or (cons x (doall (remove (fn [o] (or (= o :epsilon)
+                                                                                                     (= o obj))) operands))))
 
                                                                (and (*? y)
                                                                     (= x (second y)))
                                                                ;; (:or y A B C)
-                                                               (cons :or (cons y (remove (fn [o] (or (= o :epsilon)
-                                                                                                     (= o obj))) operands)))
+                                                               (cons :or (cons y (doall (remove (fn [o] (or (= o :epsilon)
+                                                                                                     (= o obj))) operands))))
                                                                
                                                                :else
                                                                false))))
                                                 operands)))
 
                                     ((some or? operands)
-                                     (cons :or (mapcat (fn [obj]
+                                     (cons :or (doall (mapcat (fn [obj]
                                                          (if (or? obj)
                                                            (rest obj)
-                                                           (list obj))) operands)))
+                                                           (list obj))) operands))))
 
                                     ((member '(:* :sigma) operands)
                                      '(:* :sigma))
 
                                     ((member :empty-set operands)
-                                     (cons :or (remove #{:empty-set} operands)))
+                                     (cons :or (doall (remove #{:empty-set} operands))))
 
                                     ;; (:or x (:not x)) --> :sigma
-                                    ((let [nots (filter not? operands)
-                                           others (remove not? operands)]
+                                    ((let [nots (doall (filter not? operands))
+                                           others (doall (remove not? operands))]
                                        (when (some (fn [item]
                                                      (some #{(list :not item)} nots)) others)
                                          '(:* :sigma))))
 
                                     ;; (:or subtype supertype x y z) --> (:and supertype x y z)
-                                    ((let [atoms (filter (complement seq?) operands)
+                                    ((let [atoms (doall (filter (complement seq?) operands))
                                            min (gns/type-min atoms)
                                            ]
                                        (when min
-                                         (cons :or (remove #{min} operands)))))
+                                         (cons :or (doall (remove #{min} operands))))))
 
                                     (:else
                                      (cons :or operands))
@@ -618,61 +709,6 @@
    -canonicalize-pattern-once
   ;; )
   )
-
-(def call-count-canonicalize-pattern (atom 0))
-
-(defn reset-stats! []
-  (reset! call-count-canonicalize-pattern-once 0)
-  (reset! call-count-canonicalize-pattern 0)
-  (reset! call-count-traverse-pattern 0)
-  (reset! arg-freq-canonicalize-pattern-once {}))
-
-(defn get-stats []
-  {:call-count-canonicalize-pattern-once
-   call-count-canonicalize-pattern-once
-   :call-count-canonicalize-pattern
-   call-count-canonicalize-pattern
-   :call-count-traverse-pattern
-   call-count-traverse-pattern
-   :arg-freq-canonicalize-pattern-once
-   arg-freq-canonicalize-pattern-once})
-
-(defn print-most-freq-first [freqs]
-  (let [call-counts (for [[v cnt] freqs]
-                      {:count cnt, :value v,
-                       :value-size (if (sequential? v) (count v) 0)})
-        call-counts (sort-by (fn [m]
-                               [(- (:count m)) (- (:value-size m))])
-                             call-counts)]
-    (doseq [m call-counts]
-      (binding [*print-length* 50]
-        (println "  " (:count m) ":"
-                 (if (zero? (:value-size m))
-                   ""
-                   (str "(seq len " (:value-size m) ")"))
-                 (:value m))))))
-
-(defn print-current-call-stack []
-  (let [my-exc (try
-                 (throw (ex-info "only for creating stack trace" {}))
-                 (catch Throwable e
-                   e))]
-    (clojure.repl/pst my-exc 100)
-    (. *err* (flush))))
-
-(defn print-stats [pattern]
-  (let [c1 @call-count-canonicalize-pattern-once
-        c2 @call-count-canonicalize-pattern
-        c3 @call-count-traverse-pattern
-        args @arg-freq-canonicalize-pattern-once
-        ]
-    (println "cp calls=" c2 "  cpo calls=" c1 " tp calls=" c3 " pattern" pattern)
-    (println "    cpo arg frequencies:")
-    (print-most-freq-first args)
-    (println "    --------------------")
-    (flush)
-    ;;(print-current-call-stack)
-    ))
 
 (defn canonicalize-pattern 
   "find the fixed point of canonicalize-pattern-once"
