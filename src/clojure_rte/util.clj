@@ -206,17 +206,36 @@
           :else
           (recur fs))))))
 
+(def fixed-point-call-count (atom 0))
+
+(defn reset-util-stats! []
+  (reset! fixed-point-call-count 0))
+
 (defn fixed-point
   "Find the fixed point of the given function starting at the given value.
   Convergence is detected when the function good-enough returns Boolean true
   when called with two consecutive values. The older of the two values
   is returned in this case."
-  [value f good-enough]
-  (loop [value value]
-    (let [new-value (f value)]
-      (if (good-enough value new-value)
-        value
-        (recur new-value)))))
+  ([value f good-enough]
+   (fixed-point value f good-enough false))
+  ([value f good-enough heavy-logging]
+   (swap! fixed-point-call-count inc)
+   (let [call-count @fixed-point-call-count]
+     (when heavy-logging
+       (println "fixed-point #" call-count " value=" value))
+     (loop [value value
+            loop-count 0]
+       (let [new-value (f value)
+             same? (good-enough value new-value)]
+         (when heavy-logging
+           (println "fixed-point #" call-count " loop=" loop-count
+                    "good-enough=" same?
+                    (if same?
+                      ""
+                      (str "new-value= " new-value))))
+         (if same?
+           value
+           (recur new-value (inc loop-count))))))))
 
 (defn print-vals-helper ""
   [pairs]
@@ -285,3 +304,35 @@
 
           :else
           (recur (rest tail)))))
+
+(defn dedupe-by-f
+  "Returns a lazy sequence removing consecutive 'duplicates' in coll.
+  Two consecutive items x and y are only considered duplicates if (f x
+  y) returns a logical true value.  Only the first of several
+  consecutive duplicates is kept.  (dedupe-by-f = coll) is equivalent
+  to Clojure's (dedupe coll). Returns a transducer when no collection
+  is provided."
+  ([f]
+   (fn [rf]
+     (let [pv (volatile! ::none)]
+       (fn
+         ([] (rf))
+         ([result] (rf result))
+         ([result input]
+            (let [prior @pv]
+              (vreset! pv input)
+              (if (f prior input)
+                result
+                (rf result input))))))))
+  ([f coll] (sequence (dedupe-by-f f) coll)))
+
+(defn remove-second-of-first-pair-satisfying
+  [pred coll]
+  (lazy-seq
+   (when-let [s (seq coll)]
+     (let [x (first s) r (next s)]
+       (if r
+         (if (pred x (first r))
+           (cons x (rest r))
+           (cons x (remove-second-of-first-pair-satisfying pred r)))
+         s)))))

@@ -25,7 +25,10 @@
             [clojure-rte.cl-compat :as cl]
             [clojure-rte.util :refer [with-first-match call-with-collector
                                       first-repeat
+                                      dedupe-by-f
+                                      ;;remove-second-of-first-pair-satisfying
                                       fixed-point
+                                      reset-util-stats!
                                       visit-permutations rte-constantly rte-identity
                                       partition-by-pred
                                       print-vals sort-operands member]]

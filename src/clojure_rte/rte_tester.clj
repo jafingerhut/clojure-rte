@@ -25,7 +25,7 @@
             [clojure.pprint :refer [cl-format]]
             [clj-async-profiler.core :as prof] ;; this requirement is only temporary while trying to debug the out-of-memory error
             ;; [clojure-rte.dot :as dot]
-            [clojure-rte.rte-core :refer [dfa-to-rte rte-to-dfa canonicalize-pattern reset-stats! print-stats nullable with-compile-env]]
+            [clojure-rte.rte-core :refer [dfa-to-rte rte-to-dfa canonicalize-pattern-top reset-stats! print-stats nullable with-compile-env]]
             ))
 
 (defn rte-components [pattern]
@@ -120,7 +120,7 @@
                         verbose))
 
 (defn test-canonicalize-pattern [rng num-tries size verbose]
-  (tester/random-test num-tries canonicalize-pattern
+  (tester/random-test num-tries canonicalize-pattern-top
                       (fn [] (gen-rte rng size *test-types*))
                       rte-components verbose))
 
@@ -153,10 +153,10 @@
 ;;   (tester/random-test
 ;;    num-tries
 ;;    (fn [rte]
-;;      (let [not-1 (canonicalize-pattern `(:not ~rte))
-;;            not-2 (canonicalize-pattern `(:not ~not-1))
-;;            a-and-not-b (canonicalize-pattern `(:and ~rte (:not ~not-2)))
-;;            b-and-not-a (canonicalize-pattern `(:and ~not-2 (:not ~rte)))
+;;      (let [not-1 (canonicalize-pattern-top `(:not ~rte))
+;;            not-2 (canonicalize-pattern-top `(:not ~not-1))
+;;            a-and-not-b (canonicalize-pattern-top `(:and ~rte (:not ~not-2)))
+;;            b-and-not-a (canonicalize-pattern-top `(:and ~not-2 (:not ~rte)))
 ;;            ]
 ;;        (assert (= :empty-set a-and-not-b)
 ;;                (cl-format false "expecting :empty-set, got a-and-not-b=~A" a-and-not-b))
@@ -168,7 +168,7 @@
 
 (defn test-rte-canonicalize-nullable
   "Run some tests to assure that if an rte r is nullable if and only
-  if (canonicalize-pattern r) is also nullable."
+  if (canonicalize-pattern-top r) is also nullable."
   [rng num-tries size verbose]
   (tester/random-test num-tries
                       (fn [rte]
@@ -177,7 +177,7 @@
                           (println "----------------------------------------")
                           (cl-format true "canonicalizing: ~A~%" rte)
                           (reset-stats!)
-                          (let [can (canonicalize-pattern rte)]
+                          (let [can (canonicalize-pattern-top rte)]
                             (cl-format true "canonicalized: ~A~%" can)
                             (print-stats rte)
                             (if (nullable rte)

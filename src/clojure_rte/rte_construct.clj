@@ -29,6 +29,8 @@
 (in-ns 'clojure-rte.rte-core)
 
 
+(def heavy-logging (atom false))
+(def andy-attempted-fix (atom false))
 (def call-count-canonicalize-pattern-once (atom 0))
 (def call-count-canonicalize-pattern (atom 0))
 (def call-count-traverse-pattern (atom 0))
@@ -68,6 +70,7 @@
       (println))))
 
 (defn reset-stats! []
+  (reset-util-stats!)
   (reset! call-count-canonicalize-pattern-once 0)
   (reset! call-count-canonicalize-pattern 0)
   (reset! call-count-traverse-pattern 0)
@@ -273,22 +276,32 @@
   (swap! traverse-pattern-call-stack conj given-pattern)
   (let [depth (count @traverse-pattern-call-stack)]
     (swap! traverse-pattern-call-count-by-depth assoc-inc depth))
-  (when-not (or (keyword? given-pattern)
-                (and (sequential? given-pattern)
-                     (= 2 (count given-pattern))
-                     (= :* (first given-pattern))
-                     (= :sigma (second given-pattern))))
-    (print "traverse-pattern")
-    (doseq [[depth pat] (reverse
-                         (map-indexed (fn [depth-1 pat] [(inc depth-1) pat])
-                                      @traverse-pattern-call-stack))]
-      (print (str " (depth " depth ", " (get @traverse-pattern-call-count-by-depth depth) " calls): "))
-      (print-pattern-abbrev pat)
-      (println))
-    (flush)
-    (print-current-call-stack))
+  (when @heavy-logging
+    (when-not (or (keyword? given-pattern)
+                  (and (sequential? given-pattern)
+                       (= 2 (count given-pattern))
+                       (= :* (first given-pattern))
+                       (= :sigma (second given-pattern))))
+      (print "traverse-pattern")
+      (doseq [[depth pat] (reverse
+                           (map-indexed (fn [depth-1 pat] [(inc depth-1) pat])
+                                        @traverse-pattern-call-stack))]
+        (print (str " (depth " depth ", " (get @traverse-pattern-call-count-by-depth depth) " calls): "))
+        (print-pattern-abbrev pat)
+        (println))
+      (flush)
+      (print-current-call-stack)))
   (let [ret (traverse-pattern-impl given-pattern functions)]
     (swap! traverse-pattern-call-stack pop)
+    (when (and @heavy-logging
+               (not= ret given-pattern))
+      (println "traverse-pattern returns different pattern:")
+      (print "   given-pattern:")
+      (pr given-pattern)
+      (println)
+      (print "   non-= ret val:")
+      (pr ret)
+      (println))
     ret))
 
 (defn traverse-pattern-impl
@@ -524,26 +537,61 @@
                                       operand ;; (:* (:* something)) --> (:* something)
                                       (list :* (canonicalize-pattern operand))))))
                            :cat (fn [operands _functions]
-                                  (let [operands (doall (map canonicalize-pattern operands))]
+                                  (let [orig-operands operands
+                                        operands (doall (map canonicalize-pattern operands))]
+                                    (when @heavy-logging
+                                      (print "(:cat traversal-function) on"
+                                             (count operands) "operands:")
+                                      (if (= operands orig-operands)
+                                        (println " no-change")
+                                        (let [old-new (map-indexed
+                                                       vector
+                                                       (map vector orig-operands
+                                                            operands))
+                                              changed (remove (fn [[idx [before after]]]
+                                                                (= before after))
+                                                              old-new)
+                                              num-changed (count changed)]
+                                          (println " " num-changed " changed")
+                                          (doseq [[idx [before after]]
+                                                  (take 20 changed)]
+                                            (print "  # " idx ": before: ")
+                                            (pr before)
+                                            (if (= before after)
+                                              (print " after-no-change:")
+                                              (do
+                                                (print " after-different: ")
+                                                (pr after)))
+                                            (println)))))
                                     (assert (< 1 (count operands))
                                             (format "traverse-pattern should have already eliminated this case: re=%s count=%s operands=%s" re (count operands) operands))
                                     (cl/cl-cond
                                      ;; (:cat A (:* X) (:* X) B)
                                      ;;  --> (:cat A (:* X) B)
-                                     ((let [ptr (first-repeat operands (fn [a b]
-                                                                         (and (= a b)
-                                                                              (*? a))))]
+                                     ((let [equal-and-*? (fn [a b]
+                                                           (and (= a b)
+                                                                (*? a)))
+                                            ptr (first-repeat operands equal-and-*?)]
                                         (if (empty? ptr)
                                           false
-                                          (let [prefix (cl/ldiff operands ptr)]
-                                            (cons :cat (doall (concat prefix (rest ptr))))))))
+                                          (if @andy-attempted-fix
+                                            (cons :cat (dedupe-by-f equal-and-*?
+                                                                    operands))
+;;                                            (cons :cat (remove-second-of-first-pair-satisfying
+;;                                                        equal-and-*?
+;;                                                        operands))
+                                            (let [prefix (cl/ldiff operands ptr)]
+                                              (cons :cat (doall (concat prefix (rest ptr)))))
+))))
 
                                      ;; (:cat x (:cat a b) y) --> (:cat x a b y)
                                      ((some cat? operands)
-                                      (cons :cat (doall (mapcat (fn [obj]
-                                                           (if (cat? obj)
-                                                             (rest obj)
-                                                             (list obj))) operands))))
+                                      (cons :cat
+                                            (doall (mapcat (fn [obj]
+                                                             (if (cat? obj)
+                                                               (rest obj)
+                                                               (list obj)))
+                                                           operands))))
 
                                      ;; (:cat x "empty-set" y) --> :emptyset
                                      ((member :empty-set operands)
@@ -710,14 +758,41 @@
   ;; )
   )
 
+(defn log-worthy-pattern? [pattern]
+  (and (not= pattern :sigma)
+       (not= pattern :epsilon)
+       (not= pattern '(:* :sigma))
+       ))
+
 (defn canonicalize-pattern 
   "find the fixed point of canonicalize-pattern-once"
   [pattern]
   (swap! call-count-canonicalize-pattern inc)
-  (let [c1 @call-count-canonicalize-pattern-once]
-    (when (and (not (zero? c1)) (zero? (mod c1 100000)))
-      (print-stats pattern)))
-  (fixed-point pattern canonicalize-pattern-once =))
+  (let [c1 @call-count-canonicalize-pattern-once
+        do-log? (and @heavy-logging
+                     (log-worthy-pattern? pattern))]
+    (when do-log?
+      ;;(and (not (zero? c1)) (zero? (mod c1 100000)))
+      (print-stats pattern))
+    (fixed-point pattern canonicalize-pattern-once = do-log?)))
+
+(def patterns-to-do-heavy-logging
+  #{
+    '(:cat (:not (:? (member a b c "a" "b" "c"))) (:cat (:not (:cat :empty-set)) (:? (:cat (:and))) (:and (:or (:cat)) (:+ (:cat)))) (:+ (:or (:* (:and)) (:? :sigma))) :epsilon)
+    })
+
+(def last-pattern (atom nil))
+
+(defn canonicalize-pattern-top [pattern]
+  (reset! last-pattern pattern)
+  (let [do-heavy-logging? (contains? patterns-to-do-heavy-logging pattern)]
+    (when do-heavy-logging?
+      (println "Enabling heavy logging...")
+      (reset! heavy-logging true))
+    (let [ret (canonicalize-pattern pattern)]
+      (when do-heavy-logging?
+        (reset! heavy-logging false))
+      ret)))
 
 (defn compute-compound-derivative
   "wrt may be a compound type designator such as (and A (not B)).
