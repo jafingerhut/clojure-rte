@@ -25,6 +25,7 @@
             [clojure-rte.cl-compat :as cl]
             [clojure-rte.util :refer [with-first-match call-with-collector
                                       first-repeat
+                                      dedupe-by-f
                                       fixed-point
                                       visit-permutations rte-constantly rte-identity
                                       partition-by-pred

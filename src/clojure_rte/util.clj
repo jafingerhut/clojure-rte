@@ -285,3 +285,27 @@
 
           :else
           (recur (rest tail)))))
+
+;; Copied from clojure.core/dedupe in Clojure's implementation, then
+;; modified slightly.
+
+(defn dedupe-by-f
+  "Returns a lazy sequence removing consecutive 'duplicates' in coll.
+  Two consecutive items x and y are only considered duplicates if (f x
+  y) returns a logical true value.  Only the first of several
+  consecutive duplicates is kept.  (dedupe-by-f = coll) is equivalent
+  to Clojure's (dedupe coll). Returns a transducer when no collection
+  is provided."
+  ([f]
+   (fn [rf]
+     (let [pv (volatile! ::none)]
+       (fn
+         ([] (rf))
+         ([result] (rf result))
+         ([result input]
+            (let [prior @pv]
+              (vreset! pv input)
+              (if (f prior input)
+                result
+                (rf result input))))))))
+  ([f coll] (sequence (dedupe-by-f f) coll)))

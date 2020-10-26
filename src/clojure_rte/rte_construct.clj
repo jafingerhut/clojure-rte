@@ -428,13 +428,14 @@
                                     (cl/cl-cond
                                      ;; (:cat A (:* X) (:* X) B)
                                      ;;  --> (:cat A (:* X) B)
-                                     ((let [ptr (first-repeat operands (fn [a b]
-                                                                         (and (= a b)
-                                                                              (*? a))))]
+                                     ((let [equal-and-*? (fn [a b]
+                                                           (and (= a b)
+                                                                (*? a)))
+                                            ptr (first-repeat operands equal-and-*?)]
                                         (if (empty? ptr)
                                           false
-                                          (let [prefix (cl/ldiff operands ptr)]
-                                            (cons :cat (concat prefix (rest ptr)))))))
+                                          (cons :cat (dedupe-by-f equal-and-*?
+                                                                  operands)))))
 
                                      ;; (:cat x (:cat a b) y) --> (:cat x a b y)
                                      ((some cat? operands)
